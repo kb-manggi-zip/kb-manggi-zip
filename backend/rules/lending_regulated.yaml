@@ -1,0 +1,50 @@
+# 대출 규제·한도·금리 (신규 — B1.5 리서치 반영)
+# ⚠️ 기존 lending.yaml(단순 flat 버전)은 현재 working compare가 쓰므로 건드리지 않았다.
+#    이 파일은 "리서치 반영 v2" 값. compare 재작성 단계에서 이걸로 전환한다.
+# 출처: 금융위 '26년 가계부채 관리방안(fsc.go.kr/po010101/87222) / KB 이슈리포트 / obank.kbstar.com(2026.07.20) / HF 공시(2026-07-06~07-12)
+# checked_at: 2026-07-20
+
+ltv:
+  # [비규제, 규제] — 무주택 기준
+  no_house:       {non_regulated: 0.70, regulated: 0.40}
+  first_home:     {non_regulated: 0.80, regulated: 0.70}   # 정책상품·가격·소득요건별 상이
+  one_house_swap: {non_regulated: 0.70, regulated: 0.40}   # 기존주택 처분조건
+  multi_house:    {non_regulated: 0.60, regulated: 0.30}   # PoC 미구현(타깃 외)
+
+mortgage_cap:
+  gov_metro: 600000000        # 정부: 수도권·규제지역 주택구입 주담대 절대한도 (2025.6~)
+  kb_purchase: 300000000      # KB 자체 정책 (2026.7.10~) — 집단/정책모기지/보금자리론 제외
+  # 적용: min(LTV한도, DSR한도, gov_metro, kb_purchase). 정책대출(디딤돌)분은 kb_purchase 캡에서 제외.
+
+dsr:
+  cap: 0.40                   # 은행권
+  # 스트레스 DSR 3단계 최종 = stress_rate × base_ratio × loan_type_ratio
+  stress_rate:
+    metro_regulated: 0.030    # 수도권·규제지역 (10.15 대책)
+    local_regulated: 0.015    # 지방 규제지역
+    others: 0.015
+  base_ratio: 1.00            # 3단계 100%
+  loan_type_ratio:
+    variable: 1.00            # 변동 (보수 기본)
+    mixed: 0.60               # 🔴 <표2> 원문 확인 필요 (추정)
+    periodic: 0.30            # 🔴 원문 확인 필요 (추정)
+  default_loan_type: variable
+
+loan_term_years: 30
+
+rates:
+  kb_mortgage_mixed_min: 0.0520   # 혼합 금융채5년 최저
+  kb_mortgage_var_min:   0.0410   # 변동 신규COFIX12M 최저
+  kb_mortgage_default:   0.0410   # PoC 표시 기본값(변동 최저)
+  jeonse_kb:  0.0389              # KB국민은행 (HF 공시)
+  jeonse_min: 0.0374              # 시장 최저(카카오뱅크) — 범위 표기용
+  jeonse_max: 0.0538              # 시장 최고(경남은행) — 범위 표기용
+
+jeonse_limit:
+  base: 222000000             # KB 전세자금대출 최고 (임차보증금 80% 이내)
+  secured: 444000000          # 채권보전조치 시
+  one_house_metro: 200000000  # 2025.9.8 이후 계약 수도권·규제지역 1주택자
+
+# 생애최초 취득세 감면 (지방세특례제한법)
+# 🔴 일몰 기한·주택가액 상한 미확정 — 미확인 시 보수적으로 감면 미적용 검토. 현재는 스펙 반영값.
+first_home_acq_reduction: 2000000   # 최대 200만원

@@ -1,0 +1,22 @@
+# === 런타임 (지금 실행에 필요) ===
+fastapi==0.115.6
+uvicorn[standard]==0.34.0
+pydantic==2.10.4
+pydantic-settings==2.7.1
+pyyaml==6.0.2
+sqlalchemy==2.0.36
+psycopg[binary]==3.2.3        # Postgres 드라이버 (compose 모드). SQLite는 표준 라이브러리라 불필요.
+httpx==0.28.1
+sse-starlette==2.1.3
+anthropic==0.42.0             # LLM seam — 키 없으면 호출 안 됨(템플릿 폴백)
+
+# === 개발/테스트 ===
+pytest==8.3.4
+
+# === Phase B2: 실거래 수집 (refresh_deals.py 전용 — 서버 런타임엔 불필요) ===
+PublicDataReader==1.1.2       # 국토부 실거래 (오프라인 수집 스크립트에서만 import)
+pandas==2.2.3                 # PublicDataReader 의존
+# === Phase B4에서 활성화 (지금은 주석 — seam만 존재) ===
+# faiss-cpu                   # B4: 상품 RAG
+# langgraph                   # B3: Supervisor 그래프
+# langfuse                    # B3: 트레이싱

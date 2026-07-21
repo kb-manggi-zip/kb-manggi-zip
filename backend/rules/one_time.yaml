@@ -1,0 +1,19 @@
+# 일회성 비용 — 이사비/중개보수/취득세 등 부대비용 요율
+# ⚠️ 예시값. 공인중개사법 시행규칙·지방세법으로 검증 필요.
+
+move_base:
+  value: 1500000       # 이사 기본 비용(원)
+  source_url: null
+  checked_at: null
+
+broker_rate:
+  value: 0.004         # 중개보수 요율 (금액구간별 상한의 대표값)
+  source_url: "https://www.law.go.kr/법령/공인중개사법 시행규칙"
+  checked_at: null     # TODO 검증
+  note: "실제는 거래금액 구간별 상한요율. 단일값은 근사."
+
+acquisition_rate:
+  value: 0.011         # 취득세 등 매수 부대비용 요율
+  source_url: "https://www.law.go.kr/법령/지방세법"
+  checked_at: null     # TODO 검증
+  note: "주택 가액·전용면적·다주택 여부에 따라 상이."

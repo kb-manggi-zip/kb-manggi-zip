@@ -1,0 +1,154 @@
+import React, { useEffect, useState } from 'react';
+import { useApp } from '../store';
+import { COLORS, BRANCH_COLORS, BRANCH_ICONS } from '../theme';
+import { MobileShell, FlowProgress, BackBtn, PrimaryBtn, SecondaryBtn, BasisChip, Disclaimer, Toast } from '../components/ui';
+import AiBriefing from '../components/AiBriefing';
+import { api, briefings } from '../api/client';
+import { formatAmount } from '../utils/format';
+import type { ProductsResponse } from '../api/types';
+
+export default function FinancePackage() {
+  const { state, dispatch } = useApp();
+  const { selectedBranch, comparison } = state;
+  const [products, setProducts] = useState<ProductsResponse | null>(null);
+  const [toastVisible, setToastVisible] = useState(false);
+  const [toastMsg, setToastMsg] = useState('');
+
+  useEffect(() => {
+    if (!selectedBranch || !comparison) return;
+    api.products(selectedBranch, comparison).then(setProducts);
+  }, [selectedBranch, comparison]);
+
+  if (!selectedBranch || !products) return null;
+
+  const color = BRANCH_COLORS[selectedBranch];
+  const icon = BRANCH_ICONS[selectedBranch];
+  const branchData = comparison?.branches.find(b => b.branch === selectedBranch);
+
+  function toast(msg: string) {
+    setToastMsg(msg);
+    setToastVisible(true);
+    setTimeout(() => setToastVisible(false), 2000);
+  }
+
+  return (
+    <MobileShell>
+      <FlowProgress current={5} />
+
+      {/* 갈래 헤더 */}
+      <div className="px-5 py-4 flex items-center gap-2" style={{ background: color + '22', borderBottom: `2px solid ${color}` }}>
+        <BackBtn onClick={() => dispatch({ type: 'NAVIGATE', screen: selectedBranch === '갱신' ? 'SC-08' : 'SC-07' })} />
+        <span className="text-xl">{icon}</span>
+        <h1 className="text-lg font-bold" style={{ color }}>
+          {selectedBranch} · KB 금융 패키지
+        </h1>
+      </div>
+
+      <div className="flex-1 overflow-y-auto px-5 py-5 space-y-4">
+        {branchData && (
+          <div className="bg-muted rounded-2xl px-4 py-3 text-sm flex items-center justify-between">
+            <span className="text-muted-foreground">예상 월 부담</span>
+            <span className="font-bold text-foreground">{formatAmount(branchData.monthlyBurden)}/월</span>
+          </div>
+        )}
+
+        {/* 메인 대출 카드 */}
+        <div
+          className="bg-card rounded-3xl border-2 overflow-hidden"
+          style={{ borderColor: color, boxShadow: '0 2px 12px rgba(0,0,0,0.08)' }}
+        >
+          <div className="px-5 pt-5 pb-3 flex items-start justify-between">
+            <div className="flex-1">
+              <span className="text-xs font-bold px-2 py-0.5 rounded-full text-white mb-2 inline-block" style={{ background: color }}>
+                주요 대출
+              </span>
+              <h2 className="text-base font-bold mt-1">{products.mainLoan.name}</h2>
+              <p className="text-sm text-muted-foreground mt-0.5">{products.mainLoan.condition}</p>
+            </div>
+          </div>
+
+          {/* AI 브리핑 (추천 사유) */}
+          <div className="mx-5 mb-4">
+            <AiBriefing
+              text={briefings.finance(selectedBranch, products.mainLoan.recommendReason)}
+              compact
+            />
+          </div>
+
+          {products.mainLoan.maxAmount && (
+            <div className="mx-5 mb-4 grid grid-cols-2 gap-3">
+              <div className="bg-muted rounded-xl px-3 py-2.5">
+                <p className="text-xs text-muted-foreground">최대 한도</p>
+                <p className="font-bold mt-0.5">{formatAmount(products.mainLoan.maxAmount)}</p>
+              </div>
+              {branchData && (
+                <div className="bg-muted rounded-xl px-3 py-2.5">
+                  <p className="text-xs text-muted-foreground">예상 월 상환</p>
+                  <p className="font-bold mt-0.5">{formatAmount(branchData.monthlyBurden)}</p>
+                </div>
+              )}
+            </div>
+          )}
+
+          <div className="px-5 pb-4 flex items-center gap-2">
+            <BasisChip label={products.mainLoan.basis} tip={products.mainLoan.basis} />
+          </div>
+        </div>
+
+        {/* 연결선 */}
+        <div className="flex justify-center">
+          <div className="w-px h-6 bg-border" />
+        </div>
+
+        {/* 보장 서브 카드 */}
+        {products.guarantee && (
+          <div className="bg-card rounded-2xl border border-border overflow-hidden" style={{ boxShadow: '0 2px 8px rgba(0,0,0,0.06)' }}>
+            <div className="px-5 pt-4 pb-3">
+              <span className="text-xs text-muted-foreground font-medium">보장</span>
+              <h3 className="font-semibold mt-1">{products.guarantee.name}</h3>
+              <p className="text-sm text-muted-foreground">{products.guarantee.condition}</p>
+              <p className="text-sm mt-2 text-foreground/80">{products.guarantee.recommendReason}</p>
+            </div>
+            <div className="px-5 pb-4">
+              <SecondaryBtn
+                onClick={() => toast('PoC — 상품 페이지 연결 예정')}
+                className="h-10 text-sm"
+              >
+                자세히 알아보기
+              </SecondaryBtn>
+            </div>
+          </div>
+        )}
+
+        {/* 추가 상품 */}
+        {products.extra && (
+          <div className="bg-card rounded-2xl border border-border p-4">
+            <div className="flex items-start justify-between">
+              <div>
+                <span className="text-xs text-muted-foreground">추가</span>
+                <h3 className="font-semibold">{products.extra.name}</h3>
+                <p className="text-sm text-muted-foreground mt-0.5">{products.extra.condition}</p>
+                <p className="text-sm mt-1">{products.extra.recommendReason}</p>
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
+
+      <div className="px-5 pb-8 pt-3 space-y-3">
+        <PrimaryBtn onClick={() => dispatch({ type: 'NAVIGATE', screen: 'SC-10' })}>
+          상담 예약하기
+        </PrimaryBtn>
+        <button
+          onClick={() => dispatch({ type: 'NAVIGATE', screen: 'SC-11' })}
+          className="w-full text-sm text-muted-foreground underline py-2"
+        >
+          나중에 할게요, 저장만 할게요
+        </button>
+      </div>
+
+      <Disclaimer />
+      <Toast message={toastMsg} visible={toastVisible} />
+    </MobileShell>
+  );
+}

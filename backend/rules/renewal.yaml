@@ -1,0 +1,21 @@
+# 주택임대차보호법 — 계약갱신·인상률 상한·전월세전환율
+# ⚠️ 값은 프론트 rules.ts와 동일한 예시값. 제출 전 최신 법령 원문 검증 필요(checked_at).
+# 사람이 할 일: 국가법령정보센터 원문 확인 후 value·source_url·checked_at 갱신.
+
+increase_cap:
+  value: 0.05          # 법정 인상률 상한 5%
+  source_url: "https://www.law.go.kr/법령/주택임대차보호법"
+  checked_at: null     # TODO 검증
+  note: "계약갱신 시 차임·보증금 증액 상한. 지자체 조례로 하향 가능."
+
+conversion_rate:
+  value: 0.055         # 전월세전환율 (보증금↔월세 환산)
+  source_url: "https://www.bok.or.kr"
+  checked_at: null     # TODO 검증
+  note: "한국은행 기준금리 + 대통령령 이율. 시점에 따라 변동."
+
+notice_deadline_months:
+  value: 2             # 갱신 의사 통보 기한 (만기 N개월 전)
+  source_url: "https://www.law.go.kr/법령/주택임대차보호법"
+  checked_at: null     # TODO 검증
+  note: "임대인·임차인 갱신거절/계약조건 변경 통지 기한."

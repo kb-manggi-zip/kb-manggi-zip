@@ -1,0 +1,25 @@
+# HUG 전세보증금반환보증 보증료율 (신규 — B1.5 리서치 반영, 3중 테이블)
+# ⚠️ 기존 guarantee.yaml(단일 요율)은 working compare가 쓰므로 유지. 이 파일은 v2.
+# 출처: HUG khug.or.kr/hug/web/ig/dr/igdr000008.jsp
+# 산식: 보증료 = 보증금액 × 보증료율 × (계약일수/365).  월환산 = 보증금 × 요율 / 12
+# checked_at: 2026-07-20
+# 🔴 확인: "0.097~0.211%" 개편 계열과 다른 표인지 대조 필요 (확보한 표 기준 구현)
+
+hug_fee_rate:
+  # [보증금 구간][주택유형][부채비율 le80 / gt80]
+  under_90m:                    # 9천만원 이하
+    apartment: {le80: 0.00115, gt80: 0.00128}
+    detached:  {le80: 0.00139, gt80: 0.00154}
+    other:     {le80: 0.00139, gt80: 0.00154}
+  m90_to_200m:                  # 9천만 초과 ~ 2억 이하
+    apartment: {le80: 0.00122, gt80: 0.00128}
+    detached:  {le80: 0.00146, gt80: 0.00154}
+    other:     {le80: 0.00146, gt80: 0.00154}
+  over_200m:                    # 2억 초과
+    apartment: {le80: 0.00122, gt80: 0.00128}
+    detached:  {le80: 0.00146, gt80: 0.00154}
+    other:     {le80: 0.00146, gt80: 0.00154}
+
+default_house_type: apartment   # PoC 가정 (assumptions에 노출)
+default_debt_ratio: le80        # 부채비율 80% 이하 가정 (assumptions에 노출)
+contract_days: 730              # 2년 계약

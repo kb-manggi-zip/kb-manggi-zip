@@ -1,0 +1,30 @@
+# ── OS ──
+.DS_Store
+Thumbs.db
+
+# ── 비밀/환경 (절대 커밋 금지) ──
+.env
+.env.*
+!.env.example
+
+# ── Python ──
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+.pytest_cache/
+*.egg-info/
+
+# ── Node ──
+node_modules/
+dist/
+*.tsbuildinfo
+
+# ── DB / 캐시 (데모 스냅샷·픽스처는 커밋) ──
+*.db
+!backend/data/trades.demo.db
+backend/cache/*
+!backend/cache/.gitkeep
+
+# ── 스크래치 ──
+*.log

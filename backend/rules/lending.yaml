@@ -1,0 +1,28 @@
+# 대출 규제·금리 — LTV/DSR/스트레스 금리/전세대출 금리
+# ⚠️ 예시값. 금융위·주택도시기금·은행연합회 공시로 검증 필요.
+
+ltv:
+  value: 0.70          # 주택담보인정비율
+  source_url: "https://www.fsc.go.kr"
+  checked_at: null     # TODO 검증
+  note: "지역·주택유형·생애최초 여부에 따라 상이."
+
+dsr_cap:
+  value: 0.40          # 총부채원리금상환비율 상한
+  source_url: "https://www.fsc.go.kr"
+  checked_at: null     # TODO 검증
+
+stress_rate:
+  value: 0.045         # 주담대 스트레스 금리 (원리금 산정용)
+  source_url: "https://www.kfb.or.kr"
+  checked_at: null     # TODO 검증
+
+years:
+  value: 30            # 주담대 상환기간(년)
+  source_url: null
+  checked_at: null
+
+jeonse_rate:
+  value: 0.038         # 전세대출 평균 금리
+  source_url: "https://www.kfb.or.kr"
+  checked_at: null     # TODO 검증
