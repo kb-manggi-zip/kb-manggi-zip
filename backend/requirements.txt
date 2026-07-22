@@ -14,7 +14,7 @@ anthropic==0.42.0             # LLM seam — 키 없으면 호출 안 됨(템플
 pytest==8.3.4
 
 # === Phase B2: 실거래 수집 (refresh_deals.py 전용 — 서버 런타임엔 불필요) ===
-PublicDataReader==1.1.2       # 국토부 실거래 (오프라인 수집 스크립트에서만 import)
+PublicDataReader==1.1.1.post2     # 국토부 실거래 (오프라인 수집 스크립트에서만 import)
 pandas==2.2.3                 # PublicDataReader 의존
 # === Phase B4에서 활성화 (지금은 주석 — seam만 존재) ===
 # faiss-cpu                   # B4: 상품 RAG
