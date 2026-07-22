@@ -25,6 +25,7 @@ class Settings(BaseSettings):
 
     # 외부 데이터 (Phase B2)
     molit_api_key: str = ""
+    kakao_api_key: str = ""
 
     # 캐시
     cache_dir: str = "./cache"
