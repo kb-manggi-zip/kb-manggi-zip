@@ -14,7 +14,7 @@ import logging
 from typing import Callable
 
 from .config import settings
-from .verify import contains_solicitation
+from .verify import contains_solicitation, numbers_grounded
 
 log = logging.getLogger("kb.llm")
 
@@ -28,30 +28,43 @@ SYSTEM_RULES = (
 )
 
 
-def generate(*, system: str, user: str, fallback: Callable[[], str]) -> str:
+def generate(
+    *,
+    system: str,
+    user: str,
+    fallback: Callable[[], str],
+    allowed_numbers: set[int] | None = None,
+) -> str:
     """LLM 통역 텍스트 생성. 비활성/부적합 시 템플릿 폴백.
 
     Args:
         system: 노드별 추가 지시 (SYSTEM_RULES 뒤에 결합)
         user:   facts를 담은 프롬프트
         fallback: 폴백 텍스트 생성기 (프론트 briefings.ts 이식 템플릿)
+        allowed_numbers: 출력에 허용되는 숫자 집합. None이면 숫자 검증 생략(하위호환).
     """
     if not settings.llm_active:
         return fallback()
 
-    try:
-        text = _call_claude(system, user)
-    except Exception as e:  # 호출 실패는 조용히 삼키지 않되, 서비스는 폴백으로 계속
-        log.warning("LLM 호출 실패 → 폴백: %s", e)
-        return fallback()
+    for attempt in range(3):
+        try:
+            text = _call_claude(system, user)
+        except Exception as e:
+            log.warning("LLM 호출 실패 → 폴백: %s", e)
+            return fallback()
 
-    # 가드레일: 권유 표현이면 폴백 (Phase B4에서 재생성 2회로 대체)
-    if contains_solicitation(text):
-        log.info("LLM 출력 권유 표현 감지 → 폴백")
-        return fallback()
-    # STUB: verify.numbers_grounded(text, allowed) 기반 숫자 대조 — Phase B4
-    return text
+        if contains_solicitation(text):
+            log.info("권유 표현 감지 (시도 %d) → 재생성", attempt + 1)
+            continue
 
+        if allowed_numbers is not None and not numbers_grounded(text, allowed_numbers):
+            log.info("숫자 불일치 감지 (시도 %d) → 재생성", attempt + 1)
+            continue
+
+        return text
+
+    log.warning("재생성 2회 모두 실패 → 폴백")
+    return fallback()
 
 def _call_claude(system: str, user: str) -> str:
     """실제 Claude 호출. settings.llm_active 일 때만 도달."""
