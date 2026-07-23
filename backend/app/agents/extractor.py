@@ -8,6 +8,7 @@
   - 아래 extract_contract 채우고, routers/api.py 에 POST /api/extract-contract 활성화
   - 프론트 "사진으로 채우기" 버튼은 이 Phase 완료 후 활성화 (기획서 B5)
 """
+
 from typing import Optional, TypedDict
 
 
@@ -20,6 +21,4 @@ class ExtractResult(TypedDict):
 
 def extract_contract(image_bytes: bytes) -> ExtractResult:  # pragma: no cover
     # STUB: Phase B5 — Claude Vision 연동. 낮은 confidence는 null 처리.
-    raise NotImplementedError(
-        "계약서 Vision 추출은 Phase B5에서 구현합니다. 현재는 직접 입력(SC-02)만 지원."
-    )
+    raise NotImplementedError("계약서 Vision 추출은 Phase B5에서 구현합니다. 현재는 직접 입력(SC-02)만 지원.")

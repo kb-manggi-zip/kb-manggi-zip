@@ -3,6 +3,7 @@
 지금: catalog fixture 씬 반환 → /api/simulate 동작.
 Phase B4: facts(경로·POI·물가) 기반 씬 캡션 생성 + "아낀 돈" 카드.
 """
+
 from ..data.catalog import scenes_for
 from ..schemas import Branch, SimulateResponse
 

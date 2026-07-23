@@ -3,6 +3,7 @@
 fetch_trades(실 API)는 STUB이지만, 그 뒤 aggregate_to_regions는 완성이라 여기서 검증한다.
 (실 API 붙으면 fetch_trades가 아래 TradeRow[]를 채워주기만 하면 됨)
 """
+
 from app.tools.molit import TradeRow, aggregate_to_regions
 
 
@@ -29,8 +30,8 @@ def test_budget_filter_and_top_and_surplus():
     budget = 600_000_000
     regions = aggregate_to_regions(_rows(), "매매", budget=budget)
     names = [r.name for r in regions]
-    assert "성산동" not in names          # midPrice 800M > 예산 → 제외
-    assert names[0] == "합정동"           # 거래건수(3) 최다 → 첫번째
+    assert "성산동" not in names  # midPrice 800M > 예산 → 제외
+    assert names[0] == "합정동"  # 거래건수(3) 최다 → 첫번째
     top = regions[0]
     assert top.surplus == budget - top.midPrice
     assert len(regions) <= 3
@@ -50,7 +51,9 @@ def test_enrichment_join():
     enrich = {"합정동": {"id": "mapo", "lat": 37.5498, "lng": 126.9137, "tags": ["역세권"]}}
     regions = aggregate_to_regions(
         [{"umd_name": "합정동", "price": 500_000_000, "monthly": 0}],
-        "매매", budget=0, enrich=enrich,
+        "매매",
+        budget=0,
+        enrich=enrich,
     )
     assert regions[0].id == "mapo"
     assert regions[0].lat == 37.5498

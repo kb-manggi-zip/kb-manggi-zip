@@ -10,3 +10,10 @@ testpaths = ["tests"]
 filterwarnings = [
     "ignore::DeprecationWarning",
 ]
+
+[tool.ruff]
+line-length = 120  # 한글 문장·SQL 문자열이 길어서 여유 있게
+target-version = "py311"
+
+[tool.ruff.lint]
+select = ["E", "F", "I"]  # pycodestyle, pyflakes, import 정렬

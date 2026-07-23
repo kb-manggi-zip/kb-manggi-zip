@@ -21,6 +21,7 @@
   (types.ts interface 14개 = 이 파일 응답/공유 모델 14개)
   + 요청 래퍼(CompareRequest / SimulateRequest / ProductsRequest): 엔드포인트 body용
 """
+
 from typing import Literal, Optional
 
 from pydantic import BaseModel
@@ -31,9 +32,7 @@ RenewalUsed = Literal["미사용", "사용", "모름"]
 Household = Literal["1인", "신혼", "자녀"]
 FirstHome = Literal["예", "아니오", "모름"]
 Branch = Literal["갱신", "이사", "매매"]
-BriefingKind = Literal[
-    "compare", "regions", "renewal", "revisit", "dayPlayer", "savedMoney", "finance"
-]
+BriefingKind = Literal["compare", "regions", "renewal", "revisit", "dayPlayer", "savedMoney", "finance"]
 
 
 # ── 입력 ────────────────────────────────────────────────────────────
@@ -49,8 +48,8 @@ class FinanceInfo(BaseModel):
     annualIncome: int
     ownCapital: int
     household: Household
-    firstHome: FirstHome = "모름"   # 생애최초 주택구입 여부 (B1.5)
-    under35: bool = False           # 만 35세 미만 (버팀목 청년 자격) (B1.5)
+    firstHome: FirstHome = "모름"  # 생애최초 주택구입 여부 (B1.5)
+    under35: bool = False  # 만 35세 미만 (버팀목 청년 자격) (B1.5)
 
 
 # ── 비교표 (심장) ───────────────────────────────────────────────────

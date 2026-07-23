@@ -6,6 +6,7 @@ JS 동치 주의:
   (clamp가 아니라 롤오버) — first-of-month + (day-1)일 로 재현.
 - dday = ceil((expiry - now)/day).
 """
+
 import math
 from datetime import date, datetime, timedelta, timezone
 

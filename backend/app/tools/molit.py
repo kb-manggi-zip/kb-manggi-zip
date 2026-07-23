@@ -6,6 +6,7 @@
 ⚠️ 서버 런타임은 외부 API를 호출하지 않는다. DB(실데이터 or 데모 스냅샷)만 읽는다.
    실 API 호출은 scripts/refresh/refresh_deals.py 에서만.
 """
+
 from datetime import date
 from statistics import median
 from typing import Optional, TypedDict
@@ -26,11 +27,12 @@ class TradeRow(TypedDict):
     price:   매매가 또는 전세보증금 (원)
     monthly: 월세 (원). 전세/매매는 0.
     """
-    umd_name: str      # 법정동 이름 (예: '합정동')
+
+    umd_name: str  # 법정동 이름 (예: '합정동')
     price: int
     monthly: int
     area_m2: float
-    deal_ym: str       # 'YYYYMM'
+    deal_ym: str  # 'YYYYMM'
 
 
 class Enrichment(TypedDict, total=False):
@@ -91,9 +93,7 @@ def aggregate_to_regions(
     regions: list[Region] = []
     for umd, items in groups.items():
         mid = int(median(sorted(x["price"] for x in items)))
-        monthly_mid = (
-            int(median(sorted(x["monthly"] for x in items))) if monthly else None
-        )
+        monthly_mid = int(median(sorted(x["monthly"] for x in items))) if monthly else None
         e = enrich.get(umd, {})
         regions.append(
             Region(
@@ -127,9 +127,7 @@ def fetch_trades(
     trade_type: 'sale' | 'jeonse' | 'monthly'
     DB 없거나 비면 명확한 에러(refresh 안내).
     """
-    return trades_store.read_trades(
-        trade_type, sigungu_code=sigungu_code, deal_ym=deal_ym
-    )  # type: ignore[return-value]
+    return trades_store.read_trades(trade_type, sigungu_code=sigungu_code, deal_ym=deal_ym)  # type: ignore[return-value]
 
 
 def regions_by_branch(branch: str, budget: int) -> list[Region]:
@@ -139,6 +137,4 @@ def regions_by_branch(branch: str, budget: int) -> list[Region]:
     trade_type = _TRADE_TYPE.get(branch, "sale")
 
     rows = fetch_trades(trade_type)  # DB (없으면 RuntimeError)
-    return aggregate_to_regions(
-        rows, region_branch, budget, monthly=monthly, enrich=load_enrich()
-    )
+    return aggregate_to_regions(rows, region_branch, budget, monthly=monthly, enrich=load_enrich())

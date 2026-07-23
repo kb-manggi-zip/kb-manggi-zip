@@ -11,6 +11,7 @@
 | POST /api/reservation| DB 저장                           | ❌  |
 (*: 현재 LLM 비활성 시 템플릿/fixture 폴백)
 """
+
 from fastapi import APIRouter, Depends, Query
 from sqlalchemy.orm import Session
 

@@ -3,6 +3,7 @@
 client.ts 로컬 draftNotice 템플릿을 폴백으로 이식.
 [동·호수] placeholder 유지, 법적 확언 금지.
 """
+
 from datetime import date
 
 from ..core.llm import generate

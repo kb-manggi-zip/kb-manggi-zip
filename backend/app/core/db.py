@@ -4,6 +4,7 @@
 - compose: DATABASE_URL=postgresql+psycopg://... 주입 시 Postgres
 동일한 ORM/세션 인터페이스로 뒤의 실체(SQLite/Postgres)만 교체된다.
 """
+
 from collections.abc import Iterator
 
 from sqlalchemy import create_engine
@@ -11,11 +12,7 @@ from sqlalchemy.orm import DeclarativeBase, Session, sessionmaker
 
 from .config import settings
 
-_connect_args = (
-    {"check_same_thread": False}
-    if settings.database_url.startswith("sqlite")
-    else {}
-)
+_connect_args = {"check_same_thread": False} if settings.database_url.startswith("sqlite") else {}
 
 engine = create_engine(settings.database_url, connect_args=_connect_args, future=True)
 SessionLocal = sessionmaker(bind=engine, autoflush=False, expire_on_commit=False)
