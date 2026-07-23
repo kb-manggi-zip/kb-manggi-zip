@@ -13,6 +13,7 @@ anthropic==0.42.0             # LLM seam — 키 없으면 호출 안 됨(템플
 # === 개발/테스트 ===
 pytest==8.3.4
 ruff==0.15.22                 # 린트+포맷 (CI에서 검사)
+pre-commit==4.6.1             # 커밋할 때 자동으로 ruff 실행 (최초 1회 `pre-commit install` 필요)
 
 # === Phase B2: 실거래 수집 (refresh_deals.py 전용 — 서버 런타임엔 불필요) ===
 PublicDataReader==1.1.1.post2     # 국토부 실거래 (오프라인 수집 스크립트에서만 import)
