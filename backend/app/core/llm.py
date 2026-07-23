@@ -67,6 +67,7 @@ def generate(
     log.warning("재생성 2회 모두 실패 → 폴백")
     return fallback()
 
+
 def _call_claude(system: str, user: str) -> str:
     """실제 Claude 호출. settings.llm_active 일 때만 도달."""
     from anthropic import Anthropic  # 지연 import (키 없을 때 의존성 회피)

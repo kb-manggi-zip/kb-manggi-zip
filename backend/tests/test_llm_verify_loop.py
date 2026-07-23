@@ -2,6 +2,7 @@
 
 CLAUDE.md 규칙: pytest에서 실제 외부 API 호출 금지. _call_claude를 monkeypatch로 대체한다.
 """
+
 from app.core import llm as llm_module
 
 
@@ -13,9 +14,7 @@ def _enable_llm(monkeypatch):
 
 def test_llm_비활성_시_바로_폴백(monkeypatch):
     monkeypatch.setattr(llm_module.settings, "llm_enabled", False)
-    result = llm_module.generate(
-        system="x", user="y", fallback=lambda: "폴백 문구"
-    )
+    result = llm_module.generate(system="x", user="y", fallback=lambda: "폴백 문구")
     assert result == "폴백 문구"
 
 
