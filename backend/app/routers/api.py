@@ -34,13 +34,19 @@ from ..schemas import (
 )
 from ..tools import molit
 from ..tools.compare import compute_compare
-
+from ..graph import build_graph
 router = APIRouter(prefix="/api")
 
 
+_compiled_graph = build_graph()
+
 @router.post("/compare", response_model=CompareResponse)
 def compare(req: CompareRequest) -> CompareResponse:
-    return compute_compare(req.contract, req.finance)
+    result = _compiled_graph.invoke({
+        "contract": req.contract.model_dump(),
+        "finance": req.finance.model_dump(),
+    })
+    return CompareResponse(**result["comparison"])
 
 
 @router.get("/regions", response_model=list[Region])

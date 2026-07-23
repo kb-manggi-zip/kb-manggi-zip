@@ -19,17 +19,30 @@ Phase B3에서 이 파일에 Supervisor 그래프를 구성하고, 라우터가 
   - 상태 스키마 = app/schemas.py 재사용 (AppState 확장)
   - Langfuse 트레이싱을 전 노드에 부착 (발표용 노드 경로 캡처)
 """
+from typing import TypedDict
 
-# STUB: Phase B3 — LangGraph Supervisor + Langfuse.
-# from langgraph.graph import StateGraph  # (langgraph 설치 후)
-#
-# def build_graph():
-#     ...  # 노드 등록 + 엣지 + 조건분기(renewal → finance)
-#     return graph.compile()
+from langgraph.graph import StateGraph, END
+
+from .schemas import ContractInfo, FinanceInfo
+from .tools.compare import compute_compare
 
 
-def build_graph():  # pragma: no cover
-    raise NotImplementedError(
-        "LangGraph 오케스트레이션은 Phase B3에서 구현합니다. "
-        "현재는 routers/api.py 가 tools·agents 를 직접 호출합니다."
-    )
+class GraphState(TypedDict, total=False):
+    contract: dict
+    finance: dict
+    comparison: dict
+
+
+def compare_node(state: GraphState) -> dict:
+    contract = ContractInfo(**state["contract"])
+    finance = FinanceInfo(**state["finance"])
+    result = compute_compare(contract, finance)
+    return {"comparison": result.model_dump()}
+
+
+def build_graph():
+    graph = StateGraph(GraphState)
+    graph.add_node("compare", compare_node)
+    graph.set_entry_point("compare")
+    graph.add_edge("compare", END)
+    return graph.compile()
