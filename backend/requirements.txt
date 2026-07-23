@@ -19,4 +19,4 @@ pandas==2.2.3                 # PublicDataReader 의존
 # === Phase B4에서 활성화 (지금은 주석 — seam만 존재) ===
 # faiss-cpu                   # B4: 상품 RAG
 langgraph                   # B3: Supervisor 그래프
-# langfuse                    # B3: 트레이싱
+langfuse                    # B3: 트레이싱

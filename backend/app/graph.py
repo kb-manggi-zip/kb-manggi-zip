@@ -21,8 +21,10 @@ Phase B3에서 이 파일에 Supervisor 그래프를 구성하고, 라우터가 
 """
 from typing import TypedDict
 
+from langfuse import observe
 from langgraph.graph import StateGraph, END
 
+from .core import tracing  # noqa: F401 — Langfuse 클라이언트 초기화(키 있으면 생성, 없으면 None)
 from .schemas import ContractInfo, FinanceInfo
 from .tools.compare import compute_compare
 from .tools import molit
@@ -34,6 +36,7 @@ class CompareState(TypedDict):
     comparison: dict
 
 
+@observe(name="compare_node")
 def compare_node(state: CompareState) -> dict:
     contract = ContractInfo(**state["contract"])
     finance = FinanceInfo(**state["finance"])
@@ -55,6 +58,7 @@ class RegionsState(TypedDict):
     regions: list
 
 
+@observe(name="regions_node")
 def regions_node(state: RegionsState) -> dict:
     result = molit.regions_by_branch(state["branch"], state["budget"])
     return {"regions": [r.model_dump() for r in result]}
