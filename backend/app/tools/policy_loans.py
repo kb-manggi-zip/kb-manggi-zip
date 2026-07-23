@@ -3,6 +3,7 @@
 디딤돌(매매)·버팀목 청년전세(이사/갱신). rules/policy_loans.yaml 사용.
 자격 판정은 코드(LLM 아님). 숫자는 yaml 원문만.
 """
+
 from dataclasses import dataclass
 
 from ..core.rules import read_yaml
@@ -19,7 +20,7 @@ class PolicyResult:
 def didimdol_eligibility(
     *,
     annual_income: int,
-    household: str,        # '1인' | '신혼' | '자녀'
+    household: str,  # '1인' | '신혼' | '자녀'
     is_no_house: bool,
     net_asset: int,
     first_home: bool = False,
@@ -47,9 +48,7 @@ def didimdol_eligibility(
         cat = "일반"
 
     eligible = (
-        (not d["requires_no_house"] or is_no_house)
-        and annual_income <= income_cap
-        and net_asset <= d["net_asset_cap"]
+        (not d["requires_no_house"] or is_no_house) and annual_income <= income_cap and net_asset <= d["net_asset_cap"]
     )
     rate = d["rate_min"]  # 최저금리(우대 기준) — 표시 시 rate_min~rate_max 범위 병기
 
@@ -73,10 +72,7 @@ def buttimok_youth_eligibility(
 
     in_age = b["age"]["min"] <= age <= b["age"]["max"]
     eligible = (
-        in_age
-        and annual_income <= b["income_cap"]
-        and deposit <= b["deposit_cap"]
-        and net_asset <= b["net_asset_cap"]
+        in_age and annual_income <= b["income_cap"] and deposit <= b["deposit_cap"] and net_asset <= b["net_asset_cap"]
     )
 
     # 소득 구간별 금리 (오름차순 upto 매칭)

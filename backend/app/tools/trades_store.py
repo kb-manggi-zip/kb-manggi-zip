@@ -8,6 +8,7 @@
   · price/monthly = 원(KRW). 매매·전세는 monthly=0.
   · 멱등: (sigungu, deal_ym, trade_type) 배치 단위 DELETE 후 INSERT.
 """
+
 import os
 import sqlite3
 from datetime import datetime, timezone

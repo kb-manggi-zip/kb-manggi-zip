@@ -3,6 +3,7 @@
 [보증금 구간][주택유형][부채비율] → 요율. rules/guarantee_hug.yaml 사용.
 월환산 = 보증금 × 요율 / 12 (계약일수와 무관하게 동일).
 """
+
 from ..core.rules import read_yaml
 
 

@@ -1,4 +1,5 @@
 """엔드포인트 스모크 — 스키마 준수 + LLM 0회 경로 + 예약 저장."""
+
 import pytest
 from fastapi.testclient import TestClient
 
@@ -13,8 +14,13 @@ def client():
 
 
 P2 = {
-    "contract": {"type": "전세", "deposit": 320000000, "monthlyRent": 0,
-                 "expiryDate": "2026-10-30", "renewalUsed": "미사용"},
+    "contract": {
+        "type": "전세",
+        "deposit": 320000000,
+        "monthlyRent": 0,
+        "expiryDate": "2026-10-30",
+        "renewalUsed": "미사용",
+    },
     "finance": {"annualIncome": 80000000, "ownCapital": 60000000, "household": "신혼"},
 }
 

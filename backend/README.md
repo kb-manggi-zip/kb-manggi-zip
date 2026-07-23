@@ -22,6 +22,14 @@ cp .env.example .env                 # 그대로도 동작 (SQLite + 폴백)
 uvicorn app.main:app --reload        # http://localhost:8000/health
 ```
 
+### 최초 1회만: 커밋 시 자동 포맷(pre-commit) 설정
+
+```bash
+# 루트(prev-live/)에서 실행 — .git이 여기 있어서
+pre-commit install
+```
+이후 `git commit`할 때마다 `ruff format`·`ruff check --fix`가 자동으로 돌아요(수동으로 안 돌려도 됨).
+
 ## 도커 (Postgres 포함)
 
 ```bash

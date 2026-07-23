@@ -3,6 +3,7 @@
 LLM 비활성/부적합 시 이 결정론적 문장을 반환한다.
 ⚠️ 문장 규칙: "추천합니다/하세요/이득" 금지, 서술만.
 """
+
 from ..schemas import CompareResponse, Region
 from ..tools.format import format_amount
 

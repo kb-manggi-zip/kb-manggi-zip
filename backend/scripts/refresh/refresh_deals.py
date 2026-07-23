@@ -7,6 +7,7 @@
 
 연립다세대는 승인됐으나 미사용 — 계산 가정이 '아파트 기준'이라 일관성 유지.
 """
+
 import sys
 import time
 from pathlib import Path
@@ -59,10 +60,17 @@ def normalize_rows(records: list[dict], sigungu_code: str, deal_ym: str, kind: s
 
         if price <= 0:
             continue
-        out.append({
-            "sigungu_code": sigungu_code, "umd_name": umd, "trade_type": tt,
-            "price": price, "monthly": monthly, "area_m2": area, "deal_ym": deal_ym,
-        })
+        out.append(
+            {
+                "sigungu_code": sigungu_code,
+                "umd_name": umd,
+                "trade_type": tt,
+                "price": price,
+                "monthly": monthly,
+                "area_m2": area,
+                "deal_ym": deal_ym,
+            }
+        )
     return out
 
 
@@ -79,9 +87,7 @@ def collect_raw(sigungu_code: str, deal_ym: str, kind_api: str) -> list[dict]:
     try:
         from PublicDataReader import TransactionPrice
     except ImportError as e:
-        raise RuntimeError(
-            "PublicDataReader 미설치. pip install -r requirements.txt (PublicDataReader, pandas)"
-        ) from e
+        raise RuntimeError("PublicDataReader 미설치. pip install -r requirements.txt (PublicDataReader, pandas)") from e
 
     if not settings.molit_api_key:
         raise RuntimeError(".env 에 MOLIT_API_KEY 가 필요합니다.")
@@ -104,14 +110,11 @@ def sanity_check(conn, valid_months: set[str]) -> None:
     total = conn.execute("SELECT COUNT(*) FROM trades").fetchone()[0]
     if total == 0:
         raise RuntimeError("수집 결과 0건 — API 키/파라미터/네트워크 확인 필요")
-    weird = conn.execute(
-        "SELECT COUNT(*) FROM trades WHERE price < 10000000 OR price > 10000000000"
-    ).fetchone()[0]
+    weird = conn.execute("SELECT COUNT(*) FROM trades WHERE price < 10000000 OR price > 10000000000").fetchone()[0]
     if weird:
         print(f"  ⚠ 이상 price {weird}건 (1천만 미만/100억 초과)")
     oob = conn.execute(
-        "SELECT COUNT(*) FROM trades WHERE deal_ym NOT IN (%s)"
-        % ",".join("?" * len(valid_months)),
+        "SELECT COUNT(*) FROM trades WHERE deal_ym NOT IN (%s)" % ",".join("?" * len(valid_months)),
         tuple(valid_months),
     ).fetchone()[0]
     if oob:
@@ -157,10 +160,12 @@ def run() -> None:
                 if kind == "sale":
                     trades_store.replace_batch(conn, code, ym, "sale", rows)
                 else:
-                    trades_store.replace_batch(conn, code, ym, "jeonse",
-                                               [r for r in rows if r["trade_type"] == "jeonse"])
-                    trades_store.replace_batch(conn, code, ym, "monthly",
-                                               [r for r in rows if r["trade_type"] == "monthly"])
+                    trades_store.replace_batch(
+                        conn, code, ym, "jeonse", [r for r in rows if r["trade_type"] == "jeonse"]
+                    )
+                    trades_store.replace_batch(
+                        conn, code, ym, "monthly", [r for r in rows if r["trade_type"] == "monthly"]
+                    )
                 time.sleep(0.3)  # 쿼터 보호
 
     sanity_check(conn, set(months))

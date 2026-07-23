@@ -29,9 +29,7 @@ def pv_annuity(monthly_pmt: float, annual_rate: float, years: int) -> float:
     return monthly_pmt * (1 - (1 + r) ** -n) / r
 
 
-def effective_dsr_rate(
-    base_rate: float, stress_rate: float, base_ratio: float, loan_type_ratio: float
-) -> float:
+def effective_dsr_rate(base_rate: float, stress_rate: float, base_ratio: float, loan_type_ratio: float) -> float:
     """DSR '산정용' 금리 = base + 스트레스×기본비율×유형비율. (월상환 표시엔 쓰지 말 것)"""
     return base_rate + stress_rate * base_ratio * loan_type_ratio
 

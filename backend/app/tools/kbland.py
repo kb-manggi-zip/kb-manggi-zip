@@ -3,6 +3,7 @@
 실패해도 서비스는 진행한다 (Optional 필드). KB 데이터는 어필 포인트.
 STUB: 지금은 None 반환. B2에서 채우면 Region/비교표에 병기.
 """
+
 from ..core.cache import cached
 
 
