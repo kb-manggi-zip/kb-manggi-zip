@@ -3,6 +3,7 @@
 fixtures/compare_cases.json 은 프론트 compare.ts 출력(오차 0 기준).
 생성: cd backend && TZ=UTC npx tsx scripts/gen_fixtures.mjs
 """
+
 import json
 from datetime import datetime
 from pathlib import Path
@@ -17,9 +18,7 @@ FIXTURE = Path(__file__).parent / "fixtures" / "compare_cases.json"
 
 def _load():
     if not FIXTURE.exists():
-        pytest.skip(
-            "compare_cases.json 없음 — 먼저 'TZ=UTC npx tsx scripts/gen_fixtures.mjs' 실행"
-        )
+        pytest.skip("compare_cases.json 없음 — 먼저 'TZ=UTC npx tsx scripts/gen_fixtures.mjs' 실행")
     return json.loads(FIXTURE.read_text(encoding="utf-8"))
 
 

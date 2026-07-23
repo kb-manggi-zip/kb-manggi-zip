@@ -11,6 +11,7 @@ B1.5 반영:
 
 ⚠️ 반올림은 js_round(=JS Math.round)로 통일. 매매 지역은 PoC상 수도권 규제지역 가정.
 """
+
 from datetime import datetime, timezone
 
 from ..core.rules import Rules, get_rules, read_yaml
@@ -81,13 +82,9 @@ def compute_compare(
     renewal_loan_interest = js_round(deposit_gap * jeonse_rate / 12)
     renewal_guar_monthly = js_round(deposit * guarantee_rate(deposit) / 12)
     renewal_monthly_burden = (
-        renewal_loan_interest + renewal_guar_monthly
-        if ctype == "전세"
-        else new_monthly + renewal_guar_monthly
+        renewal_loan_interest + renewal_guar_monthly if ctype == "전세" else new_monthly + renewal_guar_monthly
     )
-    monthly_to_deposit = (
-        js_round(monthly_rent * 12 / renewal.conversionRate) if ctype == "월세" else 0
-    )
+    monthly_to_deposit = js_round(monthly_rent * 12 / renewal.conversionRate) if ctype == "월세" else 0
 
     if renewal_used == "모름":
         uncertainty = "갱신권 미사용 시 5% 상한 적용 / 이미 사용 시 협의 필요"
@@ -134,7 +131,10 @@ def compute_compare(
         guaranteeMonthly=move_guar_monthly,
         monthlyBurden=move_interest + move_guar_monthly,
         risks=["새 보증금 잠김", "이사 과정 일회성 비용"],
-        cares=["새 계약 시 전세보증금 반환보증 확인", f"일회성 비용 약 {format_amt(move_one_time)}"],
+        cares=[
+            "새 계약 시 전세보증금 반환보증 확인",
+            f"일회성 비용 약 {format_amt(move_one_time)}",
+        ],
         basis=["전세대출 한도 80%", "실거래 기준"],
         feature="환경을 바꿀 기회",
     )

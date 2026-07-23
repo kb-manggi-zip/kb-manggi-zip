@@ -10,6 +10,7 @@
         ※ STUB: 숫자 검증(verify.numbers_grounded) 기반 재생성 2회 루프는 Phase B4.
           그전까지 LLM_ENABLED=true는 권장하지 않는다(검증 미완).
 """
+
 import logging
 from typing import Callable
 

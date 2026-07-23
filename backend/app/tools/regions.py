@@ -4,6 +4,7 @@
 스펙 pseudocode 보완: 데모 동네("마포구 합정동")는 "서울" 문자열이 없으므로
 seoul_gu(25 자치구) 목록으로도 서울=규제를 판정한다.
 """
+
 from ..core.rules import read_yaml
 
 
@@ -17,10 +18,7 @@ def classify_region(region_name: str, reg_rules: dict | None = None) -> dict:
     metro = reg_rules.get("metro", [])
 
     is_seoul = ("서울" in region_name) or any(gu in region_name for gu in seoul_gu)
-    is_regulated = (
-        (bool(regulated.get("seoul_all")) and is_seoul)
-        or any(g in region_name for g in gyeonggi)
-    )
+    is_regulated = (bool(regulated.get("seoul_all")) and is_seoul) or any(g in region_name for g in gyeonggi)
     is_metro = is_seoul or any(m in region_name for m in metro)
 
     return {"is_metro": bool(is_metro), "is_regulated": bool(is_regulated)}

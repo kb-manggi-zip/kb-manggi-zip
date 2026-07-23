@@ -3,6 +3,7 @@
 BriefingRequest{kind, context} → 문장. LLM 비활성 시 templates 폴백.
 Phase B4: SSE 스트리밍 + verify(숫자 대조). 지금은 최종 문자열 반환.
 """
+
 import logging
 
 from ..core.llm import generate

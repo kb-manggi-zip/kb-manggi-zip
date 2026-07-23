@@ -3,6 +3,7 @@
 이 테스트가 곧 "스펙 산식의 사실확인"이다 (HF 앵커·정책대출 자격·규제 판정).
 아직 compare/스키마/프론트에는 연결하지 않은, 순수 함수 단위 검증.
 """
+
 import pytest
 
 from app.tools.guarantee_hug import calc_guarantee_fee
@@ -55,8 +56,7 @@ def test_stress_rate_lowers_limit():
 def test_c1_seoul_buy_caps():
     # 자본 3.8억, 소득 8천, 서울(규제 LTV 40%), 정책 없음, KB캡 3억
     dsr = dsr_loan_limit(80_000_000, 0.40, effective_dsr_rate(0.0410, 0.030, 1.0, 1.0), 30)
-    price = solve_max_price(capital=380_000_000, ltv=0.40, dsr_limit=dsr,
-                            policy_limit=0, bank_cap=300_000_000)
+    price = solve_max_price(capital=380_000_000, ltv=0.40, dsr_limit=dsr, policy_limit=0, bank_cap=300_000_000)
     loan = price - 380_000_000
     assert loan <= min(300_000_000, dsr) + 1  # 대출 ≤ min(KB캡3억, DSR한도)
     assert price <= 380_000_000 / (1 - 0.40) + 1  # LTV 제약
@@ -65,7 +65,9 @@ def test_c1_seoul_buy_caps():
 # ── C2: 신혼·무주택·소득 8천 → 디딤돌 자격 O, 한도 3.2억 ──────────────
 def test_c2_didimdol_newlywed_eligible():
     p = didimdol_eligibility(
-        annual_income=80_000_000, household="신혼", is_no_house=True,
+        annual_income=80_000_000,
+        household="신혼",
+        is_no_house=True,
         net_asset=200_000_000,
     )
     assert p.eligible is True
@@ -75,7 +77,10 @@ def test_c2_didimdol_newlywed_eligible():
 
 def test_didimdol_over_income_rejected():
     p = didimdol_eligibility(
-        annual_income=90_000_000, household="신혼", is_no_house=True, net_asset=200_000_000,
+        annual_income=90_000_000,
+        household="신혼",
+        is_no_house=True,
+        net_asset=200_000_000,
     )
     assert p.eligible is False
     assert p.limit == 0
@@ -91,7 +96,10 @@ def test_c4_guarantee_rate():
 # ── C5: 만28세·소득 4.5천·보증금 2억 → 버팀목 자격 O, 금리 2.9% ────────
 def test_c5_buttimok_eligible():
     p = buttimok_youth_eligibility(
-        age=28, annual_income=45_000_000, deposit=200_000_000, net_asset=50_000_000,
+        age=28,
+        annual_income=45_000_000,
+        deposit=200_000_000,
+        net_asset=50_000_000,
     )
     assert p.eligible is True
     assert p.rate == 0.029

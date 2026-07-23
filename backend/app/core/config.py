@@ -1,4 +1,5 @@
 """환경설정 — .env / 환경변수에서 로드 (pydantic-settings)."""
+
 from functools import lru_cache
 from pathlib import Path
 
@@ -8,9 +9,7 @@ BACKEND_ROOT = Path(__file__).resolve().parents[2]  # backend/
 
 
 class Settings(BaseSettings):
-    model_config = SettingsConfigDict(
-        env_file=".env", env_file_encoding="utf-8", extra="ignore"
-    )
+    model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8", extra="ignore")
 
     # 서버 / CORS
     cors_origins: str = "http://localhost:5173,http://localhost:3000"

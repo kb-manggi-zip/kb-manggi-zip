@@ -4,6 +4,7 @@
 - 데모는 캐시만으로 완주 가능해야 한다 (쿼터 보호).
 - TTL 만료 시 재호출.
 """
+
 import functools
 import hashlib
 import json

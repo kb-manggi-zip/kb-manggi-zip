@@ -30,6 +30,5 @@ Phase B3에서 이 파일에 Supervisor 그래프를 구성하고, 라우터가 
 
 def build_graph():  # pragma: no cover
     raise NotImplementedError(
-        "LangGraph 오케스트레이션은 Phase B3에서 구현합니다. "
-        "현재는 routers/api.py 가 tools·agents 를 직접 호출합니다."
+        "LangGraph 오케스트레이션은 Phase B3에서 구현합니다. 현재는 routers/api.py 가 tools·agents 를 직접 호출합니다."
     )

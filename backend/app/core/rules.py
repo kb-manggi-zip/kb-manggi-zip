@@ -6,6 +6,7 @@
 - 로드 결과는 프론트 engine/rules.ts 와 동일한 camelCase 네임스페이스로 노출
   → tools/compare.py 가 참조 구현(compare.ts)과 1:1로 읽히도록.
 """
+
 import logging
 from functools import lru_cache
 from pathlib import Path
@@ -103,7 +104,5 @@ def get_rules() -> Rules:
             brokerRate=_value(one_time, "broker_rate", "one_time.yaml"),
             acquisitionRate=_value(one_time, "acquisition_rate", "one_time.yaml"),
         ),
-        noticeDeadlineMonths=int(
-            _value(renewal, "notice_deadline_months", "renewal.yaml")
-        ),
+        noticeDeadlineMonths=int(_value(renewal, "notice_deadline_months", "renewal.yaml")),
     )
