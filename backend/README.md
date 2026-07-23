@@ -7,6 +7,7 @@
 ## 현재 상태 (Phase)
 - ✅ **B0 골격**: schemas(types.ts 1:1) · rules YAML 로더 · @cached · CORS · Dockerfile
 - ✅ **B1 계산 심장**: `tools/compare.py` — 프론트 engine 과 **동치 테스트 통과(오차 0)**
+- ✅ **B3 LangGraph+Langfuse**: `app/graph.py` — compare/regions 각각 독립 그래프로 경유(2026-07-23), Langfuse 트레이싱 연결 확인
 - 🔌 **뚫어놓음(seam)**: 아래는 인터페이스·엔드포인트 완비 + 폴백으로 지금 동작, 실체만 채우면 됨
   - `tools/molit.py` `tools/kbland.py` → 실거래·KB 데이터 (Phase B2)
   - `agents/*` + `core/llm.py` → LLM 통역/RAG (Phase B4). 키 없으면 템플릿 폴백
