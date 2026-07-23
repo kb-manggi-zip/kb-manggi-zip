@@ -33,27 +33,26 @@ from ..schemas import (
     SimulateResponse,
 )
 from ..tools import molit
-from ..tools.compare import compute_compare
-from ..graph import build_graph
+from ..graph import build_compare_graph, build_regions_graph
 router = APIRouter(prefix="/api")
 
-
-_compiled_graph = build_graph()
+_compare_graph = build_compare_graph()
 
 @router.post("/compare", response_model=CompareResponse)
 def compare(req: CompareRequest) -> CompareResponse:
-    result = _compiled_graph.invoke({
+    result = _compare_graph.invoke({
         "contract": req.contract.model_dump(),
         "finance": req.finance.model_dump(),
     })
     return CompareResponse(**result["comparison"])
 
 
+_regions_graph = build_regions_graph()
+
 @router.get("/regions", response_model=list[Region])
 def regions(branch: str = Query(...), budget: int = 0) -> list[Region]:
-    # branch: '매매' | '이사' | '이사-월세'(client.ts regionsMonthly)
-    return molit.regions_by_branch(branch, budget)
-
+    result = _regions_graph.invoke({"branch": branch, "budget": budget})
+    return result["regions"]
 
 @router.post("/simulate", response_model=SimulateResponse)
 def simulate(req: SimulateRequest) -> SimulateResponse:

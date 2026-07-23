@@ -25,24 +25,44 @@ from langgraph.graph import StateGraph, END
 
 from .schemas import ContractInfo, FinanceInfo
 from .tools.compare import compute_compare
+from .tools import molit
 
 
-class GraphState(TypedDict, total=False):
+class CompareState(TypedDict):
     contract: dict
     finance: dict
     comparison: dict
 
 
-def compare_node(state: GraphState) -> dict:
+def compare_node(state: CompareState) -> dict:
     contract = ContractInfo(**state["contract"])
     finance = FinanceInfo(**state["finance"])
     result = compute_compare(contract, finance)
     return {"comparison": result.model_dump()}
 
 
-def build_graph():
-    graph = StateGraph(GraphState)
+def build_compare_graph():
+    graph = StateGraph(CompareState)
     graph.add_node("compare", compare_node)
     graph.set_entry_point("compare")
     graph.add_edge("compare", END)
+    return graph.compile()
+
+
+class RegionsState(TypedDict):
+    branch: str
+    budget: int
+    regions: list
+
+
+def regions_node(state: RegionsState) -> dict:
+    result = molit.regions_by_branch(state["branch"], state["budget"])
+    return {"regions": [r.model_dump() for r in result]}
+
+
+def build_regions_graph():
+    graph = StateGraph(RegionsState)
+    graph.add_node("regions", regions_node)
+    graph.set_entry_point("regions")
+    graph.add_edge("regions", END)
     return graph.compile()
