@@ -166,6 +166,14 @@ export default function HomeEntry() {
           <PrimaryBtn onClick={() => dispatch({ type: 'NAVIGATE', screen: hasData ? 'SC-03' : 'SC-02' })}>
             {hasData ? '비교표 다시 보기 →' : '미리 계산해보기 →'}
           </PrimaryBtn>
+          {hasData && (
+            <button
+              onClick={() => { dispatch({ type: 'RESET' }); dispatch({ type: 'NAVIGATE', screen: 'SC-02' }); }}
+              className="w-full text-center text-xs text-muted-foreground mt-2 underline"
+            >
+              🔄 새로 계산하기 (이전 입력 지우기)
+            </button>
+          )}
         </div>
 
         {/* 안심 카드 */}

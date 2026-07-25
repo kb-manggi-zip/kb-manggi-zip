@@ -26,6 +26,7 @@ type Action =
   | { type: 'SELECT_REGION'; regionId: string }
   | { type: 'TOGGLE_REMINDER' }
   | { type: 'SET_RESERVATION'; date: string }
+  | { type: 'RESET' }
   | { type: 'RESTORE'; state: Partial<AppState> };
 
 const INITIAL: AppState = {
@@ -49,6 +50,7 @@ function reducer(state: AppState, action: Action): AppState {
     case 'SELECT_REGION': return { ...state, selectedRegionId: action.regionId };
     case 'TOGGLE_REMINDER': return { ...state, reminderOn: !state.reminderOn };
     case 'SET_RESERVATION': return { ...state, reservationDate: action.date };
+    case 'RESET': return { ...INITIAL };   // 이전 설문/계산 전부 초기화 (persist가 localStorage도 비움)
     case 'RESTORE': return { ...state, ...action.state };
     default: return state;
   }
