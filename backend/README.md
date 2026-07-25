@@ -7,8 +7,10 @@
 ## 현재 상태 (Phase)
 - ✅ **B0 골격**: schemas(types.ts 1:1) · rules YAML 로더 · @cached · CORS · Dockerfile
 - ✅ **B1 계산 심장**: `tools/compare.py` — 프론트 engine 과 **동치 테스트 통과(오차 0)**
+- ✅ **B2 실거래**: `tools/molit.py` — 국토부 실거래 6개구 43,531건 반영 완료(2026-07-22), `region_enrich.yaml` 80개 동 좌표 지오코딩 완료
 - 🔌 **뚫어놓음(seam)**: 아래는 인터페이스·엔드포인트 완비 + 폴백으로 지금 동작, 실체만 채우면 됨
-  - `tools/molit.py` `tools/kbland.py` → 실거래·KB 데이터 (Phase B2)
+  - `tools/kbland.py` → KB 데이터 (Phase B2)
+  - `app/graph.py` → LangGraph Supervisor (Phase B3, 작업 중)
   - `agents/*` + `core/llm.py` → LLM 통역/RAG (Phase B4). 키 없으면 템플릿 폴백
   - DB → 기본 SQLite, compose 시 Postgres
 

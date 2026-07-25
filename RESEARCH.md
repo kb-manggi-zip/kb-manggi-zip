@@ -63,13 +63,12 @@
 
 ## PART C. 실거래·시세 데이터 (STUB → 실 API)
 
-### C1. 국토부 실거래 (매매·전월세) — 파이프라인 완성, API 호출만 남음
-- **채우는 곳:** `backend/app/tools/molit.py::fetch_trades()` 안의 STUB 블록 하나.
+### C1. 국토부 실거래 (매매·전월세) — 파이프라인 완성 + ✅ API 호출도 완료 (2026-07-22)
+- **채우는 곳:** `backend/app/tools/molit.py::fetch_trades()` 안의 STUB 블록 하나. (파이프라인·정규화 로직 자체는 기존에 이미 완성돼있었음)
   - `PublicDataReader`로 원자료 조회 → **정규화 `TradeRow`**(`{umd_name, price, monthly}`)로 매핑.
-  - 필요한 매핑: `법정동→umd_name`, `거래금액/보증금→price(원)`, `월세금→monthly(원)`.
   - 뒤 단계(`aggregate_to_regions`: 동별 중위가·거래건수·예산필터·상위3)는 **완성 + 테스트됨**(`tests/test_molit.py`).
-- **리서치 포인트:** 서비스키 발급(공공데이터포털) · 아파트/오피스텔/연립 등 자료 구분 · `sigungu_code`(시군구 코드)·`deal_ymd`(조회 연월) 선택 로직.
-- **의존성:** `requirements.txt`의 `PublicDataReader` 주석 해제.
+- **✅ 완료(2026-07-22):** 서비스키 발급(공공데이터포털) 후 `scripts/refresh/refresh_deals.py` 실행 → `data/trades.demo.db`를 합성 데이터에서 실데이터로 교체 (서울 6개구 43,531건).
+- **의존성:** `requirements.txt`의 `PublicDataReader` 주석 해제 — 완료.
 
 ### C2. 시군구 코드 / 조회 대상 동네
 - `molit.regions_by_branch()`가 지금은 예시 코드(`11440`=마포)·연월(`202606`) 고정.

@@ -1,17 +1,17 @@
 # STUB · 미구현 지점 목록
 
-> 코드베이스에서 STUB·미구현·단순화·값미확정 지점 전수. (갱신: 2026-07-21)
+> 코드베이스에서 STUB·미구현·단순화·값미확정 지점 전수. (갱신: 2026-07-23)
 > ✅ = 이번에 완료. 나머지는 대기.
 
-## A. 실데이터 (Phase B2) — ✅ 완료 (트레이드 DB 파이프라인)
+## A. 실데이터 (Phase B2) — ✅ 완료 (트레이드 DB 파이프라인, 실데이터 반영 완료)
 | # | 위치 | 상태 |
 |---|---|---|
-| A1 | `scripts/refresh/refresh_deals.py` + `tools/molit.py::fetch_trades` | ✅ 국토부 실거래 수집(오프라인) → SQLite → 런타임은 DB만 읽음 |
+| A1 | `scripts/refresh/refresh_deals.py` + `tools/molit.py::fetch_trades` | ✅ 국토부 실거래 수집(오프라인) → SQLite → 런타임은 DB만 읽음. **`data/trades.demo.db`를 실데이터로 교체 완료**(6개구 43,531건, 2026-07-22) |
 | A2 | `tools/molit.py::regions_by_branch` + `rules/regions.yaml` sigungu | ✅ 6구 코드+최근6개월 자동 (하드코딩 제거) |
-| A3 | `data/region_enrich.yaml` + `aggregate_to_regions(enrich=)` | ✅ 데모 동 좌표/태그 주입 |
+| A3 | `data/region_enrich.yaml` + `aggregate_to_regions(enrich=)` | ✅ 좌표는 80개 동 전체 카카오맵 지오코딩으로 채움. **tags/source는 원래 수기 8개 동만 있고 나머지 72개는 비어있음 — narrator.py 작업 시 필요하면 수기로 보강할 것** |
 | - | `tools/kbland.py::avg_price` | ⬜ KB 데이터허브 STUB (None 반환) |
 
-> ⚠️ `data/trades.demo.db`는 현재 **합성(synthetic) seed** (`scripts/refresh/seed_demo.py`). 실 API 키로 `refresh_deals.py` 실행 후 `cp data/trades.db data/trades.demo.db`로 실데이터 스냅샷 교체 필요.
+> ~~⚠️ `data/trades.demo.db`는 현재 **합성(synthetic) seed**~~ → 2026-07-22 국토부 실거래로 교체 완료. 이제 서울 6개구(마포·은평·도봉·성북·노원·중랑) 실데이터.
 
 ## B. LLM (Phase B4) — 전부 템플릿/fixture 폴백
 | # | 위치 | 상태 |
