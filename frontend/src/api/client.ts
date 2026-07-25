@@ -11,6 +11,7 @@ import type {
   ReservationRequest, Branch,
   BriefingRequest, BriefingResponse,
   DraftNoticeRequest, DraftNoticeResponse,
+  AnalyzeResponse,
 } from './types';
 
 // Static exports for screens (screens must not import engine/ or data/ directly)
@@ -31,6 +32,15 @@ export const api = {
     return localOrRemote(
       () => compare(req.contract, req.finance),
       '/api/compare',
+      { method: 'POST', body: JSON.stringify(req) }
+    );
+  },
+
+  // 분석 에이전트 — 원격이면 intake→compare→narrate 그래프(Langfuse 추적), 로컬이면 engine 계산.
+  async analyze(req: { contract: ContractInfo; finance: FinanceInfo }): Promise<AnalyzeResponse> {
+    return localOrRemote(
+      () => ({ comparison: compare(req.contract, req.finance), briefing: '' }),
+      '/api/analyze',
       { method: 'POST', body: JSON.stringify(req) }
     );
   },

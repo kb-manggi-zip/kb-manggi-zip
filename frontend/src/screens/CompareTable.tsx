@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef } from 'react';
 import { toPng } from 'html-to-image';
 import { useApp } from '../store';
 import { COLORS, BRANCH_COLORS, BRANCH_ICONS } from '../theme';
@@ -8,7 +8,7 @@ import {
 } from '../components/ui';
 import AiBriefing from '../components/AiBriefing';
 import { formatAmount, formatMonthly, formatDate } from '../utils/format';
-import { briefings, api } from '../api/client';
+import { briefings } from '../api/client';
 import type { BranchResult, Branch, FirstHome } from '../api/types';
 
 export default function CompareTable() {
@@ -20,25 +20,6 @@ export default function CompareTable() {
   const scrollRef = useRef<HTMLDivElement>(null);
   const shareRef = useRef<HTMLDivElement>(null);
 
-  // AI 브리핑 — SSE 스트리밍(원격) 또는 로컬 템플릿 어절 스트림. AiBriefing은 live 모드로 렌더.
-  const [briefText, setBriefText] = useState('');
-  const [briefDone, setBriefDone] = useState(false);
-  useEffect(() => {
-    if (!comparison) return;
-    const nm = finance?.household === '신혼' ? '신혼 가구' : '나';
-    const local = briefings.compare(comparison, nm);
-    setBriefText(''); setBriefDone(false);
-    let cancelled = false;
-    api.streamBriefing(
-      { kind: 'compare', context: { comparison, name: nm } },
-      (chunk) => { if (!cancelled) setBriefText((t) => t + chunk); },
-      local,
-    )
-      .then(() => { if (!cancelled) setBriefDone(true); })
-      .catch(() => { if (!cancelled) { setBriefText(local); setBriefDone(true); } });
-    return () => { cancelled = true; };
-  }, [comparison, finance]);
-
   if (!comparison || !contract) {
     dispatch({ type: 'NAVIGATE', screen: 'SC-01' });
     return null;
@@ -46,6 +27,8 @@ export default function CompareTable() {
 
   const { branches, dday, noticeDaysLeft, noticeDeadline, assumptions } = comparison;
   const name = finance?.household === '신혼' ? '신혼 가구' : '나';
+  // 분석 에이전트(narrate 노드)가 만든 통역을 재사용(중복 LLM 호출 없음). 없으면 로컬 템플릿.
+  const briefText = state.briefing?.trim() ? state.briefing : briefings.compare(comparison, name);
 
   function showToast(msg: string) {
     setToast(msg);
@@ -112,7 +95,7 @@ export default function CompareTable() {
       )}
 
       {/* AI 브리핑 */}
-      <AiBriefing text={briefText} live done={briefDone} />
+      <AiBriefing text={briefText} />
 
       {/* 카드 탭 인디케이터 */}
       <div className="flex px-5 gap-2 mb-3">
