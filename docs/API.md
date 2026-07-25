@@ -163,9 +163,21 @@ GET /api/regions?branch=매매&budget=600000000
 **응답** `ProductsResponse` `{ branch, mainLoan: Product, guarantee?: Product, extra?: Product }`
 
 ## POST /api/briefing
-비교표/화면을 읽어주는 통역 문장. LLM 폴백=템플릿(`agents/templates.py`). *B4에서 SSE 스트리밍 전환 예정.*
+비교표/화면을 읽어주는 통역 문장(한 번에 반환). LLM 폴백=템플릿(`agents/templates.py`).
 **요청** `{ "kind": "compare", "context": { "comparison": CompareResponse, "name": "신혼 가구" } }`
 **응답** `{ "text": "..." }`
+
+## POST /api/briefing/stream  (SSE)
+같은 입력을 **토큰 단위로 스트리밍**(`text/event-stream`) — 프론트 타이핑 UX와 연결.
+- `llm_active=True`: Claude `messages.stream()` 델타. `False`: 폴백 템플릿을 어절 단위로.
+- 이벤트: `data: <청크>` 반복 → `event: done` / `data: [DONE]` 로 종료.
+- 프론트: `api.streamBriefing(req, onChunk, localText)` (원격=SSE, 로컬=어절 시뮬레이션), `AiBriefing`이 `live` 모드로 점진 렌더.
+```
+data: 신혼 가구님,
+data:  세 경우를 계산했어요...
+event: done
+data: [DONE]
+```
 
 ## POST /api/draft-notice
 갱신 의사 통보 문자 초안. 법적 확언·권유 금지, 빈 항목은 `[대괄호]` placeholder.

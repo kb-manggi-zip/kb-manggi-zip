@@ -88,6 +88,47 @@ export const api = {
     );
   },
 
+  // SSE 스트리밍: 원격이면 서버 토큰을, 로컬이면 폴백 텍스트를 어절 단위로 onChunk에 흘림.
+  // (양쪽 동일 타이핑 UX — AiBriefing은 live 모드로 점진 렌더)
+  async streamBriefing(
+    req: BriefingRequest,
+    onChunk: (text: string) => void,
+    localText: string,
+  ): Promise<void> {
+    if (!API_URL) {
+      for (const tok of localText.match(/\S+\s*/g) ?? []) {
+        onChunk(tok);
+        await new Promise(r => setTimeout(r, 40));
+      }
+      return;
+    }
+    const res = await fetch(`${API_URL}/api/briefing/stream`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(req),
+    });
+    if (!res.ok || !res.body) throw new Error(`SSE error: ${res.status}`);
+    const reader = res.body.getReader();
+    const decoder = new TextDecoder();
+    let buffer = '';
+    for (;;) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      buffer += decoder.decode(value, { stream: true });
+      const events = buffer.split(/\r?\n\r?\n/);
+      buffer = events.pop() ?? '';
+      for (const ev of events) {
+        if (/(^|\n)event:\s*done/.test(ev)) continue;       // 종료 이벤트 무시
+        const data = ev
+          .split(/\r?\n/)
+          .filter(l => l.startsWith('data:'))
+          .map(l => l.slice(5).replace(/^ /, ''))            // "data: " 뒤 한 칸만 제거
+          .join('');
+        if (data && data !== '[DONE]') onChunk(data);
+      }
+    }
+  },
+
   async draftNotice(req: DraftNoticeRequest): Promise<DraftNoticeResponse> {
     return localOrRemote(
       () => {

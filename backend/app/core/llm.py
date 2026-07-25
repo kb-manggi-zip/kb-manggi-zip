@@ -12,6 +12,8 @@
 """
 
 import logging
+import re
+from collections.abc import Iterator
 from typing import Callable
 
 from .config import settings
@@ -80,3 +82,40 @@ def _call_claude(system: str, user: str) -> str:
         messages=[{"role": "user", "content": user}],
     )
     return "".join(block.text for block in msg.content if block.type == "text")
+
+
+def stream(*, system: str, user: str, fallback: Callable[[], str]) -> Iterator[str]:
+    """토큰 스트림 생성기 (SSE용). 비활성/실패 시 폴백 텍스트를 어절 단위로 흘린다.
+
+    ⚠️ 스트리밍은 중간 재생성이 불가하므로 generate()의 verify 재생성 루프를 쓰지 못한다.
+       - llm_active=False: 폴백 템플릿을 청크로(안전, 결정론적).
+       - llm_active=True: Claude 스트림을 SYSTEM_RULES 프롬프트 가드레일 하에 흘린다.
+         (권유·숫자 사후검증은 스트림 특성상 완전치 않음 — 정밀검증이 필요하면 generate() 사용)
+    """
+    if not settings.llm_active:
+        yield from _chunk_text(fallback())
+        return
+    try:
+        yield from _stream_claude(system, user)
+    except Exception as e:  # 실패는 조용히 삼키지 않되, 폴백으로 계속
+        log.warning("LLM 스트림 실패 → 폴백: %s", e)
+        yield from _chunk_text(fallback())
+
+
+def _chunk_text(text: str) -> Iterator[str]:
+    """텍스트를 어절(공백 포함) 단위로 쪼개 타이핑 효과 유지."""
+    for token in re.findall(r"\S+\s*", text):
+        yield token
+
+
+def _stream_claude(system: str, user: str) -> Iterator[str]:
+    from anthropic import Anthropic  # 지연 import
+
+    client = Anthropic(api_key=settings.anthropic_api_key)
+    with client.messages.stream(
+        model=settings.llm_model,
+        max_tokens=1024,
+        system=f"{SYSTEM_RULES}\n\n{system}",
+        messages=[{"role": "user", "content": user}],
+    ) as s:
+        yield from s.text_stream

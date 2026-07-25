@@ -4,15 +4,18 @@ import { COLORS } from '../theme';
 interface AiBriefingProps {
   text: string;
   compact?: boolean;
+  live?: boolean;   // true면 외부(SSE)가 점진 공급하는 text를 그대로 렌더 (내부 타이핑 X)
+  done?: boolean;   // live 모드에서 스트림 완료 여부 (커서 제거)
 }
 
-export default function AiBriefing({ text, compact = false }: AiBriefingProps) {
+export default function AiBriefing({ text, compact = false, live = false, done: doneProp = false }: AiBriefingProps) {
   const [displayed, setDisplayed] = useState('');
   const [done, setDone] = useState(false);
   const idxRef = useRef(0);
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
+    if (live) return;   // 외부 공급 모드 — 내부 타이핑 안 함
     idxRef.current = 0;
     setDisplayed('');
     setDone(false);
@@ -28,7 +31,10 @@ export default function AiBriefing({ text, compact = false }: AiBriefingProps) {
     }
     timerRef.current = setTimeout(tick, 60);
     return () => { if (timerRef.current) clearTimeout(timerRef.current); };
-  }, [text]);
+  }, [text, live]);
+
+  const shownText = live ? text : displayed;
+  const shownDone = live ? doneProp : done;
 
   if (compact) {
     return (
@@ -40,8 +46,8 @@ export default function AiBriefing({ text, compact = false }: AiBriefingProps) {
           AI
         </span>
         <p className="text-sm text-foreground leading-relaxed flex-1">
-          {displayed}
-          {!done && <span className="inline-block w-0.5 h-3.5 bg-foreground/50 ml-0.5 animate-pulse" />}
+          {shownText}
+          {!shownDone && <span className="inline-block w-0.5 h-3.5 bg-foreground/50 ml-0.5 animate-pulse" />}
         </p>
       </div>
     );
@@ -72,8 +78,8 @@ export default function AiBriefing({ text, compact = false }: AiBriefingProps) {
             style={{ background: COLORS.YELLOW_SURFACE, border: `1px solid ${COLORS.KB_YELLOW}44`, borderRight: 'none', borderBottom: 'none', transform: 'rotate(-45deg)' }}
           />
           <p className="text-sm text-foreground leading-relaxed">
-            {displayed}
-            {!done && <span className="inline-block w-0.5 h-3.5 bg-foreground/40 ml-0.5 animate-pulse" />}
+            {shownText}
+            {!shownDone && <span className="inline-block w-0.5 h-3.5 bg-foreground/40 ml-0.5 animate-pulse" />}
           </p>
         </div>
       </div>

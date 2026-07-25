@@ -5,8 +5,10 @@ Phase B4: SSE 스트리밍 + verify(숫자 대조). 지금은 최종 문자열 �
 """
 
 import logging
+from collections.abc import Iterator
 
 from ..core.llm import generate
+from ..core.llm import stream as llm_stream
 from ..schemas import BriefingRequest, CompareResponse, Region
 from . import templates
 
@@ -36,10 +38,23 @@ def _fallback_for(req: BriefingRequest) -> str:
     return "계산 결과를 정리했어요."
 
 
+_SYSTEM = "주어진 비교/화면 facts를 사람이 읽기 쉽게 통역만 한다."
+
+
 def run(req: BriefingRequest) -> str:
     fallback = lambda: _fallback_for(req)  # noqa: E731
     return generate(
-        system="주어진 비교/화면 facts를 사람이 읽기 쉽게 통역만 한다.",
+        system=_SYSTEM,
+        user=f"kind={req.kind}\nfacts={req.context}",
+        fallback=fallback,
+    )
+
+
+def stream(req: BriefingRequest) -> Iterator[str]:
+    """SSE용 토큰 스트림. LLM 비활성 시 폴백 템플릿을 어절 단위로 흘린다."""
+    fallback = lambda: _fallback_for(req)  # noqa: E731
+    return llm_stream(
+        system=_SYSTEM,
         user=f"kind={req.kind}\nfacts={req.context}",
         fallback=fallback,
     )
