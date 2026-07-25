@@ -22,6 +22,11 @@
 > 위치: `backend/rules/*.yaml`. 각 항목 `value` 교체 + `source_url`·`checked_at` 채우기.
 > 프론트 `frontend/src/engine/rules.ts`의 같은 값도 함께 맞춘다(동치 유지).
 
+> ### ✅ 검증 반영 완료 (2026-07-20) — 출처: `ref/rules_확정값_실데이터반영용.md` (팀 리서치 PDF 원문 셀 단위 대조)
+> - **완료**: `lending_regulated.yaml`(LTV·캡·스트레스DSR·금리·전세한도) · `policy_loans.yaml`(디딤돌·버팀목) · `guarantee_hug.yaml`(HUG 요율) → `checked_at: 2026-07-20`
+> - **변경점**: ① 스트레스 유형비율 mixed/periodic = **추정 0.60/0.30 제거 → 보수적 1.00**(변동만 사용, compare 출력 불변) ② 전세금리 출처문구 "KB 3.89%"→**"HF 공시 평균 3.89%"** ③ 전세한도 "수도권 1주택 2억 캡" 명시
+> - **아직 🔴 미검증**: A1~A3 `renewal.yaml`(주택임대차보호법) · A10~A12 `one_time.yaml`(이사비·중개보수·취득세, 구간표 미반영) · 생애최초 취득세 감면 일몰
+
 | # | 파라미터 (파일) | 현재 예시값 | 무엇 | 출처(공식) | 확인 포인트 |
 |---|---|---|---|---|---|
 | A1 | `increase_cap` (renewal) | 0.05 | 계약갱신 인상률 상한 | 주택임대차보호법 (국가법령정보센터) | 지자체 조례 하향분 존재 여부 |

@@ -191,7 +191,7 @@ def compute_compare(
     savings = move_one_time
 
     assumptions = [
-        "전세대출 금리 KB 3.89% (HF 공시)",
+        "전세대출 금리 HF 공시 평균 3.89%",
         "규제지역 LTV 40% (생애최초 70%)",
         "KB 주택구입 대출 한도 3억 (2026.7~)",
         "스트레스 DSR 수도권 3.0% (한도 산정에만 적용)",

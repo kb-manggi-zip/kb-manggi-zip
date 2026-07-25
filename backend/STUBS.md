@@ -1,7 +1,7 @@
 # STUB · 미구현 지점 목록
 
-> 코드베이스에서 STUB·미구현·단순화·값미확정 지점 전수. (갱신: 2026-07-23)
-> ✅ = 이번에 완료. 나머지는 대기.
+> 코드베이스에서 STUB·미구현·단순화·값미확정 지점 전수. (갱신: 2026-07-25)
+> ✅ = 완료. ⬜ = 대기.
 
 ## A. 실데이터 (Phase B2) — ✅ 완료 (트레이드 DB 파이프라인, 실데이터 반영 완료)
 | # | 위치 | 상태 |
@@ -13,21 +13,21 @@
 
 > ~~⚠️ `data/trades.demo.db`는 현재 **합성(synthetic) seed**~~ → 2026-07-22 국토부 실거래로 교체 완료. 이제 서울 6개구(마포·은평·도봉·성북·노원·중랑) 실데이터.
 
-## B. LLM (Phase B4) — 전부 템플릿/fixture 폴백
+## B. LLM (Phase B4) — 실 Claude 연동됨 (`.env` `ANTHROPIC_API_KEY`+`LLM_ENABLED=true`)
 | # | 위치 | 상태 |
 |---|---|---|
-| B1 | `core/llm.py::_call_claude` | ⬜ 실 Claude 호출, `llm_active`(키+`LLM_ENABLED`) 아니면 미실행 |
-| B2 | `core/llm.py::generate` | ⬜ `verify.numbers_grounded` 재생성 2회 루프 STUB |
-| B3 | `agents/narrator.py` | ⬜ LLM 씬 내레이션 STUB → fixture |
-| B4 | `agents/matcher.py` | ✅ 문서(kb_products) 기반 규칙 매칭 + LLM 사유 seam (벡터FAISS는 소수 상품이라 생략). 개인화 자격필터는 finance 필요(스키마 확장 대기) |
-| B5 | `agents/briefing.py`·`drafter.py` | ⬜ LLM 경로 게이트 off → 템플릿 |
-| B6 | `routers/api.py` briefing | ✅ `POST /api/briefing/stream` SSE 완료(폴백 어절 스트림, llm_active 시 Claude 토큰). JSON `/api/briefing`도 유지 |
-| B7 | `data/kb_products/*.md` | ✅ 상품 5종+보장 2종 작성(출처·checked_at). 숫자는 공시 원문 대조 필요(사람) |
+| B1 | `core/llm.py::_call_claude` | ✅ 실 Claude 호출 동작 (`llm_active`면 실호출, 아니면 템플릿 폴백) |
+| B2 | `core/llm.py::generate` | ✅ `verify.numbers_grounded` 재생성 2회 루프 완료 (권유·숫자 검증) |
+| B3 | `agents/narrator.py` | ⬜ **여전히 fixture 씬** — 하루 시뮬 개인화 미구현(이사=SCENES_MOVE 고정, 월세로/전세로 동일) |
+| B4 | `agents/matcher.py` | ✅ 문서(kb_products) 기반 규칙 매칭 + LLM 사유. 개인화 자격필터는 finance 필요(스키마 확장 대기) |
+| B5 | `agents/briefing.py`·`drafter.py` | ✅ 실 Claude + **개인화 가이드**(YAML `persona_frames.yaml` 상황별 프레임). drafter도 실호출 |
+| B6 | `routers/api.py` briefing | ✅ `/api/briefing/stream` SSE(페이싱 포함). 단 compare 화면은 `/api/analyze`의 briefing 재사용(SSE 미사용) |
+| B7 | `data/kb_products/*.md` | ✅ 상품 5종+보장 2종. **✅ 출처·checked_at 2026-07-20 확정 반영** |
 
-## C. 오케스트레이션·Vision (seam 파일 존재, 미구현)
-- C1 `app/graph.py` LangGraph Supervisor — ⬜ 스켈레톤+주석만 (라우터는 tools·agents 직접 호출) [B3]
-- C2 Langfuse 트레이싱 — ⬜ 미연동 (graph.py 구현 시 부착) [B3]
-- C3 `app/agents/extractor.py` 계약서 Vision — ⬜ `NotImplementedError` STUB, 엔드포인트 미활성 [B5]
+## C. 오케스트레이션·Vision
+- C1 ✅ `app/graph.py` LangGraph — compare/regions 그래프 + **분석 에이전트 `/api/analyze`(intake→compare→narrate)**
+- C2 ✅ Langfuse 트레이싱 — 전 노드 `@observe` + `analyze_agent` 부모 span으로 **한 trace에 묶음**(OTel 전파 검증). ⬜ 사용자 세션(session_id)로 여정 전체 그룹핑은 미구현(제안)
+- C3 ⬜ `app/agents/extractor.py` 계약서 Vision — `NotImplementedError` STUB, 엔드포인트 미활성 [B5]
 
 ## D. 계산 단순화·가정 (동작은 함)
 - D1 매매 지역 = 수도권 규제지역 고정 가정 (`classify_region`은 regions용, compare 미사용)
@@ -40,12 +40,13 @@
 - D8 디딤돌 = 무주택 True 가정 (`is_no_house` 입력 없음)
 - D9 버팀목 age = `under35` bool을 30/99로 프록시
 
-## E. 규칙값 🔴 미확정 (사람 검증)
-- E1 스트레스DSR loan_type_ratio mixed 0.60/periodic 0.30 = 추정 (`lending_regulated.yaml:29`)
-- E2 생애최초 취득세 감면 일몰·상한 미확정 (`:49`)
-- E3 HUG 요율표 "0.097~0.211%" 개편 계열 대조 필요 (`guarantee_hug.yaml:6`)
+## E. 규칙값 — ✅ 대부분 검증 완료 (2026-07-20, `ref/rules_확정값_실데이터반영용.md`)
+- E1 ✅ 스트레스DSR loan_type_ratio: 추정 0.60/0.30 **제거 → 보수적 1.00**(변동만 사용, 출력 불변)
+- E2 ⬜ 생애최초 취득세 감면 일몰·상한 미확정 (`lending_regulated.yaml` `first_home_acq_reduction`) — 미확인 시 보수(감면 미적용) 검토
+- E3 ✅ HUG 요율표 리서치_3 **셀 대조 완료·유지 확정** (아파트 0.115%/0.122%/0.128%)
 - E4 multi_house LTV = PoC 미구현(타깃 외)
-- E5 구 `rules/{lending,guarantee,one_time,renewal}.yaml` checked_at: null 전부 미검증
+- E5 ⬜ `renewal.yaml`(임대차보호법)·`one_time.yaml`(중개보수·취득세 구간표) 아직 미검증. 구 `lending/guarantee.yaml`은 v2로 대체(미사용)
+- **검증 완료**: `lending_regulated`·`policy_loans`·`guarantee_hug`.yaml → `checked_at: 2026-07-20`
 
 ## F. 정리/자투리
 - F1 구 `lending.yaml`·`guarantee.yaml`는 매매/보증 경로에서 `lending_regulated`/`guarantee_hug`로 대체됨 (get_rules는 renewal/oneTime용으로만 로드 — 미사용 값 잔존)

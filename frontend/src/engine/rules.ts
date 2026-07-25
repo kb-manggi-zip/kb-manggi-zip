@@ -33,7 +33,7 @@ export const RULES = {
       cap: 0.40,
       stress_rate: { metro_regulated: 0.030, local_regulated: 0.015, others: 0.015 },
       base_ratio: 1.0,
-      loan_type_ratio: { variable: 1.0, mixed: 0.60, periodic: 0.30 },
+      loan_type_ratio: { variable: 1.0, mixed: 1.0, periodic: 1.0 },  // 혼합·주기형 <표2> 미확보 → 보수적 1.0
       default_loan_type: 'variable' as const,
     },
     loan_term_years: 30,
