@@ -18,7 +18,7 @@
 |---|---|---|
 | B1 | `core/llm.py::_call_claude` | ⬜ 실 Claude 호출, `llm_active`(키+`LLM_ENABLED`) 아니면 미실행 |
 | B2 | `core/llm.py::generate` | ⬜ `verify.numbers_grounded` 재생성 2회 루프 STUB |
-| B3 | `agents/narrator.py` | ⬜ LLM 씬 내레이션 STUB → fixture |
+| B3 | `agents/narrator.py` | 🟡 **YAML 씬 레지스트리 전환**(`agents/scenes.yaml`): branch 분리(갱신≠이사≠매매) + regionId override로 **'월세로'('-m')≠'전세로'** 해결. ⬜ LLM 내레이션·실 facts(경로/POI/물가)는 미연동(결정론 fixture) |
 | B4 | `agents/matcher.py` | ✅ 문서(kb_products) 기반 규칙 매칭 + LLM 사유 seam (벡터FAISS는 소수 상품이라 생략). 개인화 자격필터는 finance 필요(스키마 확장 대기) |
 | B5 | `agents/briefing.py`·`drafter.py` | ⬜ LLM 경로 게이트 off → 템플릿 |
 | B6 | `routers/api.py` briefing | ✅ `POST /api/briefing/stream` SSE 완료(폴백 어절 스트림, llm_active 시 Claude 토큰). JSON `/api/briefing`도 유지 |

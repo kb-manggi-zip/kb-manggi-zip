@@ -1,6 +1,6 @@
 import { compare } from '../engine/compare';
 import { REGIONS_BUY, REGIONS_MOVE, REGIONS_MONTHLY } from '../data/regions';
-import { SCENES_MOVE, SCENES_BUY, SAVED_MONEY_CARDS } from '../data/scenes';
+import { SCENES_MOVE, SCENES_BUY, SCENES_STAY, SCENES_BY_REGION, SAVED_MONEY_CARDS } from '../data/scenes';
 import { PRODUCTS_RENEWAL, PRODUCTS_MOVE, PRODUCTS_BUY } from '../data/products';
 import { PERSONAS } from '../data/personas';
 import { briefings } from '../data/briefings';
@@ -59,7 +59,10 @@ export const api = {
   async simulate(branch: Branch, _regionId: string): Promise<SimulateResponse> {
     return localOrRemote(
       () => ({
-        scenes: branch === '매매' ? SCENES_BUY : SCENES_MOVE,
+        // 지역별 씬(regionId) 우선 → 없으면 branch 기본. '월세로'('-m')와 '전세로'가 다른 하루.
+        scenes:
+          SCENES_BY_REGION[_regionId] ??
+          (branch === '매매' ? SCENES_BUY : branch === '갱신' ? SCENES_STAY : SCENES_MOVE),
         monthlyCost: branch === '매매' ? 1_400_000 : 900_000,
       }),
       '/api/simulate',
