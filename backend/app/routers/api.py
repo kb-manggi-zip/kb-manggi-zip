@@ -12,6 +12,8 @@
 (*: 현재 LLM 비활성 시 템플릿/fixture 폴백)
 """
 
+import asyncio
+
 from fastapi import APIRouter, Depends, Query
 from sqlalchemy.orm import Session
 from sse_starlette.sse import EventSourceResponse
@@ -87,6 +89,7 @@ async def briefing_stream(req: BriefingRequest) -> EventSourceResponse:
     async def event_gen():
         for chunk in briefing.stream(req):
             yield {"data": chunk}
+            await asyncio.sleep(0.03)  # 청크 페이싱 — 폴백도 '타이핑'처럼 보이게 (실 Claude는 자연 페이스)
         yield {"event": "done", "data": "[DONE]"}
 
     return EventSourceResponse(event_gen())
