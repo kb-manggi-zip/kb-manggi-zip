@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useReducer, useEffect } from 'react';
 import type { ContractInfo, FinanceInfo, CompareResponse, Branch } from './api/types';
+import { newSession } from './api/session';
 
 export type Screen =
   | 'SC-01' | 'SC-02' | 'SC-03' | 'SC-04' | 'SC-05'
@@ -52,7 +53,7 @@ function reducer(state: AppState, action: Action): AppState {
     case 'SELECT_REGION': return { ...state, selectedRegionId: action.regionId };
     case 'TOGGLE_REMINDER': return { ...state, reminderOn: !state.reminderOn };
     case 'SET_RESERVATION': return { ...state, reservationDate: action.date };
-    case 'RESET': return { ...INITIAL };   // 이전 설문/계산 전부 초기화 (persist가 localStorage도 비움)
+    case 'RESET': newSession(); return { ...INITIAL };   // 새 여정 = 새 세션ID + 설문/계산 초기화 (persist가 localStorage도 비움)
     case 'RESTORE': return { ...state, ...action.state };
     default: return state;
   }
