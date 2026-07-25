@@ -14,6 +14,7 @@
 
 from fastapi import APIRouter, Depends, Query
 from sqlalchemy.orm import Session
+from sse_starlette.sse import EventSourceResponse
 
 from ..agents import briefing, drafter, matcher, narrator
 from ..core.db import get_db
@@ -72,8 +73,23 @@ def products(req: ProductsRequest) -> ProductsResponse:
 
 @router.post("/briefing", response_model=BriefingResponse)
 def briefing_endpoint(req: BriefingRequest) -> BriefingResponse:
-    # STUB: Phase B4에서 SSE 스트리밍(sse-starlette)으로 전환.
+    # 한 번에 반환(비스트리밍). 타이핑 UX는 /briefing/stream 사용.
     return BriefingResponse(text=briefing.run(req))
+
+
+@router.post("/briefing/stream")
+async def briefing_stream(req: BriefingRequest) -> EventSourceResponse:
+    """통역 문장을 토큰 단위로 SSE 스트리밍 (프론트 타이핑 효과와 연결).
+
+    이벤트: data:<청크> 반복 → 마지막에 event:done. LLM 비활성 시 폴백 템플릿을 어절로 흘림.
+    """
+
+    async def event_gen():
+        for chunk in briefing.stream(req):
+            yield {"data": chunk}
+        yield {"event": "done", "data": "[DONE]"}
+
+    return EventSourceResponse(event_gen())
 
 
 @router.post("/draft-notice", response_model=DraftNoticeResponse)

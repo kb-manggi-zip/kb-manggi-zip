@@ -21,7 +21,7 @@
 | B3 | `agents/narrator.py` | ⬜ LLM 씬 내레이션 STUB → fixture |
 | B4 | `agents/matcher.py` | ⬜ RAG(FAISS)+LLM 사유 STUB → fixture |
 | B5 | `agents/briefing.py`·`drafter.py` | ⬜ LLM 경로 게이트 off → 템플릿 |
-| B6 | `routers/api.py` briefing | ⬜ SSE 스트리밍 미구현(JSON 반환) |
+| B6 | `routers/api.py` briefing | ✅ `POST /api/briefing/stream` SSE 완료(폴백 어절 스트림, llm_active 시 Claude 토큰). JSON `/api/briefing`도 유지 |
 | B7 | `data/kb_products/*.md` | ⬜ RAG 소스 미작성 |
 
 ## C. 오케스트레이션·Vision (seam 파일 존재, 미구현)
