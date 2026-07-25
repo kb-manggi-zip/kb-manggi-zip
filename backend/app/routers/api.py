@@ -14,13 +14,14 @@
 
 import asyncio
 
-from fastapi import APIRouter, Depends, Query
+from fastapi import APIRouter, Depends, Header, Query
 from langfuse import observe
 from sqlalchemy.orm import Session
 from sse_starlette.sse import EventSourceResponse
 
 from ..agents import briefing, drafter, matcher, narrator
 from ..core.db import get_db
+from ..core.tracing import session_scope
 from ..graph import build_analyze_graph, build_compare_graph, build_regions_graph
 from ..models.reservation import Reservation
 from ..schemas import (
@@ -42,17 +43,27 @@ from ..schemas import (
 
 router = APIRouter(prefix="/api")
 
+
+def get_session_id(x_session_id: str | None = Header(default=None)) -> str | None:
+    """프론트가 여정마다 보내는 세션ID(헤더 X-Session-Id). 스키마(body) 변경 없음.
+
+    없으면 None → 트레이싱 no-op. 있으면 이 요청의 trace가 해당 세션으로 묶인다.
+    """
+    return x_session_id
+
+
 _compare_graph = build_compare_graph()
 
 
 @router.post("/compare", response_model=CompareResponse)
-def compare(req: CompareRequest) -> CompareResponse:
-    result = _compare_graph.invoke(
-        {
-            "contract": req.contract.model_dump(),
-            "finance": req.finance.model_dump(),
-        }
-    )
+def compare(req: CompareRequest, session_id: str | None = Depends(get_session_id)) -> CompareResponse:
+    with session_scope(session_id):
+        result = _compare_graph.invoke(
+            {
+                "contract": req.contract.model_dump(),
+                "finance": req.finance.model_dump(),
+            }
+        )
     return CompareResponse(**result["comparison"])
 
 
@@ -66,12 +77,13 @@ def _run_analyze(contract: dict, finance: dict) -> dict:
 
 
 @router.post("/analyze", response_model=AnalyzeResponse)
-def analyze(req: CompareRequest) -> AnalyzeResponse:
+def analyze(req: CompareRequest, session_id: str | None = Depends(get_session_id)) -> AnalyzeResponse:
     """분석 에이전트 — intake→compare→narrate 다단계 그래프(한 trace에 전 노드 nested).
 
     계산(결정론)과 개인화 통역(LLM)을 한 번의 에이전트 실행으로. 숫자는 compare 노드만 생성.
     """
-    result = _run_analyze(req.contract.model_dump(), req.finance.model_dump())
+    with session_scope(session_id):
+        result = _run_analyze(req.contract.model_dump(), req.finance.model_dump())
     return AnalyzeResponse(comparison=CompareResponse(**result["comparison"]), briefing=result["briefing"])
 
 
@@ -79,46 +91,71 @@ _regions_graph = build_regions_graph()
 
 
 @router.get("/regions", response_model=list[Region])
-def regions(branch: str = Query(...), budget: int = 0) -> list[Region]:
-    result = _regions_graph.invoke({"branch": branch, "budget": budget})
+def regions(
+    branch: str = Query(...), budget: int = 0, session_id: str | None = Depends(get_session_id)
+) -> list[Region]:
+    with session_scope(session_id):
+        result = _regions_graph.invoke({"branch": branch, "budget": budget})
     return result["regions"]
 
 
+@observe(name="simulate")
+def _run_simulate(branch: str, region_id: str) -> SimulateResponse:
+    return narrator.run(branch, region_id)
+
+
 @router.post("/simulate", response_model=SimulateResponse)
-def simulate(req: SimulateRequest) -> SimulateResponse:
-    return narrator.run(req.branch, req.regionId)
+def simulate(req: SimulateRequest, session_id: str | None = Depends(get_session_id)) -> SimulateResponse:
+    with session_scope(session_id):
+        return _run_simulate(req.branch, req.regionId)
+
+
+@observe(name="products")
+def _run_products(branch: str, comparison) -> ProductsResponse:
+    return matcher.run(branch, comparison)
 
 
 @router.post("/products", response_model=ProductsResponse)
-def products(req: ProductsRequest) -> ProductsResponse:
-    return matcher.run(req.branch, req.comparison)
+def products(req: ProductsRequest, session_id: str | None = Depends(get_session_id)) -> ProductsResponse:
+    with session_scope(session_id):
+        return _run_products(req.branch, req.comparison)
+
+
+@observe(name="briefing")
+def _run_briefing(req: BriefingRequest) -> str:
+    return briefing.run(req)
 
 
 @router.post("/briefing", response_model=BriefingResponse)
-def briefing_endpoint(req: BriefingRequest) -> BriefingResponse:
+def briefing_endpoint(req: BriefingRequest, session_id: str | None = Depends(get_session_id)) -> BriefingResponse:
     # 한 번에 반환(비스트리밍). 타이핑 UX는 /briefing/stream 사용.
-    return BriefingResponse(text=briefing.run(req))
+    with session_scope(session_id):
+        return BriefingResponse(text=_run_briefing(req))
 
 
 @router.post("/briefing/stream")
-async def briefing_stream(req: BriefingRequest) -> EventSourceResponse:
+async def briefing_stream(
+    req: BriefingRequest, session_id: str | None = Depends(get_session_id)
+) -> EventSourceResponse:
     """통역 문장을 토큰 단위로 SSE 스트리밍 (프론트 타이핑 효과와 연결).
 
     이벤트: data:<청크> 반복 → 마지막에 event:done. LLM 비활성 시 폴백 템플릿을 어절로 흘림.
     """
 
     async def event_gen():
-        for chunk in briefing.stream(req):
-            yield {"data": chunk}
-            await asyncio.sleep(0.03)  # 청크 페이싱 — 폴백도 '타이핑'처럼 보이게 (실 Claude는 자연 페이스)
+        with session_scope(session_id):
+            for chunk in briefing.stream(req):
+                yield {"data": chunk}
+                await asyncio.sleep(0.03)  # 청크 페이싱 — 폴백도 '타이핑'처럼 보이게 (실 Claude는 자연 페이스)
         yield {"event": "done", "data": "[DONE]"}
 
     return EventSourceResponse(event_gen())
 
 
 @router.post("/draft-notice", response_model=DraftNoticeResponse)
-def draft_notice(req: DraftNoticeRequest) -> DraftNoticeResponse:
-    return drafter.run(req)
+def draft_notice(req: DraftNoticeRequest, session_id: str | None = Depends(get_session_id)) -> DraftNoticeResponse:
+    with session_scope(session_id):
+        return drafter.run(req)
 
 
 @router.post("/reservation", response_model=ReservationResponse)

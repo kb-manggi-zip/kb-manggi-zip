@@ -26,7 +26,7 @@
 
 ## C. 오케스트레이션·Vision (seam 파일 존재, 미구현)
 - C1 `app/graph.py` LangGraph Supervisor — ⬜ 스켈레톤+주석만 (라우터는 tools·agents 직접 호출) [B3]
-- C2 Langfuse 트레이싱 — ⬜ 미연동 (graph.py 구현 시 부착) [B3]
+- C2 ✅ Langfuse 트레이싱 — 전 노드 `@observe` + `analyze_agent` 부모 span으로 한 trace에 묶음. **+ 세션 그룹핑**: 프론트가 여정마다 `X-Session-Id` 헤더 전송 → `core/tracing.py::session_scope`가 `propagate_attributes(session_id=…)`로 root+하위 span 전체에 stamp → Langfuse **Sessions**에서 analyze→regions→simulate→products가 한 여정으로 묶임(스키마 변경 없음, in-memory OTel로 검증). [B3]
 - C3 `app/agents/extractor.py` 계약서 Vision — ⬜ `NotImplementedError` STUB, 엔드포인트 미활성 [B5]
 
 ## D. 계산 단순화·가정 (동작은 함)

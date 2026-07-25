@@ -5,6 +5,7 @@ import { PRODUCTS_RENEWAL, PRODUCTS_MOVE, PRODUCTS_BUY } from '../data/products'
 import { PERSONAS } from '../data/personas';
 import { briefings } from '../data/briefings';
 import { RULES } from '../engine/rules';
+import { getSessionId } from './session';
 import type {
   ContractInfo, FinanceInfo, CompareResponse,
   Region, SimulateResponse, ProductsResponse,
@@ -20,9 +21,14 @@ export const NOTICE_DEADLINE_MONTHS = RULES.noticeDeadlineMonths;
 
 const API_URL = import.meta.env.VITE_API_URL;
 
+// 원격 호출 공통 헤더 — Content-Type + 여정 세션ID(Langfuse Sessions 그룹핑).
+function apiHeaders(): Record<string, string> {
+  return { 'Content-Type': 'application/json', 'X-Session-Id': getSessionId() };
+}
+
 async function localOrRemote<T>(local: () => T, path: string, opts?: RequestInit): Promise<T> {
   if (!API_URL) return local();
-  const res = await fetch(`${API_URL}${path}`, { ...opts, headers: { 'Content-Type': 'application/json' } });
+  const res = await fetch(`${API_URL}${path}`, { ...opts, headers: apiHeaders() });
   if (!res.ok) throw new Error(`API error: ${res.status}`);
   return res.json();
 }
@@ -83,7 +89,7 @@ export const api = {
     }
     await fetch(`${API_URL}/api/reservation`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: apiHeaders(),
       body: JSON.stringify(req),
     });
   },
@@ -114,7 +120,7 @@ export const api = {
     }
     const res = await fetch(`${API_URL}/api/briefing/stream`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: apiHeaders(),
       body: JSON.stringify(req),
     });
     if (!res.ok || !res.body) throw new Error(`SSE error: ${res.status}`);
