@@ -15,6 +15,7 @@
 import asyncio
 
 from fastapi import APIRouter, Depends, Query
+from langfuse import observe
 from sqlalchemy.orm import Session
 from sse_starlette.sse import EventSourceResponse
 
@@ -58,13 +59,19 @@ def compare(req: CompareRequest) -> CompareResponse:
 _analyze_graph = build_analyze_graph()
 
 
+@observe(name="analyze_agent")
+def _run_analyze(contract: dict, finance: dict) -> dict:
+    """부모 span — 이 안에서 그래프가 돌면 intake/compare/narrate 노드가 이 trace에 nested로 묶인다."""
+    return _analyze_graph.invoke({"contract": contract, "finance": finance})
+
+
 @router.post("/analyze", response_model=AnalyzeResponse)
 def analyze(req: CompareRequest) -> AnalyzeResponse:
-    """분석 에이전트 — intake→compare→narrate 다단계 그래프(전 노드 Langfuse 추적).
+    """분석 에이전트 — intake→compare→narrate 다단계 그래프(한 trace에 전 노드 nested).
 
     계산(결정론)과 개인화 통역(LLM)을 한 번의 에이전트 실행으로. 숫자는 compare 노드만 생성.
     """
-    result = _analyze_graph.invoke({"contract": req.contract.model_dump(), "finance": req.finance.model_dump()})
+    result = _run_analyze(req.contract.model_dump(), req.finance.model_dump())
     return AnalyzeResponse(comparison=CompareResponse(**result["comparison"]), briefing=result["briefing"])
 
 

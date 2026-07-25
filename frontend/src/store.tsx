@@ -11,6 +11,7 @@ export interface AppState {
   contract: ContractInfo | null;
   finance: FinanceInfo | null;
   comparison: CompareResponse | null;
+  briefing: string | null;   // 분석 에이전트(narrate 노드)가 생성한 개인화 통역
   selectedBranch: Branch | null;
   selectedRegionId: string | null;
   reminderOn: boolean;
@@ -21,7 +22,7 @@ type Action =
   | { type: 'NAVIGATE'; screen: Screen }
   | { type: 'SET_CONTRACT'; contract: ContractInfo }
   | { type: 'SET_FINANCE'; finance: FinanceInfo }
-  | { type: 'SET_COMPARISON'; comparison: CompareResponse }
+  | { type: 'SET_COMPARISON'; comparison: CompareResponse; briefing?: string }
   | { type: 'SELECT_BRANCH'; branch: Branch }
   | { type: 'SELECT_REGION'; regionId: string }
   | { type: 'TOGGLE_REMINDER' }
@@ -34,6 +35,7 @@ const INITIAL: AppState = {
   contract: null,
   finance: null,
   comparison: null,
+  briefing: null,
   selectedBranch: null,
   selectedRegionId: null,
   reminderOn: true,
@@ -45,7 +47,7 @@ function reducer(state: AppState, action: Action): AppState {
     case 'NAVIGATE': return { ...state, screen: action.screen };
     case 'SET_CONTRACT': return { ...state, contract: action.contract };
     case 'SET_FINANCE': return { ...state, finance: action.finance };
-    case 'SET_COMPARISON': return { ...state, comparison: action.comparison };
+    case 'SET_COMPARISON': return { ...state, comparison: action.comparison, briefing: action.briefing ?? null };
     case 'SELECT_BRANCH': return { ...state, selectedBranch: action.branch };
     case 'SELECT_REGION': return { ...state, selectedRegionId: action.regionId };
     case 'TOGGLE_REMINDER': return { ...state, reminderOn: !state.reminderOn };
