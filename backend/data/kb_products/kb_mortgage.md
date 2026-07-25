@@ -7,8 +7,8 @@ condition: "생애최초 LTV 최대 80%·규제지역 무주택 40%, DSR 40% 이
 reason: "규제·소득 요건에 따라 한도가 정해지는 은행 주담대예요"
 max_amount: null
 basis: "KB 상품공시 기준"
-source_url: "https://obank.kbstar.com/quics?page=C103557"
-checked_at: null   # 🔴 공시 원문 대조 필요
+source_url: "https://obank.kbstar.com/quics?page=C103557&cc=b104363:b104516&isNew=N&prcode=LN20001160&QSL=F"
+checked_at: 2026-07-20   # ref/rules_확정값_실데이터반영용.md 대조
 ---
 ## KB 주택담보대출
 - **대상**: 주택 구입/보유 목적, 무주택·생애최초 우대

@@ -7,8 +7,8 @@ condition: "만 19~34·소득 5천·보증금 3억·순자산 3.45억 이하"
 reason: "만 35세 미만·소득 요건 충족 시 더 낮은 금리로 전세대출 가능해요"
 max_amount: 150000000
 basis: "주택도시기금 공시 기준"
-source_url: "https://nhuf.molit.go.kr"
-checked_at: null   # 🔴 공시 원문 대조 필요
+source_url: "https://nhuf.molit.go.kr/FP/FP05/FP0502/FP05020301.jsp"
+checked_at: 2026-07-20   # ref/rules_확정값_실데이터반영용.md 대조
 ---
 ## 청년전용 버팀목 전세자금 (정책)
 - **대상**: 만 19~34세, 연소득 5천 이하, 보증금 3억 이하, 순자산 3.45억 이하, 무주택 세대주.

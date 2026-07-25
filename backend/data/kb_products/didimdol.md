@@ -7,8 +7,8 @@ condition: "무주택·소득 6천(신혼 8.5천)·순자산 5.11억 이하"
 reason: "소득·무주택 요건을 충족하면 낮은 고정금리로 혼합 가능해요"
 max_amount: 320000000
 basis: "주택도시기금 공시 기준"
-source_url: "https://nhuf.molit.go.kr"
-checked_at: null   # 🔴 공시 원문 대조 필요
+source_url: "https://nhuf.molit.go.kr/FP/FP05/FP0503/FP05030104.jsp"
+checked_at: 2026-07-20   # ref/rules_확정값_실데이터반영용.md 대조
 ---
 ## 내집마련 디딤돌대출 (정책)
 - **대상**: 무주택 세대주. 소득 상한 일반 6천/생애최초·2자녀 7천/신혼 8.5천. 순자산 5.11억 이하.
