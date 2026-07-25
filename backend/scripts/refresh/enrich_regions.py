@@ -6,6 +6,7 @@
 - 기존 8개 수기 항목의 tags(사람이 확인한 역세권/상권 등)는 그대로 유지, 좌표만 갱신.
 - 새로 추가되는 72개는 tags 빈 배열(임의 작문 금지 원칙 유지), source는 자동 조회로 표기.
 """
+
 import os
 import sqlite3
 import sys
@@ -21,8 +22,12 @@ sys.path.insert(0, str(BACKEND_ROOT))
 from app.core.config import settings  # noqa: E402
 
 GU_MAP = {
-    "11440": "마포구", "11380": "은평구", "11320": "도봉구",
-    "11290": "성북구", "11350": "노원구", "11260": "중랑구",
+    "11440": "마포구",
+    "11380": "은평구",
+    "11320": "도봉구",
+    "11290": "성북구",
+    "11350": "노원구",
+    "11260": "중랑구",
 }
 
 ENRICH_PATH = BACKEND_ROOT / "data" / "region_enrich.yaml"
