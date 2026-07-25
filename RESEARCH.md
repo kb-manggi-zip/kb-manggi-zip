@@ -88,9 +88,10 @@
 - KB부동산 데이터허브 평균가·전세가율 → Region/비교표에 병기(매매·전세 격차 표시).
 - 실패해도 서비스 진행(Optional).
 
-### C5. 하루 시뮬레이션 데이터 (콘텐츠)
-- 지금 `data/catalog.py`의 씬은 고정 fixture(사진 URL·캡션).
-- **리서치:** 경로(ODsay/TMAP)·POI(카카오)·물가(참가격)·로드뷰/이미지 → `agents/narrator.py`가 facts 기반 캡션 생성(Phase B4).
+### C5. 하루 시뮬레이션 데이터 (콘텐츠) — ✅ YAML 레지스트리로 전환(2026-07-26)
+- **채우는 곳:** `backend/app/agents/scenes.yaml` (branch별 `base` + `regions[<regionId>]` override). `narrator.py`가 로드, regionId 있으면 지역 씬 우선 → **'월세로'('-m')≠'전세로'** 자동 분리. 프론트 참조본 `frontend/src/data/scenes.ts`(+ `SCENES_BY_REGION`)와 동기화 유지.
+- **팀 작업:** 씬 정리본이 오면 `scenes.yaml`에 전세/매매 지역(mapo·eunpyeong·seongbuk…) override를 같은 형태로 추가(코드 수정 불필요).
+- **리서치(실 facts):** 경로(ODsay/TMAP)·POI(카카오)·물가(참가격)·로드뷰/이미지 → `agents/narrator.py`가 facts 기반 캡션 생성(Phase B4, LLM 내레이션).
 
 **Done 기준:** 실 API 1회 호출 후 `cache/`로 재현 + `GET /api/regions`가 실집계 Region 반환 + 쿼터 보호 확인.
 

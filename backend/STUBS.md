@@ -18,7 +18,7 @@
 |---|---|---|
 | B1 | `core/llm.py::_call_claude` | ✅ 실 Claude 호출 동작 (`llm_active`면 실호출, 아니면 템플릿 폴백) |
 | B2 | `core/llm.py::generate` | ✅ `verify.numbers_grounded` 재생성 2회 루프 완료 (권유·숫자 검증) |
-| B3 | `agents/narrator.py` | ⬜ **여전히 fixture 씬** — 하루 시뮬 개인화 미구현(이사=SCENES_MOVE 고정, 월세로/전세로 동일) |
+| B3 | `agents/narrator.py` | 🟡 **YAML 씬 레지스트리 전환**(`agents/scenes.yaml`): branch 분리(갱신≠이사≠매매) + regionId override로 **'월세로'('-m')≠'전세로'** 해결. ⬜ LLM 내레이션·실 facts(경로/POI/물가)는 미연동(결정론 fixture) |
 | B4 | `agents/matcher.py` | ✅ 문서(kb_products) 기반 규칙 매칭 + LLM 사유. 개인화 자격필터는 finance 필요(스키마 확장 대기) |
 | B5 | `agents/briefing.py`·`drafter.py` | ✅ 실 Claude + **개인화 가이드**(YAML `persona_frames.yaml` 상황별 프레임). drafter도 실호출 |
 | B6 | `routers/api.py` briefing | ✅ `/api/briefing/stream` SSE(페이싱 포함). 단 compare 화면은 `/api/analyze`의 briefing 재사용(SSE 미사용) |
