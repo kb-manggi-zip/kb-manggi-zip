@@ -71,3 +71,55 @@ def build_regions_graph():
     graph.set_entry_point("regions")
     graph.add_edge("regions", END)
     return graph.compile()
+
+
+# ── 분석 에이전트: intake(상황파악) → compare(계산 tool) → narrate(개인화 LLM) ──
+# 단일 함수가 아니라 다단계 흐름 → Langfuse에 '에이전트 경로'로 찍힌다(발표 시연).
+class AnalyzeState(TypedDict):
+    contract: dict
+    finance: dict
+    situation: str
+    comparison: dict
+    briefing: str
+
+
+@observe(name="intake_node")
+def intake_node(state: AnalyzeState) -> dict:
+    """이해 단계 — 입력 검증 + 상황(페르소나) 서술. LLM이 잘하는 '이해'의 자리."""
+    ContractInfo(**state["contract"])  # 검증
+    FinanceInfo(**state["finance"])
+    from .agents import briefing as briefing_agent
+
+    return {"situation": briefing_agent.situation_of(state)}
+
+
+@observe(name="narrate_node")
+def narrate_node(state: AnalyzeState) -> dict:
+    """개인화 통역 단계 — 계산된 숫자를 상황에 맞게 설명(LLM). 숫자는 comparison만 인용."""
+    from .agents import briefing as briefing_agent
+    from .schemas import BriefingRequest
+
+    f = state["finance"]
+    name = "신혼 가구" if f.get("household") == "신혼" else "고객"
+    req = BriefingRequest(
+        kind="compare",
+        context={
+            "comparison": state["comparison"],
+            "contract": state["contract"],
+            "finance": state["finance"],
+            "name": name,
+        },
+    )
+    return {"briefing": briefing_agent.run(req)}
+
+
+def build_analyze_graph():
+    graph = StateGraph(AnalyzeState)
+    graph.add_node("intake", intake_node)
+    graph.add_node("compare", compare_node)
+    graph.add_node("narrate", narrate_node)
+    graph.set_entry_point("intake")
+    graph.add_edge("intake", "compare")
+    graph.add_edge("compare", "narrate")
+    graph.add_edge("narrate", END)
+    return graph.compile()

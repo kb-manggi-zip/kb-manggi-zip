@@ -23,8 +23,9 @@ export default function CalcLoading() {
       }
       try {
         await new Promise(r => setTimeout(r, 800));
-        const result = await api.compare({ contract: state.contract, finance: state.finance });
-        dispatch({ type: 'SET_COMPARISON', comparison: result });
+        // 분석 에이전트 실행 (원격이면 intake→compare→narrate 그래프가 Langfuse에 찍힘)
+        const result = await api.analyze({ contract: state.contract, finance: state.finance });
+        dispatch({ type: 'SET_COMPARISON', comparison: result.comparison });
         dispatch({ type: 'NAVIGATE', screen: 'SC-03' });
       } catch (e) {
         setError('계산 중 오류가 발생했어요. 다시 시도해주세요.');

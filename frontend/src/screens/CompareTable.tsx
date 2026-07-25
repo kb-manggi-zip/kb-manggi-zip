@@ -30,14 +30,15 @@ export default function CompareTable() {
     setBriefText(''); setBriefDone(false);
     let cancelled = false;
     api.streamBriefing(
-      { kind: 'compare', context: { comparison, name: nm } },
+      // 상황(contract·finance)을 함께 넘겨 개인화 가이드 — 숫자는 comparison(코드계산)만 인용
+      { kind: 'compare', context: { comparison, name: nm, contract, finance } },
       (chunk) => { if (!cancelled) setBriefText((t) => t + chunk); },
       local,
     )
       .then(() => { if (!cancelled) setBriefDone(true); })
       .catch(() => { if (!cancelled) { setBriefText(local); setBriefDone(true); } });
     return () => { cancelled = true; };
-  }, [comparison, finance]);
+  }, [comparison, contract, finance]);
 
   if (!comparison || !contract) {
     dispatch({ type: 'NAVIGATE', screen: 'SC-01' });

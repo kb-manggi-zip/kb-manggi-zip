@@ -113,3 +113,9 @@ export interface DraftNoticeRequest {
 export interface DraftNoticeResponse {
   draft: string;
 }
+
+// 분석 에이전트(intake→compare→narrate) 결과 — 계산 + 개인화 통역
+export interface AnalyzeResponse {
+  comparison: CompareResponse;
+  briefing: string;
+}

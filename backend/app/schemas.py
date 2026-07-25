@@ -171,3 +171,10 @@ class ProductsRequest(BaseModel):
     branch: Branch
     # client.ts는 {branch}만 보냄. comparison은 향후 확장용(Optional).
     comparison: Optional[CompareResponse] = None
+
+
+class AnalyzeResponse(BaseModel):
+    """분석 에이전트(intake→compare→narrate) 결과 — 계산 + 개인화 통역을 한 번에."""
+
+    comparison: CompareResponse
+    briefing: str
