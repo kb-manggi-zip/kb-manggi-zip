@@ -1,0 +1,16 @@
+---
+product_id: return_guarantee
+name: 전세보증금 반환보증
+branch: [갱신, 이사]
+role: guarantee
+condition: "보증금×공시 요율, 계약 후 신청. 갱신 시 재신청"
+reason: "보증금 반환 위험에 대비하는 보장이에요(권유 아님, 비용 안내)"
+max_amount: null
+basis: "HUG 공시 요율 기준"
+source_url: "https://www.khug.or.kr"
+checked_at: null   # 🔴 공시 요율표 대조 필요
+---
+## 전세보증금 반환보증 (보장)
+- **대상**: 전세 임차인. 이사 시 신규 가입, 갱신 시 보증 공백 없이 재신청.
+- **보증료**: 보증금 × 공시 요율(주택유형·부채비율별) ÷ 12로 월 환산해 비교표에 합산.
+- **원칙**: '가입하세요'가 아니라 "이 길의 위험과 대비 비용"까지만 안내.
