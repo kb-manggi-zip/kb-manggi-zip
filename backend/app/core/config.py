@@ -26,11 +26,17 @@ class Settings(BaseSettings):
     molit_api_key: str = ""
     kakao_api_key: str = ""
 
+    # LangGraph 트레이싱 (Phase B3). 키 없으면 트레이싱 없이 그래프만 정상 동작.
+    langfuse_public_key: str = ""
+    langfuse_secret_key: str = ""
+    langfuse_base_url: str = "https://cloud.langfuse.com"
+
     # 캐시
     cache_dir: str = "./cache"
     cache_ttl_hours: int = 24
 
     # 규칙 YAML 위치
+
     rules_dir: str = str(BACKEND_ROOT / "rules")
 
     @property

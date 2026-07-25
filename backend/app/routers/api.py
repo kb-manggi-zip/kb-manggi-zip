@@ -17,6 +17,7 @@ from sqlalchemy.orm import Session
 
 from ..agents import briefing, drafter, matcher, narrator
 from ..core.db import get_db
+from ..graph import build_compare_graph, build_regions_graph
 from ..models.reservation import Reservation
 from ..schemas import (
     BriefingRequest,
@@ -33,21 +34,30 @@ from ..schemas import (
     SimulateRequest,
     SimulateResponse,
 )
-from ..tools import molit
-from ..tools.compare import compute_compare
 
 router = APIRouter(prefix="/api")
+
+_compare_graph = build_compare_graph()
 
 
 @router.post("/compare", response_model=CompareResponse)
 def compare(req: CompareRequest) -> CompareResponse:
-    return compute_compare(req.contract, req.finance)
+    result = _compare_graph.invoke(
+        {
+            "contract": req.contract.model_dump(),
+            "finance": req.finance.model_dump(),
+        }
+    )
+    return CompareResponse(**result["comparison"])
+
+
+_regions_graph = build_regions_graph()
 
 
 @router.get("/regions", response_model=list[Region])
 def regions(branch: str = Query(...), budget: int = 0) -> list[Region]:
-    # branch: '매매' | '이사' | '이사-월세'(client.ts regionsMonthly)
-    return molit.regions_by_branch(branch, budget)
+    result = _regions_graph.invoke({"branch": branch, "budget": budget})
+    return result["regions"]
 
 
 @router.post("/simulate", response_model=SimulateResponse)

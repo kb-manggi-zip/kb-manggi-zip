@@ -20,15 +20,54 @@ Phase B3에서 이 파일에 Supervisor 그래프를 구성하고, 라우터가 
   - Langfuse 트레이싱을 전 노드에 부착 (발표용 노드 경로 캡처)
 """
 
-# STUB: Phase B3 — LangGraph Supervisor + Langfuse.
-# from langgraph.graph import StateGraph  # (langgraph 설치 후)
-#
-# def build_graph():
-#     ...  # 노드 등록 + 엣지 + 조건분기(renewal → finance)
-#     return graph.compile()
+from typing import TypedDict
+
+from langfuse import observe
+from langgraph.graph import END, StateGraph
+
+from .core import tracing  # noqa: F401 — Langfuse 클라이언트 초기화(키 있으면 생성, 없으면 None)
+from .schemas import ContractInfo, FinanceInfo
+from .tools import molit
+from .tools.compare import compute_compare
 
 
-def build_graph():  # pragma: no cover
-    raise NotImplementedError(
-        "LangGraph 오케스트레이션은 Phase B3에서 구현합니다. 현재는 routers/api.py 가 tools·agents 를 직접 호출합니다."
-    )
+class CompareState(TypedDict):
+    contract: dict
+    finance: dict
+    comparison: dict
+
+
+@observe(name="compare_node")
+def compare_node(state: CompareState) -> dict:
+    contract = ContractInfo(**state["contract"])
+    finance = FinanceInfo(**state["finance"])
+    result = compute_compare(contract, finance)
+    return {"comparison": result.model_dump()}
+
+
+def build_compare_graph():
+    graph = StateGraph(CompareState)
+    graph.add_node("compare", compare_node)
+    graph.set_entry_point("compare")
+    graph.add_edge("compare", END)
+    return graph.compile()
+
+
+class RegionsState(TypedDict):
+    branch: str
+    budget: int
+    regions: list
+
+
+@observe(name="regions_node")
+def regions_node(state: RegionsState) -> dict:
+    result = molit.regions_by_branch(state["branch"], state["budget"])
+    return {"regions": [r.model_dump() for r in result]}
+
+
+def build_regions_graph():
+    graph = StateGraph(RegionsState)
+    graph.add_node("regions", regions_node)
+    graph.set_entry_point("regions")
+    graph.add_edge("regions", END)
+    return graph.compile()
