@@ -38,3 +38,19 @@ def test_user_prompt_compare_embeds_situation():
 def test_user_prompt_other_kind_unchanged():
     req = BriefingRequest(kind="savedMoney", context={})
     assert briefing._user_prompt(req).startswith("kind=savedMoney")
+
+
+def test_build_system_selects_monthly_youth_frames():
+    ctx = {"contract": {"type": "월세"}, "finance": {"household": "1인", "under35": True, "firstHome": "아니오"}}
+    s = briefing.build_system(ctx)
+    assert "사라지는 돈" in s  # 월세 frame 주입
+    assert "청년 정책대출" in s  # 청년 frame 주입
+    assert "LTV 우대 가능성" not in s  # 생애최초 frame 미주입
+
+
+def test_build_system_selects_newlywed_firsthome_frames():
+    ctx = {"contract": {"type": "전세"}, "finance": {"household": "신혼", "under35": False, "firstHome": "예"}}
+    s = briefing.build_system(ctx)
+    assert "자산형성" in s  # 신혼 frame
+    assert "LTV 우대 가능성" in s  # 생애최초 frame
+    assert "청년 정책대출" not in s  # under35=False → 청년 frame 미주입
