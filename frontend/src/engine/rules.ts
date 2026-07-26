@@ -16,9 +16,39 @@ export const RULES = {
     feeRate: 0.0015,         // (구) 단일 보증요율 — B1.5에서 guaranteeHug 테이블로 대체
   },
   oneTime: {
-    moveBase: 1_500_000,     // 이사 기본 비용
-    brokerRate: 0.004,       // 중개 수수료율
-    acquisitionRate: 0.011,  // 취득세 등 부대비용율
+    moveBase: 800_000,       // 이사 기본 비용 (원룸~투룸 포장이사 비수기~성수기 평균, 2026 시세) — "이사" 갈래용
+    moveBaseBuy: 1_200_000,  // 매매 갈래 이사 기본 비용 (20평대~30평대 초반 아파트 포장이사 기준, 2026 시세)
+    // 중개보수(임대차) — 서울특별시 주택 중개보수 등에 관한 조례(제8585호) 별표1, 임대차(전월세) 요율표.
+    // backend/rules/one_time.yaml::broker_rate_bands 와 동치. 데모 동네가 전부 서울이라 이 조례로 충분.
+    brokerRateBands: [
+      { upto: 50_000_000, rate: 0.005, cap: 200_000 },      // 5천만원 미만
+      { upto: 100_000_000, rate: 0.004, cap: 300_000 },     // 5천만~1억원 미만
+      { upto: 600_000_000, rate: 0.003, cap: null },        // 1억~6억원 미만
+      { upto: 1_200_000_000, rate: 0.004, cap: null },      // 6억~12억원 미만
+      { upto: 1_500_000_000, rate: 0.005, cap: null },      // 12억~15억원 미만
+      { upto: null, rate: 0.006, cap: null },                // 15억원 이상
+    ],
+    // 중개보수(매매·교환) — 공인중개사법 시행규칙 별표1, "매매·교환" 기준(임대차와 다른 표, 요율 더 높음).
+    // backend/rules/one_time.yaml::broker_rate_bands_purchase 와 동치.
+    brokerRateBandsPurchase: [
+      { upto: 50_000_000, rate: 0.006, cap: 250_000 },      // 5천만원 미만
+      { upto: 200_000_000, rate: 0.005, cap: 800_000 },     // 5천만~2억원 미만
+      { upto: 900_000_000, rate: 0.004, cap: null },        // 2억~9억원 미만
+      { upto: 1_200_000_000, rate: 0.005, cap: null },      // 9억~12억원 미만
+      { upto: 1_500_000_000, rate: 0.006, cap: null },      // 12억~15억원 미만
+      { upto: null, rate: 0.007, cap: null },                // 15억원 이상
+    ],
+    // 취득세 — 지방세법 제11조 1항 8호(유상거래 주택). 85㎡ 이하 가정(농특세 면제).
+    // 지방교육세 = 취득세율×10%(§151①1호 단서) → 합산실효세율 = 취득세율×1.1.
+    // 6억 이하 1% 고정 / 6~9억 (가액÷3억×2−3)% 선형 / 9억 초과 3% 고정.
+    // backend/rules/one_time.yaml::acquisition 와 동치.
+    acquisition: {
+      lowThreshold: 600_000_000,   // 6억원
+      highThreshold: 900_000_000,  // 9억원
+      lowRate: 0.01,                // 6억 이하: 1%
+      highRate: 0.03,               // 9억 초과: 3%
+      eduTaxRatio: 0.1,             // 지방교육세 = 취득세율 × 10%
+    },
   },
   noticeDeadlineMonths: 2,   // 갱신 의사 통보 기한
 

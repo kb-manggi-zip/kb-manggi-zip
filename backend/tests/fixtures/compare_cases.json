@@ -47,7 +47,7 @@
             "headline": "새 전세 최대 3억 6,000만",
             "depositOrPrice": 360000000,
             "loanAmount": 160000000,
-            "oneTimeCost": 2300000,
+            "oneTimeCost": 1400000,
             "guaranteeMonthly": 36600,
             "monthlyBurden": 369933,
             "risks": [
@@ -56,7 +56,7 @@
             ],
             "cares": [
               "새 계약 시 전세보증금 반환보증 확인",
-              "일회성 비용 약 230만"
+              "일회성 비용 약 140만"
             ],
             "basis": [
               "전세대출 한도 80%",
@@ -69,7 +69,7 @@
             "headline": "최대 3억 8,333만 내 집",
             "depositOrPrice": 383333333,
             "loanAmount": 153333333,
-            "oneTimeCost": 4216667,
+            "oneTimeCost": 6950000,
             "guaranteeMonthly": 0,
             "monthlyBurden": 634121,
             "risks": [
@@ -93,7 +93,7 @@
         "noticeDaysLeft": 62,
         "noticeDeadline": "2026-09-19",
         "monthlyToDeposit": 0,
-        "savings": 2300000,
+        "savings": 1400000,
         "assumptions": [
           "전세대출 금리 HF 공시 평균 3.89%",
           "규제지역 LTV 40% (생애최초 70%)",
@@ -151,7 +151,7 @@
             "headline": "새 전세 최대 5억 4,200만",
             "depositOrPrice": 542000000,
             "loanAmount": 222000000,
-            "oneTimeCost": 2780000,
+            "oneTimeCost": 1760000,
             "guaranteeMonthly": 55103,
             "monthlyBurden": 774753,
             "risks": [
@@ -160,7 +160,7 @@
             ],
             "cares": [
               "새 계약 시 전세보증금 반환보증 확인",
-              "일회성 비용 약 278만"
+              "일회성 비용 약 176만"
             ],
             "basis": [
               "전세대출 한도 80%",
@@ -173,7 +173,7 @@
             "headline": "최대 7억 7,681만 내 집",
             "depositOrPrice": 776806525,
             "loanAmount": 396806525,
-            "oneTimeCost": 6544872,
+            "oneTimeCost": 20923938,
             "guaranteeMonthly": 0,
             "monthlyBurden": 1694512,
             "risks": [
@@ -197,7 +197,7 @@
         "noticeDaysLeft": 42,
         "noticeDeadline": "2026-08-30",
         "monthlyToDeposit": 0,
-        "savings": 2780000,
+        "savings": 1760000,
         "assumptions": [
           "전세대출 금리 HF 공시 평균 3.89%",
           "규제지역 LTV 40% (생애최초 70%)",
@@ -255,7 +255,7 @@
             "headline": "새 전세 최대 1억 4,400만",
             "depositOrPrice": 144000000,
             "loanAmount": 64000000,
-            "oneTimeCost": 1820000,
+            "oneTimeCost": 1100000,
             "guaranteeMonthly": 14640,
             "monthlyBurden": 222107,
             "risks": [
@@ -264,7 +264,7 @@
             ],
             "cares": [
               "새 계약 시 전세보증금 반환보증 확인",
-              "일회성 비용 약 182만"
+              "일회성 비용 약 110만"
             ],
             "basis": [
               "전세대출 한도 80%",
@@ -277,7 +277,7 @@
             "headline": "최대 1억 5,833만 내 집",
             "depositOrPrice": 158333333,
             "loanAmount": 63333333,
-            "oneTimeCost": 1741667,
+            "oneTimeCost": 3733333,
             "guaranteeMonthly": 0,
             "monthlyBurden": 261920,
             "risks": [
@@ -301,7 +301,7 @@
         "noticeDaysLeft": 92,
         "noticeDeadline": "2026-10-19",
         "monthlyToDeposit": 505263158,
-        "savings": 1820000,
+        "savings": 1100000,
         "assumptions": [
           "전세대출 금리 HF 공시 평균 3.89%",
           "규제지역 LTV 40% (생애최초 70%)",
@@ -359,7 +359,7 @@
             "headline": "새 전세 최대 4억 5,000만",
             "depositOrPrice": 450000000,
             "loanAmount": 200000000,
-            "oneTimeCost": 2500000,
+            "oneTimeCost": 1550000,
             "guaranteeMonthly": 45750,
             "monthlyBurden": 529083,
             "risks": [
@@ -368,7 +368,7 @@
             ],
             "cares": [
               "새 계약 시 전세보증금 반환보증 확인",
-              "일회성 비용 약 250만"
+              "일회성 비용 약 155만"
             ],
             "basis": [
               "전세대출 한도 80%",
@@ -381,7 +381,7 @@
             "headline": "최대 4억 5,000만 내 집",
             "depositOrPrice": 450000000,
             "loanAmount": 180000000,
-            "oneTimeCost": 4950000,
+            "oneTimeCost": 7950000,
             "guaranteeMonthly": 0,
             "monthlyBurden": 744403,
             "risks": [
@@ -405,7 +405,7 @@
         "noticeDaysLeft": 11,
         "noticeDeadline": "2026-07-30",
         "monthlyToDeposit": 0,
-        "savings": 2500000,
+        "savings": 1550000,
         "assumptions": [
           "전세대출 금리 HF 공시 평균 3.89%",
           "규제지역 LTV 40% (생애최초 70%)",
@@ -463,7 +463,7 @@
             "headline": "새 전세 최대 9,000만",
             "depositOrPrice": 90000000,
             "loanAmount": 40000000,
-            "oneTimeCost": 1700000,
+            "oneTimeCost": 1000000,
             "guaranteeMonthly": 8625,
             "monthlyBurden": 138292,
             "risks": [
@@ -472,7 +472,7 @@
             ],
             "cares": [
               "새 계약 시 전세보증금 반환보증 확인",
-              "일회성 비용 약 170만"
+              "일회성 비용 약 100만"
             ],
             "basis": [
               "전세대출 한도 80%",
@@ -485,7 +485,7 @@
             "headline": "최대 1억 8,333만 내 집",
             "depositOrPrice": 183333333,
             "loanAmount": 128333333,
-            "oneTimeCost": 16667,
+            "oneTimeCost": 2016667,
             "guaranteeMonthly": 0,
             "monthlyBurden": 530732,
             "risks": [
@@ -509,7 +509,7 @@
         "noticeDaysLeft": -19,
         "noticeDeadline": "2026-06-30",
         "monthlyToDeposit": 202105263,
-        "savings": 1700000,
+        "savings": 1000000,
         "assumptions": [
           "전세대출 금리 HF 공시 평균 3.89%",
           "규제지역 LTV 40% (생애최초 70%)",
@@ -567,7 +567,7 @@
             "headline": "새 전세 최대 3억 6,000만",
             "depositOrPrice": 360000000,
             "loanAmount": 160000000,
-            "oneTimeCost": 2300000,
+            "oneTimeCost": 1400000,
             "guaranteeMonthly": 43800,
             "monthlyBurden": 377133,
             "risks": [
@@ -576,7 +576,7 @@
             ],
             "cares": [
               "새 계약 시 전세보증금 반환보증 확인",
-              "일회성 비용 약 230만"
+              "일회성 비용 약 140만"
             ],
             "basis": [
               "전세대출 한도 80%",
@@ -589,7 +589,7 @@
             "headline": "최대 3억 8,333만 내 집",
             "depositOrPrice": 383333333,
             "loanAmount": 153333333,
-            "oneTimeCost": 4216667,
+            "oneTimeCost": 6950000,
             "guaranteeMonthly": 0,
             "monthlyBurden": 634121,
             "risks": [
@@ -613,7 +613,7 @@
         "noticeDaysLeft": 62,
         "noticeDeadline": "2026-09-19",
         "monthlyToDeposit": 0,
-        "savings": 2300000,
+        "savings": 1400000,
         "assumptions": [
           "전세대출 금리 HF 공시 평균 3.89%",
           "규제지역 LTV 40% (생애최초 70%)",

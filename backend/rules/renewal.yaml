@@ -4,9 +4,9 @@
 
 increase_cap:
   value: 0.05          # 법정 인상률 상한 5%
-  source_url: "https://www.law.go.kr/법령/주택임대차보호법"
-  checked_at: null     # TODO 검증
-  note: "계약갱신 시 차임·보증금 증액 상한. 지자체 조례로 하향 가능."
+  source_url: "https://casenote.kr/법령/주택임대차보호법/제7조"
+  checked_at: "2026-07-26"
+  note: "계약갱신 시 차임·보증금 증액 상한. 주택임대차보호법 제7조 2항 \"20분의 1(=5%)을 초과 못함\", 법률 제17470호(2020.7.31 개정·시행). 지자체 조례로 하향 가능."
 
 conversion_rate:
   value: 0.0475        # 전월세전환율 = 기준금리 2.75%(2026.7.16 인상) + 법정 2.0%p
@@ -16,6 +16,6 @@ conversion_rate:
 
 notice_deadline_months:
   value: 2             # 갱신 의사 통보 기한 (만기 N개월 전)
-  source_url: "https://www.law.go.kr/법령/주택임대차보호법"
-  checked_at: null     # TODO 검증
-  note: "임대인·임차인 갱신거절/계약조건 변경 통지 기한."
+  source_url: "https://casenote.kr/법령/주택임대차보호법/제6조"
+  checked_at: "2026-07-26"
+  note: "임대인·임차인 갱신거절/계약조건 변경 통지 기한. 주택임대차보호법 제6조 1항 \"임대차기간이 끝나기 6개월 전부터 2개월 전까지\", 법률 제17363호(2020.6.9 개정, 2020.12.10 시행)."

@@ -16,6 +16,8 @@ from datetime import datetime, timezone
 
 from ..core.rules import Rules, get_rules, read_yaml
 from ..schemas import BranchResult, CompareResponse, ContractInfo, FinanceInfo
+from .acquisition_tax import acquisition_fee
+from .broker_fee import broker_fee
 from .dates import d_day, notice_days_left, notice_deadline
 from .format import format_amt, js_round
 from .guarantee_hug import guarantee_rate
@@ -123,7 +125,7 @@ def compute_compare(
     move_budget = deposit + extra
     move_interest = js_round(extra * jeonse_rate / 12)
     move_guar_monthly = js_round(move_budget * guarantee_rate(move_budget, house_type=hug_type) / 12)
-    move_one_time = js_round(one_time.moveBase + deposit * one_time.brokerRate)
+    move_one_time = js_round(one_time.moveBase + broker_fee(deposit))
 
     move_branch = BranchResult(
         branch="이사",
@@ -169,7 +171,8 @@ def compute_compare(
         annuity_payment(policy_amt, policy.rate, term)
         + annuity_payment(bank_amt, kb_base, term)  # 표시용은 base(스트레스 아님)
     )
-    buy_one_time = js_round(max_price * one_time.acquisitionRate)
+    buy_move_broker = broker_fee(max_price, table="broker_rate_bands_purchase")
+    buy_one_time = js_round(one_time.moveBaseBuy + buy_move_broker + acquisition_fee(max_price))
     if first_home == "예":
         buy_one_time = max(0, buy_one_time - acq_reduction)
 

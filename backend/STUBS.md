@@ -34,8 +34,8 @@
 - D2 기존부채 = 0 고정 (입력 없음)
 - D3 DSR 대출유형 = variable 고정 (mixed/periodic 미선택)
 - D4 HUG 보증료 = ✅ **주택유형 입력**(`housingType` 아파트/빌라) → 아파트=apartment / 빌라=other 분기. 부채비율은 le80 고정 가정. 🔴 other(연립·다세대) 요율값 검증 필요(현재 placeholder). 단독다가구·오피스텔은 범위 밖
-- D5 취득세 = flat 0.011 + 생애최초 감면 -200만 flat (구간세율·감면요건 정밀화 안 됨)
-- D6 중개보수 = flat 0.004 (구간표 아님)
+- D5 ✅ 취득세 = **지방세법 §11 3단계 구간세율**(팀원 PR #22) + 생애최초 감면 -200만. 소형 300만·12억 상한 구분은 PoC 미반영
+- D6 ✅ 중개보수 = **구간표**(임대차=서울 조례 / 매매·교환=시행규칙 별표, 팀원 PR #22)
 - D7 이사 전세대출 한도 = min(보증금×80%, 2.22억) 단순화 (소득대비 한도 미반영)
 - D8 디딤돌 = 무주택 True 가정 (`is_no_house` 입력 없음)
 - D9 버팀목 age = `under35` bool을 30/99로 프록시
@@ -45,7 +45,7 @@
 - E2 ✅ 생애최초 취득세 감면 — **2028.12.31까지 연장 확정**(지특법 §36의3, checked 2026-07-26). 12억↓ 200만 한도, firstHome '예' 매매에 이미 -200만 적용. (소형 300만·12억 상한 구분은 PoC 미반영 = D5)
 - E3 ✅ HUG 요율표 리서치_3 **셀 대조 완료·유지 확정** (아파트 0.115%/0.122%/0.128%)
 - E4 multi_house LTV = PoC 미구현(타깃 외)
-- E5 🟡 `renewal.conversion_rate` ✅ **0.0475**(기준금리 2.75% 2026.7.16 인상 반영, checked 2026-07-26). 나머지 5개는 여전히 🔴 미검증 → 시작 경고 5줄: `renewal`(increase_cap·notice_deadline_months), `one_time`(move_base·broker_rate·acquisition_rate)
+- E5 ✅ `renewal`·`one_time` 전 항목 **검증 완료**(conversion_rate 0.0475 + 나머지 5개, 팀원 PR #22, checked 2026-07-26). 중개보수·취득세는 구간표(D5·D6). **시작 시 미검증 경고 0줄.** 남은 🔴 = 빌라 HUG `other` 요율(D4)
 - **검증 완료**: `lending_regulated`·`policy_loans`·`guarantee_hug`.yaml → `checked_at: 2026-07-20`
 
 ## F. 정리/자투리
