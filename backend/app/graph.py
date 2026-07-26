@@ -90,19 +90,21 @@ def intake_node(state: AnalyzeState) -> dict:
 
 @observe(name="narrate_node")
 def narrate_node(state: AnalyzeState) -> dict:
-    """개인화 통역 단계 — 계산된 숫자를 상황에 맞게 설명(LLM). 숫자는 comparison만 인용."""
+    """개인화 통역 단계 — 계산된 숫자를 상황에 맞게 설명(LLM). 숫자는 comparison만 인용.
+
+    페르소나는 여기서 하드코딩하지 않는다. briefing.build_system()이 persona_frames.yaml에서
+    사용자 상황(계약유형·가구·청년·생애최초)에 매칭되는 관점 frame을 골라 시스템 프롬프트에 주입하고,
+    호칭도 briefing이 가구 라벨에서 파생한다.
+    """
     from .agents import briefing as briefing_agent
     from .schemas import BriefingRequest
 
-    f = state["finance"]
-    name = "신혼 가구" if f.get("household") == "신혼" else "고객"
     req = BriefingRequest(
         kind="compare",
         context={
             "comparison": state["comparison"],
             "contract": state["contract"],
             "finance": state["finance"],
-            "name": name,
         },
     )
     return {"briefing": briefing_agent.run(req)}
