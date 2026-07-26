@@ -19,7 +19,7 @@ export default function RegionListMonthly() {
   }, []);
 
   function selectRegion(r: Region) {
-    dispatch({ type: 'SELECT_REGION', regionId: r.id });
+    dispatch({ type: 'SELECT_REGION', regionId: r.id, region: r });
     dispatch({ type: 'NAVIGATE', screen: 'SC-07' });
   }
 

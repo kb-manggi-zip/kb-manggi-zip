@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useReducer, useEffect } from 'react';
-import type { ContractInfo, FinanceInfo, CompareResponse, Branch } from './api/types';
+import type { ContractInfo, FinanceInfo, CompareResponse, Branch, Region } from './api/types';
 import { newSession } from './api/session';
 
 export type Screen =
@@ -15,6 +15,7 @@ export interface AppState {
   briefing: string | null;   // 분석 에이전트(narrate 노드)가 생성한 개인화 통역
   selectedBranch: Branch | null;
   selectedRegionId: string | null;
+  selectedRegion: Region | null;   // 선택 동네 객체(한글명·태그) — 발품 내레이션 그라운딩용
   reminderOn: boolean;
   reservationDate: string | null;
 }
@@ -25,7 +26,7 @@ type Action =
   | { type: 'SET_FINANCE'; finance: FinanceInfo }
   | { type: 'SET_COMPARISON'; comparison: CompareResponse; briefing?: string }
   | { type: 'SELECT_BRANCH'; branch: Branch }
-  | { type: 'SELECT_REGION'; regionId: string }
+  | { type: 'SELECT_REGION'; regionId: string; region?: Region }
   | { type: 'TOGGLE_REMINDER' }
   | { type: 'SET_RESERVATION'; date: string }
   | { type: 'RESET' }
@@ -39,6 +40,7 @@ const INITIAL: AppState = {
   briefing: null,
   selectedBranch: null,
   selectedRegionId: null,
+  selectedRegion: null,
   reminderOn: true,
   reservationDate: null,
 };
@@ -50,7 +52,7 @@ function reducer(state: AppState, action: Action): AppState {
     case 'SET_FINANCE': return { ...state, finance: action.finance };
     case 'SET_COMPARISON': return { ...state, comparison: action.comparison, briefing: action.briefing ?? null };
     case 'SELECT_BRANCH': return { ...state, selectedBranch: action.branch };
-    case 'SELECT_REGION': return { ...state, selectedRegionId: action.regionId };
+    case 'SELECT_REGION': return { ...state, selectedRegionId: action.regionId, selectedRegion: action.region ?? null };
     case 'TOGGLE_REMINDER': return { ...state, reminderOn: !state.reminderOn };
     case 'SET_RESERVATION': return { ...state, reservationDate: action.date };
     case 'RESET': newSession(); return { ...INITIAL };   // 새 여정 = 새 세션ID + 설문/계산 초기화 (persist가 localStorage도 비움)

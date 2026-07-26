@@ -8,17 +8,17 @@ import type { Scene } from '../api/types';
 
 export default function DayPlayer() {
   const { state, dispatch } = useApp();
-  const { selectedBranch, selectedRegionId, comparison } = state;
+  const { selectedBranch, selectedRegionId, selectedRegion, finance, comparison } = state;
   const [scenes, setScenes] = useState<Scene[]>([]);
   const [monthlyCost, setMonthlyCost] = useState(0);
+  const [lifestyle, setLifestyle] = useState('');
   const [current, setCurrent] = useState(0);
   const [autoPlay, setAutoPlay] = useState(true);
   const [showIntro, setShowIntro] = useState(true);
 
-  // 찾은 동네 이름
-  const regionName = selectedRegionId
-    ? selectedRegionId.split('-')[0]
-    : '이 동네';
+  // 찾은 동네 이름(한글) — 선택 Region 우선, 없으면 id prefix 폴백
+  const regionName = selectedRegion?.name
+    ?? (selectedRegionId ? selectedRegionId.split('-')[0] : '이 동네');
 
   useEffect(() => {
     if (!selectedBranch || !selectedRegionId) return;
@@ -26,6 +26,8 @@ export default function DayPlayer() {
       setScenes(r.scenes);
       setMonthlyCost(r.monthlyCost);
     });
+    // '이 동네에서의 하루' 개인화 발품 내레이션(소비 프로필 그라운딩)
+    api.dayLifestyle(selectedRegion, selectedBranch, finance).then(setLifestyle);
     // 1초 전환 카드
     const t = setTimeout(() => setShowIntro(false), 1500);
     return () => clearTimeout(t);
@@ -147,6 +149,12 @@ export default function DayPlayer() {
           </>
         ) : (
           <div className="space-y-4" onClick={e => e.stopPropagation()}>
+            {lifestyle && (
+              <div className="bg-black/60 rounded-2xl p-4" style={{ backdropFilter: 'blur(8px)' }}>
+                <p className="text-white/70 text-xs mb-1">💬 이 동네에서의 당신</p>
+                <p className="text-white text-sm leading-relaxed">{lifestyle}</p>
+              </div>
+            )}
             <div className="bg-black/60 rounded-2xl p-4" style={{ backdropFilter: 'blur(8px)' }}>
               <p className="text-white/70 text-xs mb-1">이 하루의 월 부담</p>
               <p className="text-white text-2xl font-bold">{formatAmount(monthlyCost)}/월</p>
