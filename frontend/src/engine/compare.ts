@@ -52,6 +52,14 @@ function guaranteeRate(deposit: number): number {
   return (g.hug_fee_rate as any)[band][g.default_house_type][g.default_debt_ratio];
 }
 
+// ── 중개보수 구간표 조회 (backend/app/tools/broker_fee.py 미러) ──
+function brokerFee(amount: number): number {
+  const bands = RULES.oneTime.brokerRateBands;
+  const band = bands.find(b => b.upto === null || amount < b.upto) ?? bands[bands.length - 1];
+  const fee = amount * band.rate;
+  return band.cap !== null ? Math.min(fee, band.cap) : fee;
+}
+
 export function compare(contract: ContractInfo, finance: FinanceInfo): CompareResponse {
   const { deposit, monthlyRent, type, expiryDate, renewalUsed } = contract;
   const { ownCapital, annualIncome, household, firstHome, under35 } = finance;
@@ -116,7 +124,7 @@ export function compare(contract: ContractInfo, finance: FinanceInfo): CompareRe
   const moveBudget = deposit + extra;
   const moveInterest = Math.round(extra * jeonseRate / 12);
   const moveGuarMonthly = Math.round(moveBudget * guaranteeRate(moveBudget) / 12);
-  const moveOneTime = Math.round(oneTime.moveBase + deposit * oneTime.brokerRate);
+  const moveOneTime = Math.round(oneTime.moveBase + brokerFee(deposit));
 
   const moveBranch: BranchResult = {
     branch: '이사',

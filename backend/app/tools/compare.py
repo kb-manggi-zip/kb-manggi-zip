@@ -16,6 +16,7 @@ from datetime import datetime, timezone
 
 from ..core.rules import Rules, get_rules, read_yaml
 from ..schemas import BranchResult, CompareResponse, ContractInfo, FinanceInfo
+from .broker_fee import broker_fee
 from .dates import d_day, notice_days_left, notice_deadline
 from .format import format_amt, js_round
 from .guarantee_hug import guarantee_rate
@@ -120,7 +121,7 @@ def compute_compare(
     move_budget = deposit + extra
     move_interest = js_round(extra * jeonse_rate / 12)
     move_guar_monthly = js_round(move_budget * guarantee_rate(move_budget) / 12)
-    move_one_time = js_round(one_time.moveBase + deposit * one_time.brokerRate)
+    move_one_time = js_round(one_time.moveBase + broker_fee(deposit))
 
     move_branch = BranchResult(
         branch="이사",

@@ -16,8 +16,17 @@ export const RULES = {
     feeRate: 0.0015,         // (구) 단일 보증요율 — B1.5에서 guaranteeHug 테이블로 대체
   },
   oneTime: {
-    moveBase: 1_500_000,     // 이사 기본 비용
-    brokerRate: 0.004,       // 중개 수수료율
+    moveBase: 800_000,       // 이사 기본 비용 (원룸~투룸 포장이사 비수기~성수기 평균, 2026 시세)
+    // 중개보수 — 서울특별시 주택 중개보수 등에 관한 조례(제8585호) 별표1, 임대차(전월세) 요율표.
+    // backend/rules/one_time.yaml::broker_rate_bands 와 동치. 데모 동네가 전부 서울이라 이 조례로 충분.
+    brokerRateBands: [
+      { upto: 50_000_000, rate: 0.005, cap: 200_000 },      // 5천만원 미만
+      { upto: 100_000_000, rate: 0.004, cap: 300_000 },     // 5천만~1억원 미만
+      { upto: 600_000_000, rate: 0.003, cap: null },        // 1억~6억원 미만
+      { upto: 1_200_000_000, rate: 0.004, cap: null },      // 6억~12억원 미만
+      { upto: 1_500_000_000, rate: 0.005, cap: null },      // 12억~15억원 미만
+      { upto: null, rate: 0.006, cap: null },                // 15억원 이상
+    ],
     acquisitionRate: 0.011,  // 취득세 등 부대비용율
   },
   noticeDeadlineMonths: 2,   // 갱신 의사 통보 기한
