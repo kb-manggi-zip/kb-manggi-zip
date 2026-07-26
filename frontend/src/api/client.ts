@@ -59,8 +59,9 @@ export const api = {
     );
   },
 
-  async regionsMonthly(): Promise<Region[]> {
-    return localOrRemote(() => REGIONS_MONTHLY, '/api/regions?branch=이사-월세');
+  async regionsMonthly(housingType?: HousingType): Promise<Region[]> {
+    const q = housingType ? `&housingType=${housingType}` : '';
+    return localOrRemote(() => REGIONS_MONTHLY, `/api/regions?branch=이사-월세${q}`);
   },
 
   async simulate(branch: Branch, _regionId: string): Promise<SimulateResponse> {
