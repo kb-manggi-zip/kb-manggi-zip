@@ -1,23 +1,18 @@
-"""LangGraph 오케스트레이션 — Phase B3 SEAM (미구현·미연결).
+"""LangGraph 오케스트레이션 — Phase B3 구현·연결 완료.
 
-현재 라우터(routers/api.py)는 tools·agents 를 **직접** 호출한다 (단순·안정).
-Phase B3에서 이 파일에 Supervisor 그래프를 구성하고, 라우터가 그래프를 경유하도록 바꾼다.
-그래프로 바꿔도 각 노드의 결과(계산·집계·통역)는 지금과 동일해야 한다(회귀 기준).
+라우터(routers/api.py)가 아래 컴파일된 그래프를 경유해 호출한다:
+  - build_compare_graph()  : compare 노드            → /api/compare
+  - build_regions_graph()  : regions 노드            → /api/regions
+  - build_analyze_graph()  : intake → compare → narrate (다단계 분석 에이전트) → /api/analyze
 
-의도한 그래프 (기획서 7절):
-    Supervisor
-      ├─ intake        (문진 정리)
-      ├─ compare       → tools/compare.py           (LLM 없음)
-      ├─ regions       → tools/molit.py             (LLM 없음)
-      ├─ simulate      → agents/narrator.py         (LLM)
-      ├─ content       → agents/briefing.py         (LLM, SSE)
-      └─ finance       → agents/matcher.py (RAG)    (LLM)
-    renewal 선택 시 regions/simulate 스킵 → finance 직행.
+전 노드에 Langfuse `@observe` 부착 + `analyze_agent` 부모 span으로 **한 trace에 nested**,
+프론트 `X-Session-Id` → `core/tracing.session_scope`로 **한 여정 = 한 Langfuse Session** 그룹핑.
+(검증: tests/, in-memory OTel exporter로 session.id 전파 확인)
 
-구현 시:
-  - requirements.txt 의 langgraph·langfuse 주석 해제
-  - 상태 스키마 = app/schemas.py 재사용 (AppState 확장)
-  - Langfuse 트레이싱을 전 노드에 부착 (발표용 노드 경로 캡처)
+남은 확장(선택):
+  - Supervisor 분기: renewal 선택 시 regions/simulate 스킵 → finance 직행 (현재는 화면 흐름이 담당)
+  - simulate 노드의 LLM 내레이션(현재 narrator는 결정론 YAML fixture)
+  - 계약서 Vision(extractor) 노드
 """
 
 from typing import TypedDict
