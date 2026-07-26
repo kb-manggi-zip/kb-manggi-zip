@@ -16,6 +16,7 @@ from datetime import datetime, timezone
 
 from ..core.rules import Rules, get_rules, read_yaml
 from ..schemas import BranchResult, CompareResponse, ContractInfo, FinanceInfo
+from .acquisition_tax import acquisition_fee
 from .broker_fee import broker_fee
 from .dates import d_day, notice_days_left, notice_deadline
 from .format import format_amt, js_round
@@ -167,7 +168,7 @@ def compute_compare(
         annuity_payment(policy_amt, policy.rate, term)
         + annuity_payment(bank_amt, kb_base, term)  # 표시용은 base(스트레스 아님)
     )
-    buy_one_time = js_round(max_price * one_time.acquisitionRate)
+    buy_one_time = js_round(acquisition_fee(max_price))
     if first_home == "예":
         buy_one_time = max(0, buy_one_time - acq_reduction)
 

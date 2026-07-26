@@ -27,7 +27,17 @@ export const RULES = {
       { upto: 1_500_000_000, rate: 0.005, cap: null },      // 12억~15억원 미만
       { upto: null, rate: 0.006, cap: null },                // 15억원 이상
     ],
-    acquisitionRate: 0.011,  // 취득세 등 부대비용율
+    // 취득세 — 지방세법 제11조 1항 8호(유상거래 주택). 85㎡ 이하 가정(농특세 면제).
+    // 지방교육세 = 취득세율×10%(§151①1호 단서) → 합산실효세율 = 취득세율×1.1.
+    // 6억 이하 1% 고정 / 6~9억 (가액÷3억×2−3)% 선형 / 9억 초과 3% 고정.
+    // backend/rules/one_time.yaml::acquisition 와 동치.
+    acquisition: {
+      lowThreshold: 600_000_000,   // 6억원
+      highThreshold: 900_000_000,  // 9억원
+      lowRate: 0.01,                // 6억 이하: 1%
+      highRate: 0.03,               // 9억 초과: 3%
+      eduTaxRatio: 0.1,             // 지방교육세 = 취득세율 × 10%
+    },
   },
   noticeDeadlineMonths: 2,   // 갱신 의사 통보 기한
 
