@@ -75,6 +75,7 @@ class AnalyzeState(TypedDict):
     finance: dict
     situation: str
     comparison: dict
+    routing: dict
     briefing: str
 
 
@@ -88,9 +89,21 @@ def intake_node(state: AnalyzeState) -> dict:
     return {"situation": briefing_agent.situation_of(state)}
 
 
+@observe(name="route_node")
+def route_node(state: AnalyzeState) -> dict:
+    """슈퍼바이저 — '어떤 규칙 세트/어떤 갈래가 현실적인지' 라우팅(결정론).
+
+    계산은 규칙, 여기선 '적용 선택'만. 경우의 수(주택유형×상황)가 늘수록 확장 우위 → '왜 에이전트'의 실체.
+    """
+    from .agents import supervisor
+
+    routing = supervisor.route(state["contract"], state["finance"], state["comparison"])
+    return {"routing": routing}
+
+
 @observe(name="narrate_node")
 def narrate_node(state: AnalyzeState) -> dict:
-    """개인화 통역 단계 — 계산된 숫자를 상황에 맞게 설명(LLM). 숫자는 comparison만 인용.
+    """개인화 통역 단계 — 계산된 숫자 + 라우팅(갈래 현실성)을 상황에 맞게 설명(LLM). 숫자는 comparison만 인용.
 
     페르소나는 여기서 하드코딩하지 않는다. briefing.build_system()이 persona_frames.yaml에서
     사용자 상황(계약유형·가구·청년·생애최초)에 매칭되는 관점 frame을 골라 시스템 프롬프트에 주입하고,
@@ -105,6 +118,7 @@ def narrate_node(state: AnalyzeState) -> dict:
             "comparison": state["comparison"],
             "contract": state["contract"],
             "finance": state["finance"],
+            "routing": state.get("routing"),
         },
     )
     return {"briefing": briefing_agent.run(req)}
@@ -114,9 +128,11 @@ def build_analyze_graph():
     graph = StateGraph(AnalyzeState)
     graph.add_node("intake", intake_node)
     graph.add_node("compare", compare_node)
+    graph.add_node("route", route_node)
     graph.add_node("narrate", narrate_node)
     graph.set_entry_point("intake")
     graph.add_edge("intake", "compare")
-    graph.add_edge("compare", "narrate")
+    graph.add_edge("compare", "route")
+    graph.add_edge("route", "narrate")
     graph.add_edge("narrate", END)
     return graph.compile()
