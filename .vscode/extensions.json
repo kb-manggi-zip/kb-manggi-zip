@@ -1,0 +1,7 @@
+{
+  // 이 프로젝트 권장 확장 (VS Code가 설치 안 된 것 알려줌)
+  "recommendations": [
+    "ms-python.python",       // 파이썬 디버그(debugpy)·테스트 — launch.json 동작에 필수
+    "charliermarsh.ruff"      // 저장 시 포맷/린트 (CI ruff와 동일)
+  ]
+}

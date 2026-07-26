@@ -1,0 +1,84 @@
+{
+  // KB 만기상담소 — VS Code 디버그 설정
+  // ▶ 사이드바 "실행 및 디버그"(⇧⌘D)에서 아래 구성 선택 후 F5.
+  //   브레이크포인트는 코드 줄 왼쪽 클릭. 서버 뜨면 http://127.0.0.1:8000/health
+  "version": "0.2.0",
+  "configurations": [
+    {
+      // 기본 디버그 — 브레이크포인트가 확실히 잡힘(--reload 없음)
+      "name": "🐛 백엔드 (FastAPI)",
+      "type": "debugpy",
+      "request": "launch",
+      "module": "uvicorn",
+      "args": ["app.main:app", "--host", "127.0.0.1", "--port", "8000"],
+      "cwd": "${workspaceFolder}/backend",
+      "python": "${workspaceFolder}/backend/.venv/bin/python",
+      "envFile": "${workspaceFolder}/backend/.env",
+      "console": "integratedTerminal",
+      "justMyCode": true
+    },
+    {
+      // LLM 끄고 결정론 폴백으로만 — 계산/스키마 디버깅에 재현성 좋음
+      "name": "🐛 백엔드 (LLM off · 결정론)",
+      "type": "debugpy",
+      "request": "launch",
+      "module": "uvicorn",
+      "args": ["app.main:app", "--host", "127.0.0.1", "--port", "8000"],
+      "cwd": "${workspaceFolder}/backend",
+      "python": "${workspaceFolder}/backend/.venv/bin/python",
+      "envFile": "${workspaceFolder}/backend/.env",
+      "env": { "LLM_ENABLED": "false" },
+      "console": "integratedTerminal",
+      "justMyCode": true
+    },
+    {
+      // 자동 리로드 O — 편하지만 리로드 워커라 브레이크포인트가 간헐적으로 안 잡힐 수 있음
+      "name": "🔁 백엔드 (--reload)",
+      "type": "debugpy",
+      "request": "launch",
+      "module": "uvicorn",
+      "args": ["app.main:app", "--reload", "--host", "127.0.0.1", "--port", "8000"],
+      "cwd": "${workspaceFolder}/backend",
+      "python": "${workspaceFolder}/backend/.venv/bin/python",
+      "envFile": "${workspaceFolder}/backend/.env",
+      "console": "integratedTerminal",
+      "justMyCode": true,
+      "subProcess": true
+    },
+    {
+      // 전체 테스트 디버그 (라이브러리도 스텝인 하려면 justMyCode=false)
+      "name": "🧪 pytest (전체)",
+      "type": "debugpy",
+      "request": "launch",
+      "module": "pytest",
+      "args": ["-q"],
+      "cwd": "${workspaceFolder}/backend",
+      "python": "${workspaceFolder}/backend/.venv/bin/python",
+      "console": "integratedTerminal",
+      "justMyCode": false
+    },
+    {
+      // 현재 열어둔 테스트 파일만 디버그
+      "name": "🧪 pytest (현재 파일)",
+      "type": "debugpy",
+      "request": "launch",
+      "module": "pytest",
+      "args": ["-q", "${file}"],
+      "cwd": "${workspaceFolder}/backend",
+      "python": "${workspaceFolder}/backend/.venv/bin/python",
+      "console": "integratedTerminal",
+      "justMyCode": false
+    },
+    {
+      // 아무 파이썬 파일이나 단독 실행 디버그 (스크립트/실험용)
+      "name": "🐍 현재 파이썬 파일",
+      "type": "debugpy",
+      "request": "launch",
+      "program": "${file}",
+      "cwd": "${workspaceFolder}/backend",
+      "python": "${workspaceFolder}/backend/.venv/bin/python",
+      "console": "integratedTerminal",
+      "justMyCode": false
+    }
+  ]
+}
