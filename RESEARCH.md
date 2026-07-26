@@ -98,6 +98,12 @@
 - **팀 작업:** 씬 정리본이 오면 `scenes.yaml`에 전세/매매 지역(mapo·eunpyeong·seongbuk…) override를 같은 형태로 추가(코드 수정 불필요).
 - **리서치(실 facts):** 경로(ODsay/TMAP)·POI(카카오)·물가(참가격)·로드뷰/이미지 → `agents/narrator.py`가 facts 기반 캡션 생성(Phase B4, LLM 내레이션).
 
+### C5-1. '온라인 발품' 지역 대표 데이터 — ⭐ 팀원이 채우는 seam (2026-07-26)
+- **채우는 곳:** `backend/data/region_facts.yaml` (regionId별 교통·장보기·카페먹거리·여가·물가). **채우기 가이드: `docs/지역데이터_채우기_가이드.md`**.
+- **동작:** `narrator.narrate_lifestyle`가 조회해 LLM 발품 프롬프트에 주입 → 채울수록 구체적. 비면 이름+태그만으로 생성(코드 무수정).
+- **소비 프로필:** `backend/app/agents/spending_profiles.yaml` — PoC 가정 → **실서비스는 KB 카드/소비 데이터로 교체**(같은 shape).
+- **출처:** 카카오맵(시설·상권)·ODsay(경로)·참가격(물가). ⚠️ 임의 작문 금지.
+
 **Done 기준:** 실 API 1회 호출 후 `cache/`로 재현 + `GET /api/regions`가 실집계 Region 반환 + 쿼터 보호 확인.
 
 ---

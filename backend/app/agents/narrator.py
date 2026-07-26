@@ -16,11 +16,13 @@ from pathlib import Path
 
 import yaml
 
+from ..core.config import BACKEND_ROOT
 from ..core.llm import generate
 from ..schemas import Branch, Scene, SimulateResponse
 
 _SCENES_YAML = Path(__file__).parent / "scenes.yaml"
 _PROFILES_YAML = Path(__file__).parent / "spending_profiles.yaml"
+_REGION_FACTS_YAML = BACKEND_ROOT / "data" / "region_facts.yaml"
 
 
 @lru_cache(maxsize=1)
@@ -55,6 +57,39 @@ def profile_for(household: str | None) -> dict:
     return p["profiles"].get(household or "", p["default"])
 
 
+@lru_cache(maxsize=1)
+def _region_facts() -> dict:
+    """지역 대표 데이터(교통·물가·시설) — data/region_facts.yaml. 팀원이 채우는 seam.
+
+    비어 있거나 파일 없으면 {} → 발품 내레이션은 name+tags만으로 생성(현재 동작).
+    """
+    if not _REGION_FACTS_YAML.exists():
+        return {}
+    with _REGION_FACTS_YAML.open(encoding="utf-8") as f:
+        return (yaml.safe_load(f) or {}).get("facts", {}) or {}
+
+
+def _facts_block(region_id: str | None) -> str:
+    """regionId → 프롬프트에 넣을 '동네 대표 정보' 블록(없으면 빈 문자열)."""
+    f = _region_facts().get(region_id or "", {})
+    if not f:
+        return ""
+    lines = []
+    for key, label in (
+        ("transport", "교통"),
+        ("grocery", "장보기"),
+        ("dining_cafe", "카페·먹거리"),
+        ("leisure", "여가"),
+    ):
+        if f.get(key):
+            lines.append(f"- {label}: {', '.join(f[key])}")
+    if f.get("price_level"):
+        lines.append(f"- 물가 체감: {f['price_level']}")
+    if f.get("notes"):
+        lines.append(f"- 참고: {f['notes']}")
+    return ("동네 대표 정보:\n" + "\n".join(lines) + "\n") if lines else ""
+
+
 def _region_of(ctx: dict) -> dict:
     """ctx의 region(dict) 우선, 없으면 regionName(str)만으로 최소 구성."""
     reg = ctx.get("region")
@@ -72,14 +107,16 @@ def build_lifestyle_prompt(ctx: dict) -> tuple[str, str]:
     name = reg.get("name") or "이 동네"
     tags = ", ".join(reg.get("tags") or []) or "정보 제한"
     branch = ctx.get("branch") or ""
+    facts = _facts_block(reg.get("id"))  # 팀원이 채운 지역 데이터(있으면 더 구체적)
     system = _profiles()["base"].strip()
     user = (
         f"동네: {name}\n"
         f"동네 특징(태그): {tags}\n"
+        f"{facts}"
         f"검토 갈래: {branch}\n"
         f"이 사용자 소비 성향: {', '.join(prof.get('traits', []))}\n"
         f"관심 키워드: {', '.join(prof.get('keywords', []))}\n"
-        "→ 위 특징·성향만 근거로 '이 동네에서의 하루'를 2~3문장으로 그려라. 금액·개수 단정 금지."
+        "→ 위 정보만 근거로 '이 동네에서의 하루'를 2~3문장으로 그려라. 주어지지 않은 금액·개수는 단정하지 마라."
     )
     return system, user
 
