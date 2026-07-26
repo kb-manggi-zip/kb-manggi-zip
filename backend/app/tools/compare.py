@@ -39,6 +39,9 @@ def compute_compare(
     monthly_rent = contract.monthlyRent
     ctype = contract.type
     renewal_used = contract.renewalUsed
+    # 주택유형 → HUG 요율 유형. 아파트/빌라(연립다세대) 둘 다 '주택'이라 세금·대출은 동일.
+    hug_type = "apartment" if contract.housingType == "아파트" else "other"
+    hug_label = "아파트" if contract.housingType == "아파트" else "연립·다세대"
     own_capital = finance.ownCapital
     annual_income = finance.annualIncome
     first_home = finance.firstHome
@@ -82,7 +85,7 @@ def compute_compare(
     new_monthly = js_round(monthly_rent * (1 + renewal.increaseCap)) if ctype == "월세" else 0
     deposit_gap = max(0, new_deposit - deposit)
     renewal_loan_interest = js_round(deposit_gap * jeonse_rate / 12)
-    renewal_guar_monthly = js_round(deposit * guarantee_rate(deposit) / 12)
+    renewal_guar_monthly = js_round(deposit * guarantee_rate(deposit, house_type=hug_type) / 12)
     renewal_monthly_burden = (
         renewal_loan_interest + renewal_guar_monthly if ctype == "전세" else new_monthly + renewal_guar_monthly
     )
@@ -121,7 +124,7 @@ def compute_compare(
     extra = min(js_round(deposit * 0.80), jeonse_cap)
     move_budget = deposit + extra
     move_interest = js_round(extra * jeonse_rate / 12)
-    move_guar_monthly = js_round(move_budget * guarantee_rate(move_budget) / 12)
+    move_guar_monthly = js_round(move_budget * guarantee_rate(move_budget, house_type=hug_type) / 12)
     move_one_time = js_round(one_time.moveBase + broker_fee(deposit))
 
     move_branch = BranchResult(
@@ -198,7 +201,7 @@ def compute_compare(
         "규제지역 LTV 40% (생애최초 70%)",
         "KB 주택구입 대출 한도 3억 (2026.7~)",
         "스트레스 DSR 수도권 3.0% (한도 산정에만 적용)",
-        "보증료 HUG 공시 요율 (아파트·부채비율 80% 이하 가정)",
+        f"보증료 HUG 공시 요율 ({hug_label}·부채비율 80% 이하 가정)",
         "기존 대출이 없다고 가정했어요. 대출이 있으면 한도가 줄어들 수 있어요",
     ]
     if first_home == "모름":

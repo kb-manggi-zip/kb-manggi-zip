@@ -1,6 +1,7 @@
 // 백엔드 Pydantic 모델과 1:1 계약 — 임의 변경 금지
 export type ContractType = '전세' | '월세';
 export type RenewalUsed = '미사용' | '사용' | '모름';
+export type HousingType = '아파트' | '빌라'; // 빌라=연립다세대(원룸·투룸·빌라). 둘 다 법적 '주택'
 export type Household = '1인' | '신혼' | '자녀';
 export type FirstHome = '예' | '아니오' | '모름';
 export type Branch = '갱신' | '이사' | '매매';
@@ -11,6 +12,7 @@ export interface ContractInfo {
   monthlyRent: number;
   expiryDate: string; // ISO date string
   renewalUsed: RenewalUsed;
+  housingType?: HousingType; // HUG 보증료 요율만 좌우(세금·대출은 둘 다 주택 동일). 기본 아파트
 }
 
 export interface FinanceInfo {

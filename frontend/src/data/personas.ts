@@ -23,6 +23,7 @@ export const PERSONAS: Persona[] = [
       monthlyRent: 0,
       expiryDate: futureDate(4),
       renewalUsed: '미사용',
+      housingType: '아파트',
     },
     finance: {
       annualIncome: 40_000_000,
@@ -41,6 +42,7 @@ export const PERSONAS: Persona[] = [
       monthlyRent: 0,
       expiryDate: futureDate(3),
       renewalUsed: '미사용',
+      housingType: '아파트',
     },
     finance: {
       annualIncome: 80_000_000,
@@ -59,6 +61,7 @@ export const PERSONAS: Persona[] = [
       monthlyRent: 2_000_000,
       expiryDate: futureDate(5),
       renewalUsed: '모름',
+      housingType: '빌라',
     },
     finance: {
       annualIncome: 55_000_000,
