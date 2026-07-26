@@ -195,6 +195,7 @@ export function compare(contract: ContractInfo, finance: FinanceInfo): CompareRe
   const savings = moveOneTime;
 
   const assumptions = [
+    '이 금액은 사전 가늠이며, 실제 대출 심사 결과와 다를 수 있어요',
     '전세대출 금리 HF 공시 평균 3.89%',
     '규제지역 LTV 40% (생애최초 70%)',
     'KB 주택구입 대출 한도 3억 (2026.7~)',
