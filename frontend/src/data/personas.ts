@@ -61,7 +61,7 @@ export const PERSONAS: Persona[] = [
       monthlyRent: 2_000_000,
       expiryDate: futureDate(5),
       renewalUsed: '모름',
-      housingType: '빌라',
+      housingType: '연립다세대',
     },
     finance: {
       annualIncome: 55_000_000,

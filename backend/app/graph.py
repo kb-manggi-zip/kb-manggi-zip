@@ -51,12 +51,13 @@ def build_compare_graph():
 class RegionsState(TypedDict):
     branch: str
     budget: int
+    houseType: str | None
     regions: list
 
 
 @observe(name="regions_node")
 def regions_node(state: RegionsState) -> dict:
-    result = molit.regions_by_branch(state["branch"], state["budget"])
+    result = molit.regions_by_branch(state["branch"], state["budget"], house_type=state.get("houseType"))
     return {"regions": [r.model_dump() for r in result]}
 
 

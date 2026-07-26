@@ -3,10 +3,11 @@
 - 서버 런타임은 이 DB에서만 읽는다 (외부 API 미접촉 = 데모 안정성).
 - 쓰기는 scripts/refresh/ (refresh_deals·seed_demo) 에서만.
 - DB 우선순위: TRADES_DB env > data/trades.db(실데이터) > data/trades.demo.db(커밋 스냅샷).
-- 스키마: trades(sigungu_code, umd_name, trade_type, price, monthly, area_m2, deal_ym, collected_at)
+- 스키마: trades(sigungu_code, umd_name, trade_type, house_type, price, monthly, area_m2, deal_ym, collected_at)
   · trade_type: 'sale'(매매) | 'jeonse'(전세) | 'monthly'(월세)
+  · house_type: '아파트' | '연립다세대' (국토부 API property_type 값 그대로) — 기본값 '아파트'(기존 데이터 호환)
   · price/monthly = 원(KRW). 매매·전세는 monthly=0.
-  · 멱등: (sigungu, deal_ym, trade_type) 배치 단위 DELETE 후 INSERT.
+  · 멱등: (sigungu, deal_ym, trade_type, house_type) 배치 단위 DELETE 후 INSERT.
 """
 
 import json
@@ -32,10 +33,11 @@ CREATE TABLE IF NOT EXISTS trades (
     monthly      INTEGER NOT NULL DEFAULT 0,
     area_m2      REAL,
     deal_ym      TEXT NOT NULL,
-    collected_at TEXT NOT NULL
+    collected_at TEXT NOT NULL,
+    house_type   TEXT NOT NULL DEFAULT '아파트'
 );
 CREATE INDEX IF NOT EXISTS ix_trades_type ON trades(trade_type);
-CREATE INDEX IF NOT EXISTS ix_trades_batch ON trades(sigungu_code, deal_ym, trade_type);
+CREATE INDEX IF NOT EXISTS ix_trades_batch ON trades(sigungu_code, deal_ym, trade_type, house_type);
 
 CREATE TABLE IF NOT EXISTS region_facts (
     region_id    TEXT NOT NULL,          -- 프론트 Region.id (예: mapo-m)
@@ -67,7 +69,16 @@ def connect(path: str) -> sqlite3.Connection:
     Path(path).parent.mkdir(parents=True, exist_ok=True)
     conn = sqlite3.connect(path)
     conn.executescript(SCHEMA)
+    _migrate(conn)
     return conn
+
+
+def _migrate(conn: sqlite3.Connection) -> None:
+    """CREATE TABLE IF NOT EXISTS는 기존 DB엔 새 컬럼을 안 만들어주므로 수동 보강."""
+    cols = {row[1] for row in conn.execute("PRAGMA table_info(trades)")}
+    if "house_type" not in cols:
+        conn.execute("ALTER TABLE trades ADD COLUMN house_type TEXT NOT NULL DEFAULT '아파트'")
+        conn.commit()
 
 
 def replace_batch(
@@ -76,18 +87,20 @@ def replace_batch(
     deal_ym: str,
     trade_type: str,
     rows: list[dict],
+    house_type: str = "아파트",
 ) -> int:
-    """(sigungu, deal_ym, trade_type) 배치 교체 — 재실행해도 중복 없음."""
+    """(sigungu, deal_ym, trade_type, house_type) 배치 교체 — 재실행해도 중복 없음."""
     collected_at = datetime.now(timezone.utc).isoformat()
     conn.execute(
-        "DELETE FROM trades WHERE sigungu_code=? AND deal_ym=? AND trade_type=?",
-        (sigungu_code, deal_ym, trade_type),
+        "DELETE FROM trades WHERE sigungu_code=? AND deal_ym=? AND trade_type=? AND house_type=?",
+        (sigungu_code, deal_ym, trade_type, house_type),
     )
     conn.executemany(
         """INSERT INTO trades
-           (sigungu_code, umd_name, trade_type, price, monthly, area_m2, deal_ym, collected_at)
-           VALUES (:sigungu_code, :umd_name, :trade_type, :price, :monthly, :area_m2, :deal_ym, :collected_at)""",
-        [{**r, "collected_at": collected_at} for r in rows],
+           (sigungu_code, umd_name, trade_type, house_type, price, monthly, area_m2, deal_ym, collected_at)
+           VALUES (:sigungu_code, :umd_name, :trade_type, :house_type,
+                   :price, :monthly, :area_m2, :deal_ym, :collected_at)""",
+        [{**r, "house_type": house_type, "collected_at": collected_at} for r in rows],
     )
     conn.commit()
     return len(rows)
@@ -99,8 +112,9 @@ def read_trades(
     db_path: Optional[str] = None,
     sigungu_code: Optional[str] = None,
     deal_ym: Optional[str] = None,
+    house_type: Optional[str] = None,
 ) -> list[dict]:
-    """trade_type 의 정규화 거래 읽기 (aggregate 입력용 TradeRow shape)."""
+    """trade_type 의 정규화 거래 읽기 (aggregate 입력용 TradeRow shape). house_type 미지정 시 전체(아파트+빌라)."""
     path = db_path or resolve_db_path(write=False)
     if not path or not Path(path).exists():
         raise RuntimeError(
@@ -111,7 +125,7 @@ def read_trades(
         )
     conn = connect(path)
     try:
-        q = "SELECT umd_name, price, monthly, area_m2, deal_ym FROM trades WHERE trade_type=?"
+        q = "SELECT umd_name, price, monthly, area_m2, deal_ym, house_type FROM trades WHERE trade_type=?"
         params: list = [trade_type]
         if sigungu_code:
             q += " AND sigungu_code=?"
@@ -119,10 +133,13 @@ def read_trades(
         if deal_ym:
             q += " AND deal_ym=?"
             params.append(deal_ym)
+        if house_type:
+            q += " AND house_type=?"
+            params.append(house_type)
         cur = conn.execute(q, params)
         rows = [
-            {"umd_name": u, "price": p, "monthly": m, "area_m2": a, "deal_ym": ym}
-            for (u, p, m, a, ym) in cur.fetchall()
+            {"umd_name": u, "price": p, "monthly": m, "area_m2": a, "deal_ym": ym, "house_type": ht}
+            for (u, p, m, a, ym, ht) in cur.fetchall()
         ]
     finally:
         conn.close()

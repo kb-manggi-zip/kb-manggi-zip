@@ -20,12 +20,19 @@ def test_normalize_sale():
             "sigungu_code": "11440",
             "umd_name": "합정동",
             "trade_type": "sale",
+            "house_type": "아파트",
             "price": 825_000_000,
             "monthly": 0,
             "area_m2": 84.9,
             "deal_ym": "202605",
         }
     ]
+
+
+def test_normalize_house_type_passthrough():
+    recs = [{"법정동": "길음동", "거래금액": "50,000", "전용면적": 39.6}]
+    rows = normalize_rows(recs, "11290", "202605", "sale", house_type="연립다세대")
+    assert rows[0]["house_type"] == "연립다세대"
 
 
 def test_normalize_rent_splits_jeonse_monthly():

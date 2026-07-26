@@ -4,7 +4,8 @@ fetch_trades(실 API)는 STUB이지만, 그 뒤 aggregate_to_regions는 완성�
 (실 API 붙으면 fetch_trades가 아래 TradeRow[]를 채워주기만 하면 됨)
 """
 
-from app.tools.molit import TradeRow, aggregate_to_regions
+from app.tools import trades_store
+from app.tools.molit import TradeRow, aggregate_to_regions, fetch_trades
 
 
 def _rows() -> list[TradeRow]:
@@ -45,6 +46,54 @@ def test_monthly_mid_price():
     regions = aggregate_to_regions(rows, "이사", budget=0, monthly=True)
     assert regions[0].monthlyMidPrice == 1_950_000
     assert regions[0].branch == "이사"
+
+
+def test_fetch_trades_house_type_filter(tmp_path, monkeypatch):
+    db = str(tmp_path / "t.db")
+    conn = trades_store.connect(db)
+    trades_store.replace_batch(
+        conn,
+        "11440",
+        "202605",
+        "sale",
+        [
+            {
+                "sigungu_code": "11440",
+                "umd_name": "합정동",
+                "trade_type": "sale",
+                "price": 500_000_000,
+                "monthly": 0,
+                "area_m2": 84.9,
+                "deal_ym": "202605",
+            }
+        ],
+        house_type="아파트",
+    )
+    trades_store.replace_batch(
+        conn,
+        "11440",
+        "202605",
+        "sale",
+        [
+            {
+                "sigungu_code": "11440",
+                "umd_name": "합정동",
+                "trade_type": "sale",
+                "price": 300_000_000,
+                "monthly": 0,
+                "area_m2": 39.6,
+                "deal_ym": "202605",
+            }
+        ],
+        house_type="연립다세대",
+    )
+    conn.close()
+    monkeypatch.setenv("TRADES_DB", db)
+
+    all_rows = fetch_trades("sale")  # house_type 미지정 → 전체 블렌드
+    assert len(all_rows) == 2
+    apt_rows = fetch_trades("sale", house_type="아파트")
+    assert len(apt_rows) == 1 and apt_rows[0]["price"] == 500_000_000
 
 
 def test_enrichment_join():

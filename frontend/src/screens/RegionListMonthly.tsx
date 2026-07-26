@@ -15,8 +15,8 @@ export default function RegionListMonthly() {
   const [regions, setRegions] = useState<Region[]>([]);
 
   useEffect(() => {
-    api.regionsMonthly().then(setRegions);
-  }, []);
+    api.regionsMonthly(state.contract?.housingType).then(setRegions);
+  }, [state.contract?.housingType]);
 
   function selectRegion(r: Region) {
     dispatch({ type: 'SELECT_REGION', regionId: r.id, region: r });

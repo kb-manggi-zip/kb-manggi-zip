@@ -37,10 +37,13 @@ MONTHLY = [
 ]
 
 AREAS = [59.9, 74.9, 84.9]
+VILLA_AREAS = [29.9, 39.6, 49.5]  # 연립다세대는 아파트보다 소형 위주(원룸~투룸)
+VILLA_PRICE_RATIO = 0.65  # 같은 동네 기준 연립다세대는 아파트 대비 대략 낮은 가격대(합성 근사)
 PER_DONG = 40  # 동별 합성 거래 수
 
 
-def _rows(rng, sigungu, umd, tt, price_c, deal_ym, monthly_c=0):
+def _rows(rng, sigungu, umd, tt, price_c, deal_ym, monthly_c=0, house_type="아파트"):
+    areas = VILLA_AREAS if house_type == "연립다세대" else AREAS
     out = []
     for _ in range(PER_DONG):
         price = int(price_c * (1 + rng.gauss(0, 0.06)))
@@ -50,9 +53,10 @@ def _rows(rng, sigungu, umd, tt, price_c, deal_ym, monthly_c=0):
                 "sigungu_code": sigungu,
                 "umd_name": umd,
                 "trade_type": tt,
+                "house_type": house_type,
                 "price": price,
                 "monthly": mon,
-                "area_m2": rng.choice(AREAS),
+                "area_m2": rng.choice(areas),
                 "deal_ym": deal_ym,
             }
         )
@@ -68,18 +72,26 @@ def run() -> None:
     conn.commit()
     t0 = time.time()
 
-    # 매매
+    # 매매 (아파트 + 연립다세대)
     for sig, umd, pc in SALE:
         for ym in months:
             trades_store.replace_batch(conn, sig, ym, "sale", _rows(rng, sig, umd, "sale", pc, ym))
-    # 전세
+            villa_rows = _rows(rng, sig, umd, "sale", int(pc * VILLA_PRICE_RATIO), ym, house_type="연립다세대")
+            trades_store.replace_batch(conn, sig, ym, "sale", villa_rows, house_type="연립다세대")
+    # 전세 (아파트 + 연립다세대)
     for sig, umd, pc in JEONSE:
         for ym in months:
             trades_store.replace_batch(conn, sig, ym, "jeonse", _rows(rng, sig, umd, "jeonse", pc, ym))
-    # 월세
+            villa_rows = _rows(rng, sig, umd, "jeonse", int(pc * VILLA_PRICE_RATIO), ym, house_type="연립다세대")
+            trades_store.replace_batch(conn, sig, ym, "jeonse", villa_rows, house_type="연립다세대")
+    # 월세 (아파트 + 연립다세대)
     for sig, umd, dc, mc in MONTHLY:
         for ym in months:
             trades_store.replace_batch(conn, sig, ym, "monthly", _rows(rng, sig, umd, "monthly", dc, ym, monthly_c=mc))
+            villa_rows = _rows(
+                rng, sig, umd, "monthly", int(dc * VILLA_PRICE_RATIO), ym, monthly_c=mc, house_type="연립다세대"
+            )
+            trades_store.replace_batch(conn, sig, ym, "monthly", villa_rows, house_type="연립다세대")
 
     print("── 데모 스냅샷 (SYNTHETIC) ──")
     sanity_check(conn, set(months))
