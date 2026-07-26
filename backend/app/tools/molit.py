@@ -79,11 +79,15 @@ def aggregate_to_regions(
     enrich: Optional[dict[str, Enrichment]] = None,
     top: int = 3,
 ) -> list[Region]:
-    """실거래 → 동별 집계 → 예산 필터 → 거래 활발 순 상위 N.
+    """실거래 → 동별 집계 → 예산 필터 → 예산 적합 순 상위 N.
 
     - midPrice = 동별 중위 price / monthlyMidPrice = 동별 중위 monthly(monthly=True)
     - surplus = budget - midPrice (budget>0 시 예산 이내만)
-    - 정렬 = tradeCount 내림차순
+    - 정렬:
+        · budget>0 → **surplus 오름차순**(예산에 가장 잘 맞는=예산으로 갈 수 있는 상위 동네).
+          거래건수(유동성)로 tie-break. → 갈래(매매 sale / 전세 jeonse)마다 가격대가 달라
+          후보 동네가 달라진다(거래건수만으로 정렬하면 대단지가 모든 갈래에 똑같이 뜨는 문제 해결).
+        · budget=0 → 정보 없으니 tradeCount 내림차순(구 동작).
     """
     enrich = enrich or {}
     groups: dict[str, list[TradeRow]] = {}
@@ -112,7 +116,10 @@ def aggregate_to_regions(
 
     if budget > 0:
         regions = [r for r in regions if r.midPrice <= budget]
-    regions.sort(key=lambda r: r.tradeCount, reverse=True)
+        # 예산 근접(surplus 오름차순) → 예산으로 갈 수 있는 상위 동네. 유동성(tradeCount)로 tie-break.
+        regions.sort(key=lambda r: (r.surplus, -r.tradeCount))
+    else:
+        regions.sort(key=lambda r: r.tradeCount, reverse=True)
     return regions[:top]
 
 
