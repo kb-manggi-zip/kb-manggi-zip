@@ -21,14 +21,12 @@
 | **규정값 검증 반영** (lending/policy/guarantee, 2026-07-20 대조) | ✅ |
 | 인프라: Docker/compose · CI(pytest·ruff·build) · 55 tests green | ✅ |
 
-## ⬜ 다음 (우선순위)  — 상세 로드맵: `docs/에이전트_설계_로드맵.md`
-1. **🟡 `region_facts.yaml` 채우기**(팀) — 동네 교통·물가·시설 → 발품 구체화. [가이드: docs/지역데이터_채우기_가이드.md]
-2. **🔴 빌라(연립·다세대) HUG `other` 요율 검증**(사람) — 나머지 규정값 5개·중개보수·취득세 구간표는 ✅ 완료(PR #22).
-3. **⬜ disclaimer 1줄** — "사전 가늠·정식 심사 아님"(매매 카드).
-4. **📊 발표 준비** — Langfuse 4노드 경로 캡처, 데모 시나리오(P2 매매 / P3 월세).
-5. **🔴 오피스텔(준주택) rule set** — 세금·대출·규제 새 리서치+구현(범위 확장, 로드맵 §6-C). 이후 `housingType` 필드(스키마).
+## ⬜ 다음 (우선순위)  — 상세 로드맵: `docs/에이전트_설계_로드맵.md` · 데모: `docs/발표_골든패스_시나리오.md`
+1. **📊 발표 준비** — 골든패스(P2 매매/P3 이사) 리허설 + Langfuse 4노드 캡처. [발표_골든패스_시나리오.md]
+2. **🔑 실측 키 넣으면 자동완성**(선택) — `ODSAY_API_KEY`→통근 실측, `SBIZ_API_KEY`는 이미 수집됨. [API_키_발급_가이드.md]
+3. **🔴 빌라 HUG `other` 요율 검증** · **오피스텔 rule set**(범위 확장) — 로드맵 §6.
 
-**✅ 최근 완료**: 세션 트레이싱(한 여정=한 Langfuse Session) · 발품 LLM 내레이션 · **supervisor 라우팅**(intake→compare→route→narrate) · 규정값 0726 반영 · 문서 정직화.
+**✅ 최근 완료**: 발품 3중 그라운딩(상권 실집계 + 통근 조건부 + **국토부 실거래 사례**) · region_facts 상권 API 자동수집 · ODsay 통근(폴백) · 만기 D-day 전화면 유지 · disclaimer · supervisor 라우팅 · 세션 트레이싱 · 규정값 검증.
 
 ## 핵심 결정 로그 (왜 이렇게 했나)
 - **규정값 = YAML(DB 아님)**: 소량·저빈도·감사대상 → git diff·PR리뷰·source_url/checked_at 이력이 핵심.
