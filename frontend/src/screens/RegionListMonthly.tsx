@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useApp } from '../store';
 import { COLORS } from '../theme';
-import { MobileShell, FlowProgress, BackBtn, Disclaimer } from '../components/ui';
+import { MobileShell, FlowProgress, BackBtn, Disclaimer, DdayBadge } from '../components/ui';
 import AiBriefing from '../components/AiBriefing';
 import { api, briefings } from '../api/client';
 import { formatAmount } from '../utils/format';
@@ -31,6 +31,7 @@ export default function RegionListMonthly() {
         <BackBtn onClick={() => dispatch({ type: 'NAVIGATE', screen: 'SC-03' })} />
         <span className="text-lg">🚚</span>
         <span className="font-bold" style={{ color: COLORS.BLUE }}>이사 · 월세 동네 후보</span>
+        {state.comparison && <span className="ml-auto"><DdayBadge dday={state.comparison.dday} /></span>}
       </div>
 
       {/* 서브 탭 */}

@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useApp } from '../store';
 import { COLORS, BRANCH_COLORS, BRANCH_ICONS } from '../theme';
-import { MobileShell, FlowProgress, BackBtn, PrimaryBtn, SecondaryBtn, BasisChip, Disclaimer, Toast } from '../components/ui';
+import { MobileShell, FlowProgress, BackBtn, PrimaryBtn, SecondaryBtn, BasisChip, Disclaimer, Toast, DdayBadge } from '../components/ui';
 import AiBriefing from '../components/AiBriefing';
 import { api, briefings } from '../api/client';
 import { formatAmount } from '../utils/format';
@@ -42,6 +42,7 @@ export default function FinancePackage() {
         <h1 className="text-lg font-bold" style={{ color }}>
           {selectedBranch} · KB 금융 패키지
         </h1>
+        {comparison && <span className="ml-auto"><DdayBadge dday={comparison.dday} /></span>}
       </div>
 
       <div className="flex-1 overflow-y-auto px-5 py-5 space-y-4">

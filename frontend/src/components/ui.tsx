@@ -2,6 +2,19 @@ import React, { useState } from 'react';
 import { COLORS, BRANCH_COLORS, BRANCH_ICONS } from '../theme';
 import type { Branch } from '../api/types';
 
+// ─── 만기 D-day 배지 (급성감 유지 — 탐색 화면에서도 "지금 결정 중"을 상기) ───
+export function DdayBadge({ dday }: { dday: number }) {
+  return (
+    <span
+      className="inline-flex items-center gap-1 text-xs font-bold px-2.5 py-1 rounded-full whitespace-nowrap"
+      style={{ background: '#FDECEC', color: '#D64545' }}
+      title="계약 만기까지 남은 날"
+    >
+      ⏰ 만기 D-{dday}
+    </span>
+  );
+}
+
 // ─── Layout Shell ───────────────────────────────────────────────────────────
 export function MobileShell({ children, className = '' }: { children: React.ReactNode; className?: string }) {
   return (
