@@ -19,7 +19,7 @@ import yaml
 from ..core.config import BACKEND_ROOT
 from ..core.llm import generate
 from ..schemas import Branch, Scene, SimulateResponse
-from ..tools import trades_store
+from ..tools import trades_store, transit
 
 _SCENES_YAML = Path(__file__).parent / "scenes.yaml"
 _PROFILES_YAML = Path(__file__).parent / "spending_profiles.yaml"
@@ -112,6 +112,22 @@ def _region_of(ctx: dict) -> dict:
 _BRANCH_TRADE = {"매매": "sale", "이사": "jeonse", "갱신": "jeonse"}
 
 
+def _transit_fact(reg: dict, household: str | None) -> str:
+    """동네 center → 가구별 대표 직장까지 통근시간 발품(ODsay 실측 or 직선거리 예상치).
+
+    좌표·직장 없으면 ''. 폴백(예상치)은 순수계산이라 런타임/오프라인 안전.
+    """
+    lat, lng = reg.get("lat"), reg.get("lng")
+    wp = profile_for(household).get("workplace")
+    if not (lat and lng and wp):
+        return ""
+    c = transit.commute(float(lat), float(lng), wp["lat"], wp["lng"])
+    tr = f", 환승 {c['transfers']}회" if c.get("transfers") else ""
+    tag = "(예상)" if c.get("estimated") else ""
+    # 직장은 '가정'(모를 수 있음) → 조건부로. 프롬프트가 '~라면'으로 서술.
+    return f"통근(가정): {wp['name']} 근무 시 대중교통 약 {c['minutes']}분{tr}{tag}"
+
+
 def _trade_fact(region_name: str, branch: str) -> str:
     """동네 실거래 사례 1건 → '최근 실거래' 근거(국토부 실데이터). 없으면 ''."""
     dong = (region_name or "").split()[-1]  # "마포구 망원동" → "망원동"
@@ -136,17 +152,21 @@ def build_lifestyle_prompt(ctx: dict) -> tuple[str, str]:
     facts = _facts_block(reg.get("id"))  # 자동 상권(DB) + 수기(YAML) 병합
     trade = _trade_fact(name, branch)  # 실거래 사례(국토부) — 있으면 근거로 인용 허용
     trade_line = f"{trade}\n" if trade else ""
+    commute = _transit_fact(reg, fin.get("household"))  # 직장까지 통근시간
+    commute_line = f"{commute}\n" if commute else ""
     system = _profiles()["base"].strip()
     user = (
         f"동네: {name}\n"
         f"동네 특징(태그): {tags}\n"
         f"{facts}"
+        f"{commute_line}"
         f"{trade_line}"
         f"검토 갈래: {branch}\n"
         f"이 사용자 소비 성향: {', '.join(prof.get('traits', []))}\n"
         f"관심 키워드: {', '.join(prof.get('keywords', []))}\n"
-        "→ 위 정보로 '이 동네에서의 하루'를 2~3문장으로 그려라. '최근 실거래'는 국토부 실데이터이니 "
-        "그대로 한 번 언급해도 좋다(그 외 주어지지 않은 금액·개수는 단정 금지)."
+        "→ 위 정보로 '이 동네에서의 하루'를 2~3문장으로 그려라. '통근(가정)' 정보가 있으면 직장은 확실치 않으니 "
+        "**'만약 …로 통근한다면 약 N분' 식 조건부로** 자연스럽게 녹여라(단정 금지). '최근 실거래'는 국토부 "
+        "실데이터이니 그대로 한 번 언급해도 좋다(그 외 주어지지 않은 금액·개수는 단정 금지)."
     )
     return system, user
 
