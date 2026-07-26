@@ -76,6 +76,25 @@ export const api = {
     );
   },
 
+  // '이 동네에서의 하루' 개인화 발품 내레이션 (agent 모드: 백엔드 LLM+소비프로필 / 로컬: 템플릿)
+  async dayLifestyle(region: Region | null, branch: Branch, finance: FinanceInfo | null): Promise<string> {
+    const regionName = region?.name ?? '이 동네';
+    const local = () => briefings.dayPlayer(regionName);
+    if (!API_URL) return local();
+    try {
+      const res = await fetch(`${API_URL}/api/briefing`, {
+        method: 'POST',
+        headers: apiHeaders(),
+        body: JSON.stringify({ kind: 'dayPlayer', context: { region, regionName, branch, finance } }),
+      });
+      if (!res.ok) return local();
+      const j = await res.json();
+      return (j?.text as string) || local();   // 실패·빈 응답이면 로컬 템플릿으로 안전 폴백
+    } catch {
+      return local();
+    }
+  },
+
   async products(branch: Branch, _comparison: CompareResponse): Promise<ProductsResponse> {
     return localOrRemote(
       () => branch === '갱신' ? PRODUCTS_RENEWAL : branch === '이사' ? PRODUCTS_MOVE : PRODUCTS_BUY,

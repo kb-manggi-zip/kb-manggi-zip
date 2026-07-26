@@ -26,7 +26,7 @@ export default function RegionList() {
   const briefText = regions.length > 0 ? briefings.regions(regions[0]) : null;
 
   function selectRegion(r: Region) {
-    dispatch({ type: 'SELECT_REGION', regionId: r.id });
+    dispatch({ type: 'SELECT_REGION', regionId: r.id, region: r });
     dispatch({ type: 'NAVIGATE', screen: 'SC-07' });
   }
 
