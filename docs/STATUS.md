@@ -22,7 +22,7 @@
 | 인프라: Docker/compose · CI(pytest·ruff·build) · 55 tests green | ✅ |
 
 ## ⬜ 다음 (우선순위)
-1. **🎬 narrator 개인화** — 하루 시뮬이 fixture(이사=월세로/전세로 동일 씬). LLM/지역별 씬 생성 필요. [B3 STUBS]
+1. **🎬 narrator 개인화** — ✅ '온라인 발품' LLM 내레이션 완료(소비 프로필 그라운딩, 화면 표시). 🟡 `data/region_facts.yaml`(동네 교통·물가·시설) 팀원이 채우는 중 → 채울수록 더 구체적. [가이드: docs/지역데이터_채우기_가이드.md]
 2. **🕸 세션 트레이싱** — 지금은 API콜별 trace. 사용자 세션ID를 전 API에 전파 → Langfuse에서 **한 사용자 여정(analyze→regions→products) 하나로** 그룹핑.
 3. **🔴 남은 값 검증**(사람) — 생애최초 취득세 감면 일몰 · 중개보수/취득세 구간표 · 규제지역 발표 직전 재확인.
 4. **📊 발표 준비** — Langfuse 대시보드 캡처, 데모 시나리오(P2 매매 / P3 월세).

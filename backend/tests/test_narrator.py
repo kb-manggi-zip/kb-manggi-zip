@@ -81,3 +81,21 @@ def test_daylifestyle_via_briefing_kind():
     ctx = {"region": {"name": "은평구 녹번동", "tags": ["조용한"]}, "finance": {"household": "신혼"}, "branch": "매매"}
     out = _briefing.run(BriefingRequest(kind="dayPlayer", context=ctx))
     assert "녹번동" in out
+
+
+def test_region_facts_block_injects_when_present():
+    """region_facts.yaml에 있는 regionId → 대표 정보 블록이 생성된다(예시 mapo-m)."""
+    block = narrator._facts_block("mapo-m")
+    assert "동네 대표 정보" in block and "망원역" in block
+    assert narrator._facts_block("존재안함") == ""  # 없으면 빈 문자열
+
+
+def test_lifestyle_prompt_uses_region_facts():
+    """region.id가 facts에 있으면 프롬프트에 대표 정보가 들어간다."""
+    ctx = {
+        "region": {"id": "mapo-m", "name": "마포구 망원동", "tags": []},
+        "finance": {"household": "청년"},
+        "branch": "이사",
+    }
+    _, user = narrator.build_lifestyle_prompt(ctx)
+    assert "교통" in user and "망원역" in user
