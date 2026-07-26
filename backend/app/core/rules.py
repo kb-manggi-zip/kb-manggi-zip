@@ -26,6 +26,7 @@ class RenewalRules(BaseModel):
 
 class OneTimeRules(BaseModel):
     moveBase: float
+    moveBaseBuy: float
 
 
 class Rules(BaseModel):
@@ -76,6 +77,7 @@ def get_rules() -> Rules:
         ),
         oneTime=OneTimeRules(
             moveBase=_value(one_time, "move_base", "one_time.yaml"),
+            moveBaseBuy=_value(one_time, "move_base_buy", "one_time.yaml"),
         ),
         noticeDeadlineMonths=int(_value(renewal, "notice_deadline_months", "renewal.yaml")),
     )

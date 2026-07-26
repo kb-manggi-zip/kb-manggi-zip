@@ -69,7 +69,7 @@
             "headline": "최대 3억 8,333만 내 집",
             "depositOrPrice": 383333333,
             "loanAmount": 153333333,
-            "oneTimeCost": 4216667,
+            "oneTimeCost": 6950000,
             "guaranteeMonthly": 0,
             "monthlyBurden": 634121,
             "risks": [
@@ -173,7 +173,7 @@
             "headline": "최대 7억 7,681만 내 집",
             "depositOrPrice": 776806525,
             "loanAmount": 396806525,
-            "oneTimeCost": 16616712,
+            "oneTimeCost": 20923938,
             "guaranteeMonthly": 0,
             "monthlyBurden": 1694512,
             "risks": [
@@ -277,7 +277,7 @@
             "headline": "최대 1억 5,833만 내 집",
             "depositOrPrice": 158333333,
             "loanAmount": 63333333,
-            "oneTimeCost": 1741667,
+            "oneTimeCost": 3733333,
             "guaranteeMonthly": 0,
             "monthlyBurden": 261920,
             "risks": [
@@ -381,7 +381,7 @@
             "headline": "최대 4억 5,000만 내 집",
             "depositOrPrice": 450000000,
             "loanAmount": 180000000,
-            "oneTimeCost": 4950000,
+            "oneTimeCost": 7950000,
             "guaranteeMonthly": 0,
             "monthlyBurden": 744403,
             "risks": [
@@ -485,7 +485,7 @@
             "headline": "최대 1억 8,333만 내 집",
             "depositOrPrice": 183333333,
             "loanAmount": 128333333,
-            "oneTimeCost": 16667,
+            "oneTimeCost": 2016667,
             "guaranteeMonthly": 0,
             "monthlyBurden": 530732,
             "risks": [

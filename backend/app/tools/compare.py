@@ -168,7 +168,8 @@ def compute_compare(
         annuity_payment(policy_amt, policy.rate, term)
         + annuity_payment(bank_amt, kb_base, term)  # 표시용은 base(스트레스 아님)
     )
-    buy_one_time = js_round(acquisition_fee(max_price))
+    buy_move_broker = broker_fee(max_price, table="broker_rate_bands_purchase")
+    buy_one_time = js_round(one_time.moveBaseBuy + buy_move_broker + acquisition_fee(max_price))
     if first_home == "예":
         buy_one_time = max(0, buy_one_time - acq_reduction)
 

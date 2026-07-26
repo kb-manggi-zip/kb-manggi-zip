@@ -53,8 +53,7 @@ function guaranteeRate(deposit: number): number {
 }
 
 // ── 중개보수 구간표 조회 (backend/app/tools/broker_fee.py 미러) ──
-function brokerFee(amount: number): number {
-  const bands = RULES.oneTime.brokerRateBands;
+function brokerFee(amount: number, bands: typeof RULES.oneTime.brokerRateBands = RULES.oneTime.brokerRateBands): number {
   const band = bands.find(b => b.upto === null || amount < b.upto) ?? bands[bands.length - 1];
   const fee = amount * band.rate;
   return band.cap !== null ? Math.min(fee, band.cap) : fee;
@@ -170,7 +169,8 @@ export function compare(contract: ContractInfo, finance: FinanceInfo): CompareRe
   const policyAmt = policy.eligible ? Math.min(policyLimit, needed) : 0;
   const bankAmt = needed - policyAmt;
   const buyMonthly = Math.round(annuity(policyAmt, policy.rate, term) + annuity(bankAmt, kbBase, term));
-  let buyOneTime = Math.round(acquisitionFee(maxPrice));
+  const buyMoveBroker = brokerFee(maxPrice, oneTime.brokerRateBandsPurchase);
+  let buyOneTime = Math.round(oneTime.moveBaseBuy + buyMoveBroker + acquisitionFee(maxPrice));
   if (firstHome === '예') buyOneTime = Math.max(0, buyOneTime - acqReduction);
 
   const buyBasis = [`규제지역 LTV ${Math.round(ltv * 100)}%`, 'KB 한도 3억', '스트레스 DSR 가산 3.0%'];
