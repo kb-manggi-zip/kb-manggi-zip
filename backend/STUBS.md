@@ -18,7 +18,7 @@
 |---|---|---|
 | B1 | `core/llm.py::_call_claude` | ✅ 실 Claude 호출 동작 (`llm_active`면 실호출, 아니면 템플릿 폴백) |
 | B2 | `core/llm.py::generate` | ✅ `verify.numbers_grounded` 재생성 2회 루프 완료 (권유·숫자 검증) |
-| B3 | `agents/narrator.py` | ✅ **씬 YAML 레지스트리**(scenes.yaml, 월세로≠전세로) + ✅ **'온라인 발품' LLM 내레이션**(`narrate_lifestyle`: 동네 실데이터+소비 프로필 `spending_profiles.yaml`, 금액 단정 금지, llm off 폴백). 🟡 `data/region_facts.yaml`(교통·물가·시설)은 seam만 뚫림 — **팀원이 채우는 중**(가이드: docs/지역데이터_채우기_가이드.md). 소비 프로필은 PoC 가정→KB 카드데이터로 교체 seam |
+| B3 | `agents/narrator.py` | ✅ **씬 YAML 레지스트리**(scenes.yaml, 월세로≠전세로) + ✅ **'온라인 발품' LLM 내레이션**(`narrate_lifestyle`: 동네 실데이터+소비 프로필 `spending_profiles.yaml`, 금액 단정 금지, llm off 폴백). 🟡 지역 데이터: **상권(grocery/dining/leisure)은 자동 수집 파이프라인 완성**(`scripts/refresh/refresh_regions.py`=소상공인 API→`trades_store.region_facts`, narrator가 DB+YAML 병합). **`.env` `SBIZ_API_KEY`만 넣고 실행하면 채워짐**. transport는 수기(region_facts.yaml). 소비 프로필은 KB 카드데이터로 교체 seam |
 | B4 | `agents/matcher.py` | ✅ 문서(kb_products) 기반 규칙 매칭 + LLM 사유. 개인화 자격필터는 finance 필요(스키마 확장 대기) |
 | B5 | `agents/briefing.py`·`drafter.py` | ✅ 실 Claude + **개인화 가이드**(YAML `persona_frames.yaml` 상황별 프레임). drafter도 실호출 |
 | B6 | `routers/api.py` briefing | ✅ `/api/briefing/stream` SSE(페이싱 포함). 단 compare 화면은 `/api/analyze`의 briefing 재사용(SSE 미사용) |

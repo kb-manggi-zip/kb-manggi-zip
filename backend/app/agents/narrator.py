@@ -19,6 +19,7 @@ import yaml
 from ..core.config import BACKEND_ROOT
 from ..core.llm import generate
 from ..schemas import Branch, Scene, SimulateResponse
+from ..tools import trades_store
 
 _SCENES_YAML = Path(__file__).parent / "scenes.yaml"
 _PROFILES_YAML = Path(__file__).parent / "spending_profiles.yaml"
@@ -58,20 +59,29 @@ def profile_for(household: str | None) -> dict:
 
 
 @lru_cache(maxsize=1)
-def _region_facts() -> dict:
-    """지역 대표 데이터(교통·물가·시설) — data/region_facts.yaml. 팀원이 채우는 seam.
-
-    비어 있거나 파일 없으면 {} → 발품 내레이션은 name+tags만으로 생성(현재 동작).
-    """
+def _region_facts_yaml() -> dict:
+    """수기 지역 데이터(주로 transport) — data/region_facts.yaml. 없으면 {}."""
     if not _REGION_FACTS_YAML.exists():
         return {}
     with _REGION_FACTS_YAML.open(encoding="utf-8") as f:
         return (yaml.safe_load(f) or {}).get("facts", {}) or {}
 
 
+def _facts_for(region_id: str | None) -> dict:
+    """지역 대표 데이터 병합: DB(상권 자동집계 grocery/dining_cafe/leisure) + YAML(수기 transport 등).
+
+    - DB(region_facts, refresh_regions.py가 채움)가 grocery/dining_cafe/leisure를 덮는다(자동·최신).
+    - YAML은 transport·price_level·notes 등 수기 값을 유지.
+    - 둘 다 없으면 {} → 발품은 name+tags 폴백.
+    """
+    yaml_f = _region_facts_yaml().get(region_id or "", {})
+    db_f = trades_store.read_region_facts(region_id or "")  # {field: [값...]} (DB 없으면 {})
+    return {**yaml_f, **db_f}
+
+
 def _facts_block(region_id: str | None) -> str:
     """regionId → 프롬프트에 넣을 '동네 대표 정보' 블록(없으면 빈 문자열)."""
-    f = _region_facts().get(region_id or "", {})
+    f = _facts_for(region_id)
     if not f:
         return ""
     lines = []

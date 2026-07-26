@@ -25,6 +25,7 @@ class Settings(BaseSettings):
     # 외부 데이터 (Phase B2)
     molit_api_key: str = ""
     kakao_api_key: str = ""
+    sbiz_api_key: str = ""  # 소상공인 상권정보 (Decoding 키) — refresh_regions.py에서만 사용
 
     # LangGraph 트레이싱 (Phase B3). 키 없으면 트레이싱 없이 그래프만 정상 동작.
     langfuse_public_key: str = ""

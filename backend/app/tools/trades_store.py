@@ -10,6 +10,7 @@
   · 멱등: (sigungu, deal_ym, trade_type, house_type) 배치 단위 DELETE 후 INSERT.
 """
 
+import json
 import os
 import sqlite3
 from datetime import datetime, timezone
@@ -37,6 +38,16 @@ CREATE TABLE IF NOT EXISTS trades (
 );
 CREATE INDEX IF NOT EXISTS ix_trades_type ON trades(trade_type);
 CREATE INDEX IF NOT EXISTS ix_trades_batch ON trades(sigungu_code, deal_ym, trade_type, house_type);
+
+CREATE TABLE IF NOT EXISTS region_facts (
+    region_id    TEXT NOT NULL,          -- 프론트 Region.id (예: mapo-m)
+    field        TEXT NOT NULL,          -- grocery | dining_cafe | leisure ...
+    value_json   TEXT NOT NULL,          -- JSON 문자열 리스트 (예: ["음식점·카페 45곳"])
+    count        INTEGER NOT NULL DEFAULT 0,
+    source       TEXT NOT NULL,
+    collected_at TEXT NOT NULL,
+    PRIMARY KEY (region_id, field)
+);
 """
 
 
@@ -149,3 +160,47 @@ def count(db_path: Optional[str] = None) -> int:
         return conn.execute("SELECT COUNT(*) FROM trades").fetchone()[0]
     finally:
         conn.close()
+
+
+# ── 지역 상권 데이터(발품 그라운딩용) ──────────────────────────────────
+def write_region_facts(
+    region_id: str,
+    field: str,
+    values: list[str],
+    count_n: int,
+    source: str,
+    *,
+    db_path: Optional[str] = None,
+) -> None:
+    """region_facts 한 행 저장(멱등: PK(region_id, field) INSERT OR REPLACE)."""
+    path = db_path or resolve_db_path(write=True)
+    conn = connect(path)
+    try:
+        conn.execute(
+            "INSERT OR REPLACE INTO region_facts "
+            "(region_id, field, value_json, count, source, collected_at) VALUES (?,?,?,?,?,?)",
+            (
+                region_id,
+                field,
+                json.dumps(values, ensure_ascii=False),
+                count_n,
+                source,
+                datetime.now(timezone.utc).isoformat(),
+            ),
+        )
+        conn.commit()
+    finally:
+        conn.close()
+
+
+def read_region_facts(region_id: str, *, db_path: Optional[str] = None) -> dict:
+    """region_id → {field: [값 문자열...]} (DB 없거나 없으면 {})."""
+    path = db_path or resolve_db_path(write=False)
+    if not path or not Path(path).exists():
+        return {}
+    conn = connect(path)
+    try:
+        rows = conn.execute("SELECT field, value_json FROM region_facts WHERE region_id=?", (region_id,)).fetchall()
+    finally:
+        conn.close()
+    return {field: json.loads(vj) for field, vj in rows}

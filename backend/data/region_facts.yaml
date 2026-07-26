@@ -1,8 +1,10 @@
-# 지역 대표 데이터 — 하루 '온라인 발품' 내레이션 그라운딩용. (⭐ 팀원이 채우는 파일)
+# 지역 대표 데이터(수기) — 하루 '온라인 발품' 내레이션 그라운딩용.
 # ─────────────────────────────────────────────────────────────
-# narrator.narrate_lifestyle()가 regionId로 조회해 LLM 프롬프트에 주입한다.
-#   - 채워져 있으면 → 교통·물가·시설이 반영된 '더 구체적·정확한' 발품 서술.
-#   - 비어 있으면   → 동네 이름 + 태그(실거래 enrich)만으로 생성(현재 기본 동작). 코드 무수정.
+# narrator는 이 YAML(수기) + DB(자동 상권집계)를 병합해 프롬프트에 주입한다.
+#   · grocery/dining_cafe/leisure = **자동**: scripts/refresh/refresh_regions.py (소상공인 상권 API) → trades_store.region_facts
+#   · transport/price_level/notes = **수기**: 이 파일 (경로·물가 등 API로 자동화 어려운 항목)
+#   → DB가 grocery 등을 덮고, transport는 이 파일이 제공. 둘 다 없으면 이름+태그 폴백.
+#   - 자동 채우기:  (.env SBIZ_API_KEY 추가 후)  TRADES_DB=data/trades.demo.db python scripts/refresh/refresh_regions.py
 # ⚠️ 라이프스타일 근거용이며 금융 숫자(compare)와 무관. 정성적으로만 쓰인다.
 # ⚠️ 임의 작문 금지 — 카카오맵·ODsay·참가격 등 확인 가능한 것만. (자세히: docs/지역데이터_채우기_가이드.md)
 #
