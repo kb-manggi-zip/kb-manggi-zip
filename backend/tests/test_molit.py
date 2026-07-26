@@ -32,7 +32,7 @@ def test_budget_filter_and_top_and_surplus():
     regions = aggregate_to_regions(_rows(), "매매", budget=budget)
     names = [r.name for r in regions]
     assert "성산동" not in names  # midPrice 800M > 예산 → 제외
-    assert names[0] == "합정동"  # 거래건수(3) 최다 → 첫번째
+    assert names[0] == "합정동"  # 예산 근접(surplus 80M < 망원동 290M) → 첫번째
     top = regions[0]
     assert top.surplus == budget - top.midPrice
     assert len(regions) <= 3

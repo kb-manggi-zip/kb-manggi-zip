@@ -5,7 +5,7 @@ import {
   MobileShell, FlowProgress, BackBtn,
   PrimaryBtn, GhostBtn, SelectCard, AmountInput
 } from '../components/ui';
-import type { ContractType, RenewalUsed, Household, FirstHome } from '../api/types';
+import type { ContractType, RenewalUsed, Household, FirstHome, HousingType } from '../api/types';
 
 // ─── 스텝 정의 ─────────────────────────────────────────────────────────────
 type StepId = 'type' | 'deposit' | 'rent' | 'expiry' | 'renewal' | 'finance';
@@ -56,6 +56,7 @@ export default function ContractInput() {
   );
   const [expiryDate, setExpiryDate] = useState(state.contract?.expiryDate || '');
   const [renewalUsed, setRenewalUsed] = useState<RenewalUsed>(state.contract?.renewalUsed || '미사용');
+  const [housingType, setHousingType] = useState<HousingType>(state.contract?.housingType || '아파트');
   const [annualIncome, setAnnualIncome] = useState(state.finance?.annualIncome || 0);
   const [ownCapital, setOwnCapital] = useState(state.finance?.ownCapital || 0);
   const [household, setHousehold] = useState<Household>(state.finance?.household || '1인');
@@ -94,6 +95,7 @@ export default function ContractInput() {
         monthlyRent: contractType === '월세' ? parseInt(monthlyRent || '0') * 10_000 : 0,
         expiryDate,
         renewalUsed,
+        housingType,
       },
     });
     dispatch({
@@ -142,6 +144,20 @@ export default function ContractInput() {
                 <div className="font-semibold">월세</div>
                 <div className="text-xs text-muted-foreground mt-0.5">보증금+월세 방식</div>
               </SelectCard>
+            </div>
+            <div className="mt-5">
+              <div className="text-sm font-medium mb-2">주택 유형</div>
+              <div className="grid grid-cols-2 gap-3">
+                <SelectCard selected={housingType === '아파트'} onClick={() => setHousingType('아파트')}>
+                  <div className="text-2xl mb-1">🏢</div>
+                  <div className="font-semibold">아파트</div>
+                </SelectCard>
+                <SelectCard selected={housingType === '빌라'} onClick={() => setHousingType('빌라')}>
+                  <div className="text-2xl mb-1">🏠</div>
+                  <div className="font-semibold">원룸·투룸·빌라</div>
+                  <div className="text-xs text-muted-foreground mt-0.5">연립·다세대</div>
+                </SelectCard>
+              </div>
             </div>
           </StepView>
         )}

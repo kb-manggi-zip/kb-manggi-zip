@@ -46,10 +46,10 @@ function buttimok(under35: boolean, income: number, deposit: number, netAsset: n
 }
 
 // ── HUG 보증료율 (backend/app/tools/guarantee_hug.py 미러) ──
-function guaranteeRate(deposit: number): number {
+function guaranteeRate(deposit: number, houseType: string): number {
   const g = RULES.guaranteeHug;
   const band = deposit <= 90_000_000 ? 'under_90m' : deposit <= 200_000_000 ? 'm90_to_200m' : 'over_200m';
-  return (g.hug_fee_rate as any)[band][g.default_house_type][g.default_debt_ratio];
+  return (g.hug_fee_rate as any)[band][houseType][g.default_debt_ratio];
 }
 
 // ── 중개보수 구간표 조회 (backend/app/tools/broker_fee.py 미러) ──
@@ -74,7 +74,9 @@ function acquisitionFee(price: number): number {
 }
 
 export function compare(contract: ContractInfo, finance: FinanceInfo): CompareResponse {
-  const { deposit, monthlyRent, type, expiryDate, renewalUsed } = contract;
+  const { deposit, monthlyRent, type, expiryDate, renewalUsed, housingType } = contract;
+  // 주택유형 → HUG 요율 유형. 아파트/빌라(연립다세대) 둘 다 '주택'이라 세금·대출은 동일.
+  const hugType = (housingType ?? '아파트') === '아파트' ? 'apartment' : 'other';
   const { ownCapital, annualIncome, household, firstHome, under35 } = finance;
   const { renewal, oneTime, noticeDeadlineMonths, lendingReg } = RULES;
 
@@ -109,7 +111,7 @@ export function compare(contract: ContractInfo, finance: FinanceInfo): CompareRe
   const newMonthly = type === '월세' ? Math.round(monthlyRent * (1 + renewal.increaseCap)) : 0;
   const depositGap = Math.max(0, newDeposit - deposit);
   const renewalLoanInterest = Math.round(depositGap * jeonseRate / 12);
-  const renewalGuarMonthly = Math.round(deposit * guaranteeRate(deposit) / 12);
+  const renewalGuarMonthly = Math.round(deposit * guaranteeRate(deposit, hugType) / 12);
   const renewalMonthlyBurden = type === '전세'
     ? renewalLoanInterest + renewalGuarMonthly
     : newMonthly + renewalGuarMonthly;
@@ -136,7 +138,7 @@ export function compare(contract: ContractInfo, finance: FinanceInfo): CompareRe
   const extra = Math.min(Math.round(deposit * 0.80), jeonseCap);
   const moveBudget = deposit + extra;
   const moveInterest = Math.round(extra * jeonseRate / 12);
-  const moveGuarMonthly = Math.round(moveBudget * guaranteeRate(moveBudget) / 12);
+  const moveGuarMonthly = Math.round(moveBudget * guaranteeRate(moveBudget, hugType) / 12);
   const moveOneTime = Math.round(oneTime.moveBase + brokerFee(deposit));
 
   const moveBranch: BranchResult = {
@@ -193,11 +195,12 @@ export function compare(contract: ContractInfo, finance: FinanceInfo): CompareRe
   const savings = moveOneTime;
 
   const assumptions = [
+    '이 금액은 사전 가늠이며, 실제 대출 심사 결과와 다를 수 있어요',
     '전세대출 금리 HF 공시 평균 3.89%',
     '규제지역 LTV 40% (생애최초 70%)',
     'KB 주택구입 대출 한도 3억 (2026.7~)',
     '스트레스 DSR 수도권 3.0% (한도 산정에만 적용)',
-    '보증료 HUG 공시 요율 (아파트·부채비율 80% 이하 가정)',
+    `보증료 HUG 공시 요율 (${(housingType ?? '아파트') === '아파트' ? '아파트' : '연립·다세대'}·부채비율 80% 이하 가정)`,
     '기존 대출이 없다고 가정했어요. 대출이 있으면 한도가 줄어들 수 있어요',
   ];
   if (firstHome === '모름') assumptions.push('생애최초 주택구입이라면 LTV 70%까지 가능해 한도가 더 늘어날 수 있어요');
