@@ -32,6 +32,7 @@ from ..schemas import (
     CompareResponse,
     DraftNoticeRequest,
     DraftNoticeResponse,
+    HousingType,
     ProductsRequest,
     ProductsResponse,
     Region,
@@ -92,10 +93,15 @@ _regions_graph = build_regions_graph()
 
 @router.get("/regions", response_model=list[Region])
 def regions(
-    branch: str = Query(...), budget: int = 0, session_id: str | None = Depends(get_session_id)
+    branch: str = Query(...),
+    budget: int = 0,
+    housingType: HousingType | None = Query(default=None),
+    session_id: str | None = Depends(get_session_id),
 ) -> list[Region]:
+    # housingType이 국토부 API property_type과 동일 값('아파트'|'연립다세대')이라 변환 없이 그대로 씀
+    house_type = housingType
     with session_scope(session_id):
-        result = _regions_graph.invoke({"branch": branch, "budget": budget})
+        result = _regions_graph.invoke({"branch": branch, "budget": budget, "houseType": house_type})
     return result["regions"]
 
 

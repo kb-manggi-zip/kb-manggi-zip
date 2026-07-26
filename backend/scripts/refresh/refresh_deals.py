@@ -2,10 +2,10 @@
 
 ⚠️ 외부 API를 때리는 유일한 곳. 서버 런타임은 이걸 실행하지 않는다.
 실행:  python scripts/refresh/refresh_deals.py        (.env 에 MOLIT_API_KEY 필요)
-수집:  6구 × 최근 6개월 × {아파트 매매, 아파트 전월세}
-결과:  cache/raw/ (원응답 캐시) + data/trades.db (정규화 적재, 멱등)
+수집:  6구 × 최근 6개월 × {아파트, 연립다세대} × {매매, 전월세}
+결과:  cache/raw/ (원응답 캐시) + data/trades.db (정규화 적재, house_type별 멱등)
 
-연립다세대는 승인됐으나 미사용 — 계산 가정이 '아파트 기준'이라 일관성 유지.
+오피스텔·단독다가구는 이번 확장 범위 밖(POC 스코프: 아파트+연립다세대만).
 """
 
 import sys
@@ -35,10 +35,13 @@ def _clean_umd(v) -> str:
     return " ".join(str(v or "").split())
 
 
-def normalize_rows(records: list[dict], sigungu_code: str, deal_ym: str, kind: str) -> list[dict]:
+def normalize_rows(
+    records: list[dict], sigungu_code: str, deal_ym: str, kind: str, house_type: str = "아파트"
+) -> list[dict]:
     """API 원레코드 → 정규화 거래 dict[].  kind: 'sale' | 'rent'.
 
     전월세(rent)는 월세금액>0 이면 'monthly', 아니면 'jeonse'.
+    house_type: '아파트' | '연립다세대' (국토부 API property_type 값 그대로).
     """
     out: list[dict] = []
     for rec in records:
@@ -65,6 +68,7 @@ def normalize_rows(records: list[dict], sigungu_code: str, deal_ym: str, kind: s
                 "sigungu_code": sigungu_code,
                 "umd_name": umd,
                 "trade_type": tt,
+                "house_type": house_type,
                 "price": price,
                 "monthly": monthly,
                 "area_m2": area,
@@ -76,11 +80,12 @@ def normalize_rows(records: list[dict], sigungu_code: str, deal_ym: str, kind: s
 
 # ── 수집 (API — 유일한 외부 호출 지점, @cached) ──────────────────────
 @cached(subdir="raw")
-def collect_raw(sigungu_code: str, deal_ym: str, kind_api: str) -> list[dict]:
-    """PublicDataReader 아파트 실거래 원응답 → JSON-safe list[dict].
+def collect_raw(sigungu_code: str, deal_ym: str, kind_api: str, property_type: str = "아파트") -> list[dict]:
+    """PublicDataReader 실거래 원응답 → JSON-safe list[dict].
 
-    kind_api: '매매' | '전월세'.  ※ 설치된 PublicDataReader 버전에 따라
-    get_data 인자명 확인 필요(첫 실행 시). 실패 시 상위에서 조합 스킵.
+    kind_api: '매매' | '전월세'.  property_type: '아파트' | '연립다세대'.
+    ※ 설치된 PublicDataReader 버전에 따라 get_data 인자명 확인 필요(첫 실행 시).
+    실패 시 상위에서 조합 스킵.
     """
     import json
 
@@ -94,7 +99,7 @@ def collect_raw(sigungu_code: str, deal_ym: str, kind_api: str) -> list[dict]:
 
     api = TransactionPrice(settings.molit_api_key)
     df = api.get_data(
-        property_type="아파트",
+        property_type=property_type,
         trade_type=kind_api,
         sigungu_code=sigungu_code,
         start_year_month=deal_ym,
@@ -129,7 +134,9 @@ def summarize(conn, elapsed: float, failures: list) -> None:
     ):
         print(f"  {code}: {cnt}건")
     by_type = dict(conn.execute("SELECT trade_type, COUNT(*) FROM trades GROUP BY trade_type"))
-    print(f"  유형별: {by_type}")
+    print(f"  거래유형별: {by_type}")
+    by_house = dict(conn.execute("SELECT house_type, COUNT(*) FROM trades GROUP BY house_type"))
+    print(f"  주택유형별: {by_house}")
     print(f"  총 {total}건 · {elapsed:.1f}s · 실패 조합 {len(failures)}개")
     for f in failures:
         print(f"    ✗ {f}")
@@ -139,7 +146,8 @@ def summarize(conn, elapsed: float, failures: list) -> None:
 def run() -> None:
     sigungus = read_yaml("regions.yaml")["sigungu"]
     months = molit.recent_year_months(6)
-    print(f"수집 대상: {list(sigungus.keys())} × {months} × [매매, 전월세]")
+    house_types = ["아파트", "연립다세대"]
+    print(f"수집 대상: {list(sigungus.keys())} × {months} × {house_types} × [매매, 전월세]")
 
     db_path = trades_store.resolve_db_path(write=True)
     conn = trades_store.connect(db_path)
@@ -149,24 +157,35 @@ def run() -> None:
     for name, meta in sigungus.items():
         code = str(meta["code"])
         for ym in months:
-            for kind_api, kind in (("매매", "sale"), ("전월세", "rent")):
-                try:
-                    raw = collect_raw(code, ym, kind_api)
-                except Exception as e:  # 실패 조합은 로그 남기고 계속
-                    failures.append((name, ym, kind_api, str(e)[:80]))
-                    print(f"  ✗ {name} {ym} {kind_api}: {str(e)[:80]}")
-                    continue
-                rows = normalize_rows(raw, code, ym, kind)
-                if kind == "sale":
-                    trades_store.replace_batch(conn, code, ym, "sale", rows)
-                else:
-                    trades_store.replace_batch(
-                        conn, code, ym, "jeonse", [r for r in rows if r["trade_type"] == "jeonse"]
-                    )
-                    trades_store.replace_batch(
-                        conn, code, ym, "monthly", [r for r in rows if r["trade_type"] == "monthly"]
-                    )
-                time.sleep(0.3)  # 쿼터 보호
+            for house_type in house_types:
+                for kind_api, kind in (("매매", "sale"), ("전월세", "rent")):
+                    try:
+                        raw = collect_raw(code, ym, kind_api, property_type=house_type)
+                    except Exception as e:  # 실패 조합은 로그 남기고 계속
+                        failures.append((name, ym, house_type, kind_api, str(e)[:80]))
+                        print(f"  ✗ {name} {ym} {house_type} {kind_api}: {str(e)[:80]}")
+                        continue
+                    rows = normalize_rows(raw, code, ym, kind, house_type=house_type)
+                    if kind == "sale":
+                        trades_store.replace_batch(conn, code, ym, "sale", rows, house_type=house_type)
+                    else:
+                        trades_store.replace_batch(
+                            conn,
+                            code,
+                            ym,
+                            "jeonse",
+                            [r for r in rows if r["trade_type"] == "jeonse"],
+                            house_type=house_type,
+                        )
+                        trades_store.replace_batch(
+                            conn,
+                            code,
+                            ym,
+                            "monthly",
+                            [r for r in rows if r["trade_type"] == "monthly"],
+                            house_type=house_type,
+                        )
+                    time.sleep(0.3)  # 쿼터 보호
 
     sanity_check(conn, set(months))
     summarize(conn, time.time() - t0, failures)

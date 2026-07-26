@@ -152,7 +152,7 @@ export default function ContractInput() {
                   <div className="text-2xl mb-1">🏢</div>
                   <div className="font-semibold">아파트</div>
                 </SelectCard>
-                <SelectCard selected={housingType === '빌라'} onClick={() => setHousingType('빌라')}>
+                <SelectCard selected={housingType === '연립다세대'} onClick={() => setHousingType('연립다세대')}>
                   <div className="text-2xl mb-1">🏠</div>
                   <div className="font-semibold">원룸·투룸·빌라</div>
                   <div className="text-xs text-muted-foreground mt-0.5">연립·다세대</div>

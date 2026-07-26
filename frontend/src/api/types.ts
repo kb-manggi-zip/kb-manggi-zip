@@ -1,7 +1,7 @@
 // 백엔드 Pydantic 모델과 1:1 계약 — 임의 변경 금지
 export type ContractType = '전세' | '월세';
 export type RenewalUsed = '미사용' | '사용' | '모름';
-export type HousingType = '아파트' | '빌라'; // 빌라=연립다세대(원룸·투룸·빌라). 둘 다 법적 '주택'
+export type HousingType = '아파트' | '연립다세대'; // 국토부 API property_type과 동일 값. 화면엔 "원룸·투룸·빌라"로 표시. 둘 다 법적 '주택'
 export type Household = '1인' | '신혼' | '자녀';
 export type FirstHome = '예' | '아니오' | '모름';
 export type Branch = '갱신' | '이사' | '매매';

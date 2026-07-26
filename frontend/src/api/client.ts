@@ -9,7 +9,7 @@ import { getSessionId } from './session';
 import type {
   ContractInfo, FinanceInfo, CompareResponse,
   Region, SimulateResponse, ProductsResponse,
-  ReservationRequest, Branch,
+  ReservationRequest, Branch, HousingType,
   BriefingRequest, BriefingResponse,
   DraftNoticeRequest, DraftNoticeResponse,
   AnalyzeResponse,
@@ -51,15 +51,17 @@ export const api = {
     );
   },
 
-  async regions(branch: Branch, _budget: number): Promise<Region[]> {
+  async regions(branch: Branch, _budget: number, housingType?: HousingType): Promise<Region[]> {
+    const q = housingType ? `&housingType=${housingType}` : '';
     return localOrRemote(
       () => branch === '매매' ? REGIONS_BUY : branch === '이사' ? REGIONS_MOVE : REGIONS_MONTHLY,
-      `/api/regions?branch=${branch}&budget=${_budget}`
+      `/api/regions?branch=${branch}&budget=${_budget}${q}`
     );
   },
 
-  async regionsMonthly(): Promise<Region[]> {
-    return localOrRemote(() => REGIONS_MONTHLY, '/api/regions?branch=이사-월세');
+  async regionsMonthly(housingType?: HousingType): Promise<Region[]> {
+    const q = housingType ? `&housingType=${housingType}` : '';
+    return localOrRemote(() => REGIONS_MONTHLY, `/api/regions?branch=이사-월세${q}`);
   },
 
   async simulate(branch: Branch, _regionId: string): Promise<SimulateResponse> {
