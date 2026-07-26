@@ -121,20 +121,27 @@ def fetch_trades(
     *,
     sigungu_code: Optional[str] = None,
     deal_ym: Optional[str] = None,
+    house_type: Optional[str] = None,
 ) -> list[TradeRow]:
     """정규화 실거래 읽기 — **DB에서만** (외부 API 미접촉).
 
     trade_type: 'sale' | 'jeonse' | 'monthly'
+    house_type: '아파트' | '연립다세대' | None(전체 — 아파트+연립다세대 블렌드)
     DB 없거나 비면 명확한 에러(refresh 안내).
     """
-    return trades_store.read_trades(trade_type, sigungu_code=sigungu_code, deal_ym=deal_ym)  # type: ignore[return-value]
+    return trades_store.read_trades(  # type: ignore[return-value]
+        trade_type, sigungu_code=sigungu_code, deal_ym=deal_ym, house_type=house_type
+    )
 
 
-def regions_by_branch(branch: str, budget: int) -> list[Region]:
-    """예산 필터된 동네 후보 상위 3. branch: '매매'|'이사'|'이사-월세'."""
+def regions_by_branch(branch: str, budget: int, house_type: Optional[str] = None) -> list[Region]:
+    """예산 필터된 동네 후보 상위 3. branch: '매매'|'이사'|'이사-월세'.
+
+    house_type: '아파트' | '연립다세대' | None(전체 블렌드, 기본값 — 입력 UI 없으면 이 동작).
+    """
     monthly = branch == "이사-월세"
     region_branch: Branch = "매매" if branch == "매매" else "이사"
     trade_type = _TRADE_TYPE.get(branch, "sale")
 
-    rows = fetch_trades(trade_type)  # DB (없으면 RuntimeError)
+    rows = fetch_trades(trade_type, house_type=house_type)  # DB (없으면 RuntimeError)
     return aggregate_to_regions(rows, region_branch, budget, monthly=monthly, enrich=load_enrich())
