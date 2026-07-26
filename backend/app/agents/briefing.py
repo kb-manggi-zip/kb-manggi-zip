@@ -120,11 +120,22 @@ def _user_prompt(req: BriefingRequest) -> str:
 
 
 def run(req: BriefingRequest) -> str:
+    if req.kind == "dayPlayer":
+        # '이 동네에서의 하루' 개인화 내레이션 — narrator가 동네 실데이터+소비 프로필로 생성.
+        # (context에 region/finance/branch가 오면 개인화, regionName만 오면 최소 폴백)
+        from . import narrator
+
+        return narrator.narrate_lifestyle(req.context or {})
     fallback = lambda: _fallback_for(req)  # noqa: E731
     return generate(system=build_system(req.context or {}), user=_user_prompt(req), fallback=fallback)
 
 
 def stream(req: BriefingRequest) -> Iterator[str]:
     """SSE용 토큰 스트림. LLM 비활성 시 폴백 템플릿을 어절 단위로 흘린다."""
+    if req.kind == "dayPlayer":
+        from . import narrator
+
+        system, user = narrator.build_lifestyle_prompt(req.context or {})
+        return llm_stream(system=system, user=user, fallback=lambda: narrator.lifestyle_fallback(req.context or {}))
     fallback = lambda: _fallback_for(req)  # noqa: E731
     return llm_stream(system=build_system(req.context or {}), user=_user_prompt(req), fallback=fallback)

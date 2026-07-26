@@ -43,3 +43,41 @@ def test_unknown_region_falls_back_to_base():
     known = narrator.run("이사", "does-not-exist")
     base = narrator.run("이사", "")
     assert _captions(known) == _captions(base)
+
+
+# ── 개인화 라이프스타일 내레이션 ('온라인 발품') ──────────────────────────
+from app.agents import briefing as _briefing  # noqa: E402
+from app.schemas import BriefingRequest  # noqa: E402
+
+
+def test_profile_selection_differs():
+    """가구 유형별 소비 프로필이 다르게 선택된다."""
+    assert narrator.profile_for("신혼")["traits"] != narrator.profile_for("청년")["traits"]
+    assert narrator.profile_for(None) == narrator.profile_for("존재안함")  # 둘 다 default
+
+
+def test_lifestyle_prompt_grounds_on_region_and_profile():
+    """프롬프트에 동네 실데이터(이름·태그) + 소비 성향이 그라운딩된다."""
+    ctx = {
+        "region": {"name": "마포구 망원동", "tags": ["한강공원", "힙한거리"]},
+        "finance": {"household": "청년"},
+        "branch": "이사",
+    }
+    system, user = narrator.build_lifestyle_prompt(ctx)
+    assert "망원동" in user and "한강공원" in user
+    assert "카페" in user or "배달" in user  # 청년 성향 반영
+    assert "금액" in user and "단정" in user  # 가드레일 지시 포함
+
+
+def test_lifestyle_fallback_is_deterministic_and_grounded():
+    """llm off(conftest) → 폴백. 동네명 포함, 숫자 단정 없음."""
+    ctx = {"region": {"name": "성북구 보문동", "tags": ["대학가"]}, "finance": {"household": "1인"}}
+    out = narrator.narrate_lifestyle(ctx)
+    assert "보문동" in out and len(out) > 10
+
+
+def test_daylifestyle_via_briefing_kind():
+    """스키마 변경 없이 briefing kind로 도달 가능."""
+    ctx = {"region": {"name": "은평구 녹번동", "tags": ["조용한"]}, "finance": {"household": "신혼"}, "branch": "매매"}
+    out = _briefing.run(BriefingRequest(kind="dayPlayer", context=ctx))
+    assert "녹번동" in out
