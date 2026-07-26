@@ -77,3 +77,39 @@ def test_narrator_merges_db_and_yaml(tmp_path, monkeypatch):
     f = narrator._facts_for("mapo-m")
     assert f["dining_cafe"] == ["음식점·카페 99곳 밀집"]  # DB가 YAML 예시를 덮음
     assert "transport" in f  # YAML 수기 transport 유지
+
+
+def test_sample_trade_picks_median(tmp_path):
+    db = str(tmp_path / "t.db")
+    conn = trades_store.connect(db)
+    conn.executemany(
+        "INSERT INTO trades (sigungu_code, umd_name, trade_type, price, monthly, area_m2, deal_ym, collected_at) "
+        "VALUES (?,?,?,?,?,?,?,?)",
+        [
+            ("11", "망원동", "sale", 400_000_000, 0, 40.0, "202605", "x"),
+            ("11", "망원동", "sale", 500_000_000, 0, 50.0, "202606", "x"),
+            ("11", "망원동", "sale", 900_000_000, 0, 80.0, "202606", "x"),
+        ],
+    )
+    conn.commit()
+    conn.close()
+    t = trades_store.sample_trade("망원동", "sale", db_path=db)
+    assert t["price"] == 500_000_000 and t["area_m2"] == 50.0  # 중위(400·500·900)=500
+    assert trades_store.sample_trade("없는동", "sale", db_path=db) is None
+
+
+def test_trade_fact_formats(tmp_path, monkeypatch):
+    from app.agents import narrator
+
+    db = str(tmp_path / "t.db")
+    conn = trades_store.connect(db)
+    conn.execute(
+        "INSERT INTO trades (sigungu_code, umd_name, trade_type, price, monthly, area_m2, deal_ym, collected_at) "
+        "VALUES ('11','망원동','jeonse',280000000,0,32.0,'202605','x')"
+    )
+    conn.commit()
+    conn.close()
+    monkeypatch.setenv("TRADES_DB", db)
+    fact = narrator._trade_fact("마포구 망원동", "이사")
+    assert "실거래" in fact and "2.8억" in fact and "전세" in fact
+    assert narrator._trade_fact("없는구 없는동", "매매") == ""  # 데이터 없으면 빈 문자열

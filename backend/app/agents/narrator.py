@@ -109,6 +109,22 @@ def _region_of(ctx: dict) -> dict:
     return {"name": name} if name else {}
 
 
+_BRANCH_TRADE = {"매매": "sale", "이사": "jeonse", "갱신": "jeonse"}
+
+
+def _trade_fact(region_name: str, branch: str) -> str:
+    """동네 실거래 사례 1건 → '최근 실거래' 근거(국토부 실데이터). 없으면 ''."""
+    dong = (region_name or "").split()[-1]  # "마포구 망원동" → "망원동"
+    trade_type = _BRANCH_TRADE.get(branch or "", "sale")
+    t = trades_store.sample_trade(dong, trade_type)
+    if not t or not t.get("price"):
+        return ""
+    eok = round(t["price"] / 100_000_000, 1)
+    area = f"전용 {round(t['area_m2'])}㎡ " if t.get("area_m2") else ""
+    kind = "매매" if trade_type == "sale" else "전세"
+    return f"최근 실거래(국토부): {area}{kind} {eok}억 ({t['deal_ym']})"
+
+
 def build_lifestyle_prompt(ctx: dict) -> tuple[str, str]:
     """(system, user) — 동네 실데이터 + 소비 프로필로 그라운딩. 숫자 단정 금지."""
     reg = _region_of(ctx)
@@ -117,16 +133,20 @@ def build_lifestyle_prompt(ctx: dict) -> tuple[str, str]:
     name = reg.get("name") or "이 동네"
     tags = ", ".join(reg.get("tags") or []) or "정보 제한"
     branch = ctx.get("branch") or ""
-    facts = _facts_block(reg.get("id"))  # 팀원이 채운 지역 데이터(있으면 더 구체적)
+    facts = _facts_block(reg.get("id"))  # 자동 상권(DB) + 수기(YAML) 병합
+    trade = _trade_fact(name, branch)  # 실거래 사례(국토부) — 있으면 근거로 인용 허용
+    trade_line = f"{trade}\n" if trade else ""
     system = _profiles()["base"].strip()
     user = (
         f"동네: {name}\n"
         f"동네 특징(태그): {tags}\n"
         f"{facts}"
+        f"{trade_line}"
         f"검토 갈래: {branch}\n"
         f"이 사용자 소비 성향: {', '.join(prof.get('traits', []))}\n"
         f"관심 키워드: {', '.join(prof.get('keywords', []))}\n"
-        "→ 위 정보만 근거로 '이 동네에서의 하루'를 2~3문장으로 그려라. 주어지지 않은 금액·개수는 단정하지 마라."
+        "→ 위 정보로 '이 동네에서의 하루'를 2~3문장으로 그려라. '최근 실거래'는 국토부 실데이터이니 "
+        "그대로 한 번 언급해도 좋다(그 외 주어지지 않은 금액·개수는 단정 금지)."
     )
     return system, user
 
