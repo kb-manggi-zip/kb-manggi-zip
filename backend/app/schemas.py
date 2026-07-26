@@ -29,7 +29,9 @@ from pydantic import BaseModel
 # ── 타입 별칭 (types.ts 리터럴 유니온) ──────────────────────────────
 ContractType = Literal["전세", "월세"]
 RenewalUsed = Literal["미사용", "사용", "모름"]
-HousingType = Literal["아파트", "빌라"]  # 빌라=연립다세대(원룸·투룸·빌라). 둘 다 법적 '주택'
+HousingType = Literal[
+    "아파트", "연립다세대"
+]  # 국토부 API property_type과 동일 값. 화면엔 "원룸·투룸·빌라"로 표시. 둘 다 법적 '주택'
 Household = Literal["1인", "신혼", "자녀"]
 FirstHome = Literal["예", "아니오", "모름"]
 Branch = Literal["갱신", "이사", "매매"]

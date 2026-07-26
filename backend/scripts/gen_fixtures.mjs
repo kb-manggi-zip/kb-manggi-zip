@@ -55,7 +55,7 @@ const cases = [
   },
   {
     name: 'P6 전세 빌라(연립다세대) — HUG 요율 분기',
-    contract: { type: '전세', deposit: 200000000, monthlyRent: 0, expiryDate: '2026-11-19', renewalUsed: '미사용', housingType: '빌라' },
+    contract: { type: '전세', deposit: 200000000, monthlyRent: 0, expiryDate: '2026-11-19', renewalUsed: '미사용', housingType: '연립다세대' },
     finance: { annualIncome: 40000000, ownCapital: 30000000, household: '1인', firstHome: '모름', under35: true },
   },
 ];

@@ -53,6 +53,16 @@ def test_regions_branches(client):
         assert all(row["branch"] == expect for row in rows)
 
 
+def test_regions_housing_type_filter(client):
+    apt = client.get("/api/regions", params={"branch": "이사", "budget": 0, "housingType": "아파트"})
+    villa = client.get("/api/regions", params={"branch": "이사", "budget": 0, "housingType": "연립다세대"})
+    assert apt.status_code == 200 and villa.status_code == 200
+    assert len(apt.json()) == 3 and len(villa.json()) == 3
+    # housingType 미지정 시(기존 동작) 여전히 동작 — 하위호환
+    blended = client.get("/api/regions", params={"branch": "이사", "budget": 0})
+    assert blended.status_code == 200 and len(blended.json()) == 3
+
+
 def test_products_and_simulate(client):
     r = client.post("/api/products", json={"branch": "매매"})
     assert r.status_code == 200
