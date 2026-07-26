@@ -204,3 +204,26 @@ def read_region_facts(region_id: str, *, db_path: Optional[str] = None) -> dict:
     finally:
         conn.close()
     return {field: json.loads(vj) for field, vj in rows}
+
+
+def sample_trade(umd_name: str, trade_type: str, *, db_path: Optional[str] = None) -> Optional[dict]:
+    """동+거래유형의 '중위가에 가장 가까운 실거래 1건' (발품 근거용, 국토부 실데이터).
+
+    반환 {price, monthly, area_m2, deal_ym} 또는 None. (아웃라이어 대신 대표 사례)
+    """
+    path = db_path or resolve_db_path(write=False)
+    if not path or not Path(path).exists():
+        return None
+    conn = connect(path)
+    try:
+        rows = conn.execute(
+            "SELECT price, monthly, area_m2, deal_ym FROM trades WHERE umd_name=? AND trade_type=? AND price>0",
+            (umd_name, trade_type),
+        ).fetchall()
+    finally:
+        conn.close()
+    if not rows:
+        return None
+    mid = sorted(r[0] for r in rows)[len(rows) // 2]  # 중위가
+    best = min(rows, key=lambda r: abs(r[0] - mid))  # 중위가에 가장 가까운 실사례
+    return {"price": best[0], "monthly": best[1], "area_m2": best[2], "deal_ym": best[3]}
