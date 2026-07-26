@@ -33,7 +33,7 @@
 - D1 매매 지역 = 수도권 규제지역 고정 가정 (`classify_region`은 regions용, compare 미사용)
 - D2 기존부채 = 0 고정 (입력 없음)
 - D3 DSR 대출유형 = variable 고정 (mixed/periodic 미선택)
-- D4 HUG 보증료 = apartment·le80 고정 가정 (주택유형/부채비율 입력 없음)
+- D4 HUG 보증료 = ✅ **주택유형 입력**(`housingType` 아파트/빌라) → 아파트=apartment / 빌라=other 분기. 부채비율은 le80 고정 가정. 🔴 other(연립·다세대) 요율값 검증 필요(현재 placeholder). 단독다가구·오피스텔은 범위 밖
 - D5 취득세 = flat 0.011 + 생애최초 감면 -200만 flat (구간세율·감면요건 정밀화 안 됨)
 - D6 중개보수 = flat 0.004 (구간표 아님)
 - D7 이사 전세대출 한도 = min(보증금×80%, 2.22억) 단순화 (소득대비 한도 미반영)

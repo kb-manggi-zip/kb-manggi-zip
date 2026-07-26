@@ -29,6 +29,7 @@ from pydantic import BaseModel
 # ── 타입 별칭 (types.ts 리터럴 유니온) ──────────────────────────────
 ContractType = Literal["전세", "월세"]
 RenewalUsed = Literal["미사용", "사용", "모름"]
+HousingType = Literal["아파트", "빌라"]  # 빌라=연립다세대(원룸·투룸·빌라). 둘 다 법적 '주택'
 Household = Literal["1인", "신혼", "자녀"]
 FirstHome = Literal["예", "아니오", "모름"]
 Branch = Literal["갱신", "이사", "매매"]
@@ -42,6 +43,7 @@ class ContractInfo(BaseModel):
     monthlyRent: int
     expiryDate: str  # ISO date string
     renewalUsed: RenewalUsed
+    housingType: HousingType = "아파트"  # HUG 보증료 요율만 좌우(세금·대출은 둘 다 주택 동일)
 
 
 class FinanceInfo(BaseModel):

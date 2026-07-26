@@ -72,9 +72,9 @@ export const RULES = {
   // backend/rules/guarantee_hug.yaml (3중 테이블 — PoC는 apartment·le80 기본)
   guaranteeHug: {
     hug_fee_rate: {
-      under_90m:   { apartment: { le80: 0.00115, gt80: 0.00128 } },
-      m90_to_200m: { apartment: { le80: 0.00122, gt80: 0.00128 } },
-      over_200m:   { apartment: { le80: 0.00122, gt80: 0.00128 } },
+      under_90m:   { apartment: { le80: 0.00115, gt80: 0.00128 }, detached: { le80: 0.00139, gt80: 0.00154 }, other: { le80: 0.00139, gt80: 0.00154 } },
+      m90_to_200m: { apartment: { le80: 0.00122, gt80: 0.00128 }, detached: { le80: 0.00146, gt80: 0.00154 }, other: { le80: 0.00146, gt80: 0.00154 } },
+      over_200m:   { apartment: { le80: 0.00122, gt80: 0.00128 }, detached: { le80: 0.00146, gt80: 0.00154 }, other: { le80: 0.00146, gt80: 0.00154 } },
     },
     default_house_type: 'apartment' as const,
     default_debt_ratio: 'le80' as const,
