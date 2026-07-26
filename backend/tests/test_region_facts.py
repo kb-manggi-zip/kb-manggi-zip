@@ -113,3 +113,21 @@ def test_trade_fact_formats(tmp_path, monkeypatch):
     fact = narrator._trade_fact("마포구 망원동", "이사")
     assert "실거래" in fact and "2.8억" in fact and "전세" in fact
     assert narrator._trade_fact("없는구 없는동", "매매") == ""  # 데이터 없으면 빈 문자열
+
+
+def test_transit_fallback_estimate(monkeypatch):
+    from app.core.config import settings
+    from app.tools import transit
+
+    monkeypatch.setattr(settings, "odsay_api_key", "")  # 키 없음 → 예상치
+    c = transit.commute(37.5561, 126.9026, 37.3948, 127.1112)  # 망원동→판교
+    assert c["estimated"] is True and c["minutes"] > 12 and c["transfers"] is None
+
+
+def test_transit_fact_in_narrator():
+    from app.agents import narrator
+
+    reg = {"id": "mapo-m", "name": "마포구 망원동", "lat": 37.5561, "lng": 126.9026}
+    f = narrator._transit_fact(reg, "1인")  # 1인 → 판교
+    assert "판교" in f and "분" in f
+    assert narrator._transit_fact({"name": "좌표없음"}, "1인") == ""  # 좌표 없으면 빈 문자열
