@@ -52,6 +52,27 @@ function guaranteeRate(deposit: number): number {
   return (g.hug_fee_rate as any)[band][g.default_house_type][g.default_debt_ratio];
 }
 
+// ── 중개보수 구간표 조회 (backend/app/tools/broker_fee.py 미러) ──
+function brokerFee(amount: number, bands: typeof RULES.oneTime.brokerRateBands = RULES.oneTime.brokerRateBands): number {
+  const band = bands.find(b => b.upto === null || amount < b.upto) ?? bands[bands.length - 1];
+  const fee = amount * band.rate;
+  return band.cap !== null ? Math.min(fee, band.cap) : fee;
+}
+
+// ── 취득세+지방교육세 구간 조회 (backend/app/tools/acquisition_tax.py 미러) ──
+function acquisitionFee(price: number): number {
+  const a = RULES.oneTime.acquisition;
+  let base: number;
+  if (price <= a.lowThreshold) base = a.lowRate;
+  else if (price > a.highThreshold) base = a.highRate;
+  else {
+    const rawPercent = (price / 300_000_000) * 2 - 3;
+    const roundedPercent = Math.round(rawPercent * 10000) / 10000;
+    base = roundedPercent / 100;
+  }
+  return price * base * (1 + a.eduTaxRatio);
+}
+
 export function compare(contract: ContractInfo, finance: FinanceInfo): CompareResponse {
   const { deposit, monthlyRent, type, expiryDate, renewalUsed } = contract;
   const { ownCapital, annualIncome, household, firstHome, under35 } = finance;
@@ -116,7 +137,7 @@ export function compare(contract: ContractInfo, finance: FinanceInfo): CompareRe
   const moveBudget = deposit + extra;
   const moveInterest = Math.round(extra * jeonseRate / 12);
   const moveGuarMonthly = Math.round(moveBudget * guaranteeRate(moveBudget) / 12);
-  const moveOneTime = Math.round(oneTime.moveBase + deposit * oneTime.brokerRate);
+  const moveOneTime = Math.round(oneTime.moveBase + brokerFee(deposit));
 
   const moveBranch: BranchResult = {
     branch: '이사',
@@ -148,7 +169,8 @@ export function compare(contract: ContractInfo, finance: FinanceInfo): CompareRe
   const policyAmt = policy.eligible ? Math.min(policyLimit, needed) : 0;
   const bankAmt = needed - policyAmt;
   const buyMonthly = Math.round(annuity(policyAmt, policy.rate, term) + annuity(bankAmt, kbBase, term));
-  let buyOneTime = Math.round(maxPrice * oneTime.acquisitionRate);
+  const buyMoveBroker = brokerFee(maxPrice, oneTime.brokerRateBandsPurchase);
+  let buyOneTime = Math.round(oneTime.moveBaseBuy + buyMoveBroker + acquisitionFee(maxPrice));
   if (firstHome === '예') buyOneTime = Math.max(0, buyOneTime - acqReduction);
 
   const buyBasis = [`규제지역 LTV ${Math.round(ltv * 100)}%`, 'KB 한도 3억', '스트레스 DSR 가산 3.0%'];
