@@ -56,7 +56,7 @@ def _fallback_for(req: BriefingRequest) -> str:
     try:
         if req.kind == "compare":
             c = CompareResponse.model_validate(ctx["comparison"])
-            return templates.compare(c, str(ctx.get("name", "고객")))
+            return templates.compare(c, _honorific(ctx))
         if req.kind == "regions":
             return templates.regions(Region.model_validate(ctx["region"]))
         if req.kind == "renewal":
@@ -96,12 +96,24 @@ def situation_of(ctx: dict) -> str:
     return _situation(ctx)
 
 
+def _honorific(ctx: dict) -> str:
+    """호칭 — 가구 라벨(persona_frames labels)에서 파생. 명시적 name이 오면 우선.
+
+    (graph narrate_node가 호칭을 하드코딩하지 않도록 여기로 중앙화.)
+    """
+    if ctx.get("name"):
+        return str(ctx["name"])
+    f = ctx.get("finance") or {}
+    labels = _frames().get("labels", {}).get("household", {})
+    return labels.get(f.get("household"), "고객")
+
+
 def _user_prompt(req: BriefingRequest) -> str:
     ctx = req.context or {}
     if req.kind == "compare":
         return (
             f"사용자 상황: {_situation(ctx)}\n"
-            f"호칭: {ctx.get('name', '고객')}\n"
+            f"호칭: {_honorific(ctx)}\n"
             f"비교표(숫자는 여기 있는 값만 인용): {ctx.get('comparison')}"
         )
     return f"kind={req.kind}\nfacts={ctx}"
