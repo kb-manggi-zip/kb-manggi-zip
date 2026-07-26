@@ -111,9 +111,12 @@ def _honorific(ctx: dict) -> str:
 def _user_prompt(req: BriefingRequest) -> str:
     ctx = req.context or {}
     if req.kind == "compare":
+        notes = (ctx.get("routing") or {}).get("branch_notes") or {}
+        notes_line = ("갈래별 현실성 참고: " + " / ".join(f"{k}—{v}" for k, v in notes.items()) + "\n") if notes else ""
         return (
             f"사용자 상황: {_situation(ctx)}\n"
             f"호칭: {_honorific(ctx)}\n"
+            f"{notes_line}"
             f"비교표(숫자는 여기 있는 값만 인용): {ctx.get('comparison')}"
         )
     return f"kind={req.kind}\nfacts={ctx}"

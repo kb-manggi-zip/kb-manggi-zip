@@ -21,12 +21,14 @@
 | **규정값 검증 반영** (lending/policy/guarantee, 2026-07-20 대조) | ✅ |
 | 인프라: Docker/compose · CI(pytest·ruff·build) · 55 tests green | ✅ |
 
-## ⬜ 다음 (우선순위)
-1. **🎬 narrator 개인화** — ✅ '온라인 발품' LLM 내레이션 완료(소비 프로필 그라운딩, 화면 표시). 🟡 `data/region_facts.yaml`(동네 교통·물가·시설) 팀원이 채우는 중 → 채울수록 더 구체적. [가이드: docs/지역데이터_채우기_가이드.md]
-2. **🕸 세션 트레이싱** — 지금은 API콜별 trace. 사용자 세션ID를 전 API에 전파 → Langfuse에서 **한 사용자 여정(analyze→regions→products) 하나로** 그룹핑.
-3. **🔴 남은 값 검증**(사람) — 생애최초 취득세 감면 일몰 · 중개보수/취득세 구간표 · 규제지역 발표 직전 재확인.
-4. **📊 발표 준비** — Langfuse 대시보드 캡처, 데모 시나리오(P2 매매 / P3 월세).
-5. (선택) 계약서 Vision(B5) · KB 시세허브(kbland) · 상품 개인화 자격필터(finance 스키마 확장).
+## ⬜ 다음 (우선순위)  — 상세 로드맵: `docs/에이전트_설계_로드맵.md`
+1. **🟡 `region_facts.yaml` 채우기**(팀) — 동네 교통·물가·시설 → 발품 구체화. [가이드: docs/지역데이터_채우기_가이드.md]
+2. **🔴 남은 규정값 5개 검증**(사람) — renewal(increase_cap·notice)·one_time(move_base·broker·acquisition).
+3. **⬜ disclaimer 1줄** — "사전 가늠·정식 심사 아님"(매매 카드).
+4. **📊 발표 준비** — Langfuse 4노드 경로 캡처, 데모 시나리오(P2 매매 / P3 월세).
+5. **🔴 오피스텔(준주택) rule set** — 세금·대출·규제 새 리서치+구현(범위 확장, 로드맵 §6-C). 이후 `housingType` 필드(스키마).
+
+**✅ 최근 완료**: 세션 트레이싱(한 여정=한 Langfuse Session) · 발품 LLM 내레이션 · **supervisor 라우팅**(intake→compare→route→narrate) · 규정값 0726 반영 · 문서 정직화.
 
 ## 핵심 결정 로그 (왜 이렇게 했나)
 - **규정값 = YAML(DB 아님)**: 소량·저빈도·감사대상 → git diff·PR리뷰·source_url/checked_at 이력이 핵심.

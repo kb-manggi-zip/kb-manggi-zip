@@ -25,7 +25,7 @@
 | B7 | `data/kb_products/*.md` | ✅ 상품 5종+보장 2종. **✅ 출처·checked_at 2026-07-20 확정 반영** |
 
 ## C. 오케스트레이션·Vision
-- C1 ✅ `app/graph.py` LangGraph — compare/regions 그래프 + **분석 에이전트 `/api/analyze`(intake→compare→narrate)**
+- C1 ✅ `app/graph.py` LangGraph — compare/regions 그래프 + **분석 에이전트 `/api/analyze`(intake→compare→route→narrate 4노드)**. `route`=supervisor 라우팅(규칙 세트 선택+갈래 현실성, `agents/supervisor.py`). 🟡 오피스텔 등 property 라우팅은 seam(주택만 구현) [로드맵 §5]
 - C2 ✅ Langfuse 트레이싱 — 전 노드 `@observe` + `analyze_agent` 부모 span으로 **한 trace에 묶음**(OTel 전파 검증). **+ 세션 그룹핑**: 프론트가 여정마다 `X-Session-Id` 헤더 전송 → `core/tracing.py::session_scope`가 `propagate_attributes(session_id=…)`로 root+하위 span 전체에 stamp → Langfuse **Sessions**에서 analyze→regions→simulate→products가 한 여정으로 묶임(스키마 변경 없음, in-memory OTel로 검증).
 - C3 ⬜ `app/agents/extractor.py` 계약서 Vision — `NotImplementedError` STUB, 엔드포인트 미활성 [B5]
 
