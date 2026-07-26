@@ -3,7 +3,7 @@
 export const RULES = {
   renewal: {
     increaseCap: 0.05,       // 법정 상한 5%
-    conversionRate: 0.055,   // 전월세전환율 (한국은행 기준)
+    conversionRate: 0.0475,   // 전월세전환율 = 기준금리 2.75%(2026.7.16~) + 법정 2.0%p (렌트홈 4.75%)
   },
   loan: {
     ltv: 0.70,

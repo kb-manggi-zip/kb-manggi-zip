@@ -42,14 +42,14 @@
 
 ## E. 규칙값 — ✅ 대부분 검증 완료 (2026-07-20, `ref/rules_확정값_실데이터반영용.md`)
 - E1 ✅ 스트레스DSR loan_type_ratio: 추정 0.60/0.30 **제거 → 보수적 1.00**(변동만 사용, 출력 불변)
-- E2 ⬜ 생애최초 취득세 감면 일몰·상한 미확정 (`lending_regulated.yaml` `first_home_acq_reduction`) — 미확인 시 보수(감면 미적용) 검토
+- E2 ✅ 생애최초 취득세 감면 — **2028.12.31까지 연장 확정**(지특법 §36의3, checked 2026-07-26). 12억↓ 200만 한도, firstHome '예' 매매에 이미 -200만 적용. (소형 300만·12억 상한 구분은 PoC 미반영 = D5)
 - E3 ✅ HUG 요율표 리서치_3 **셀 대조 완료·유지 확정** (아파트 0.115%/0.122%/0.128%)
 - E4 multi_house LTV = PoC 미구현(타깃 외)
-- E5 ⬜ `renewal.yaml`(임대차보호법)·`one_time.yaml`(중개보수·취득세 구간표) 아직 미검증. 구 `lending/guarantee.yaml`은 v2로 대체(미사용)
+- E5 🟡 `renewal.conversion_rate` ✅ **0.0475**(기준금리 2.75% 2026.7.16 인상 반영, checked 2026-07-26). 나머지 5개는 여전히 🔴 미검증 → 시작 경고 5줄: `renewal`(increase_cap·notice_deadline_months), `one_time`(move_base·broker_rate·acquisition_rate)
 - **검증 완료**: `lending_regulated`·`policy_loans`·`guarantee_hug`.yaml → `checked_at: 2026-07-20`
 
 ## F. 정리/자투리
-- F1 구 `lending.yaml`·`guarantee.yaml`는 매매/보증 경로에서 `lending_regulated`/`guarantee_hug`로 대체됨 (get_rules는 renewal/oneTime용으로만 로드 — 미사용 값 잔존)
+- F1 ✅ 구 `lending.yaml`·`guarantee.yaml` **삭제 완료**(2026-07-26). `get_rules`는 renewal/oneTime만 로드 → 무의미한 미검증 경고 6줄 제거(12→5). 대출/보증 규제값은 `lending_regulated`/`guarantee_hug`에서 직접 로드
 - F2 `/api/briefing`은 프론트가 로컬 `briefings.*`로 생성 → 엔드포인트 사실상 미사용(향후 SSE)
 - F3 reservation 저장만, 조회/관리 없음
 - F4 프론트 테스트 러너 없음 (엔진 검증은 백엔드 동치로 대체)

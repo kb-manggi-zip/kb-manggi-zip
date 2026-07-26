@@ -9,10 +9,10 @@ increase_cap:
   note: "계약갱신 시 차임·보증금 증액 상한. 지자체 조례로 하향 가능."
 
 conversion_rate:
-  value: 0.055         # 전월세전환율 (보증금↔월세 환산)
-  source_url: "https://www.bok.or.kr"
-  checked_at: null     # TODO 검증
-  note: "한국은행 기준금리 + 대통령령 이율. 시점에 따라 변동."
+  value: 0.0475        # 전월세전환율 = 기준금리 2.75%(2026.7.16 인상) + 법정 2.0%p
+  source_url: "https://www.renthome.go.kr"   # 렌트홈 계산기 4.75% 반영 확인 (주임법 §7의2 + 시행령 2.0%)
+  checked_at: "2026-07-26"
+  note: "기준금리 변동 시 갱신 필수. 2026.7.16 한은 인상(2.50→2.75)으로 4.5→4.75%. 렌트홈·한국부동산원 계산기 4.75% 확인."
 
 notice_deadline_months:
   value: 2             # 갱신 의사 통보 기한 (만기 N개월 전)

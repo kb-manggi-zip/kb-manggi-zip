@@ -24,18 +24,6 @@ class RenewalRules(BaseModel):
     conversionRate: float
 
 
-class LoanRules(BaseModel):
-    ltv: float
-    dsrCap: float
-    stressRate: float
-    years: int
-    jeonseRate: float
-
-
-class GuaranteeRules(BaseModel):
-    feeRate: float
-
-
 class OneTimeRules(BaseModel):
     moveBase: float
     brokerRate: float
@@ -44,10 +32,11 @@ class OneTimeRules(BaseModel):
 
 class Rules(BaseModel):
     renewal: RenewalRules
-    loan: LoanRules
-    guarantee: GuaranteeRules
     oneTime: OneTimeRules
     noticeDeadlineMonths: int
+    # 주: 대출/보증 규제값(LTV·DSR·전세금리·보증료)은 lending_regulated.yaml·
+    #     guarantee_hug.yaml(검증본)에서 read_yaml로 직접 로드한다. 구 lending.yaml·
+    #     guarantee.yaml은 미사용이라 제거됨(무의미한 미검증 경고 방지).
 
 
 def _load_yaml(name: str) -> dict:
@@ -80,24 +69,12 @@ def _value(doc: dict, key: str, file: str) -> float:
 @lru_cache
 def get_rules() -> Rules:
     renewal = _load_yaml("renewal.yaml")
-    lending = _load_yaml("lending.yaml")
-    guarantee = _load_yaml("guarantee.yaml")
     one_time = _load_yaml("one_time.yaml")
 
     return Rules(
         renewal=RenewalRules(
             increaseCap=_value(renewal, "increase_cap", "renewal.yaml"),
             conversionRate=_value(renewal, "conversion_rate", "renewal.yaml"),
-        ),
-        loan=LoanRules(
-            ltv=_value(lending, "ltv", "lending.yaml"),
-            dsrCap=_value(lending, "dsr_cap", "lending.yaml"),
-            stressRate=_value(lending, "stress_rate", "lending.yaml"),
-            years=int(_value(lending, "years", "lending.yaml")),
-            jeonseRate=_value(lending, "jeonse_rate", "lending.yaml"),
-        ),
-        guarantee=GuaranteeRules(
-            feeRate=_value(guarantee, "fee_rate", "guarantee.yaml"),
         ),
         oneTime=OneTimeRules(
             moveBase=_value(one_time, "move_base", "one_time.yaml"),

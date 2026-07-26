@@ -1,8 +1,0 @@
-# 전세보증금 반환보증 보증료율
-# ⚠️ 예시값. HUG/HF/SGI 공시 요율로 검증 필요 (주택유형·보증기관별 상이).
-
-fee_rate:
-  value: 0.0015        # 연 보증료율. 비교표에서 보증금×요율÷12로 월 환산.
-  source_url: "https://www.khug.or.kr"
-  checked_at: null     # TODO 검증
-  note: "가입 가능 여부·실제 요율은 주택유형·보증기관 심사에 따름."

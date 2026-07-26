@@ -300,7 +300,7 @@
         "dday": 153,
         "noticeDaysLeft": 92,
         "noticeDeadline": "2026-10-19",
-        "monthlyToDeposit": 436363636,
+        "monthlyToDeposit": 505263158,
         "savings": 1820000,
         "assumptions": [
           "전세대출 금리 HF 공시 평균 3.89%",
@@ -508,7 +508,7 @@
         "dday": 42,
         "noticeDaysLeft": -19,
         "noticeDeadline": "2026-06-30",
-        "monthlyToDeposit": 174545455,
+        "monthlyToDeposit": 202105263,
         "savings": 1700000,
         "assumptions": [
           "전세대출 금리 HF 공시 평균 3.89%",
