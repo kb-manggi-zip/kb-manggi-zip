@@ -30,16 +30,21 @@ def _estimate_minutes(lat1: float, lng1: float, lat2: float, lng2: float) -> int
     return int(round(km / 22 * 60 + 12))
 
 
+def estimate(from_lat: float, from_lng: float, to_lat: float, to_lng: float) -> dict:
+    """순수 직선거리 예상치(외부 호출 없음) — 런타임/오프라인 폴백용. estimated=True 고정."""
+    return {
+        "minutes": _estimate_minutes(from_lat, from_lng, to_lat, to_lng),
+        "transfers": None,
+        "estimated": True,
+    }
+
+
 def commute(from_lat: float, from_lng: float, to_lat: float, to_lng: float) -> dict:
     """동네→직장 대중교통 소요. 반환 {minutes, transfers|None, estimated: bool}.
 
     키 없거나 실패 → estimated=True(직선거리 예상치). 성공 → estimated=False(ODsay 실측).
     """
-    fallback = {
-        "minutes": _estimate_minutes(from_lat, from_lng, to_lat, to_lng),
-        "transfers": None,
-        "estimated": True,
-    }
+    fallback = estimate(from_lat, from_lng, to_lat, to_lng)
     if not settings.odsay_api_key:
         return fallback
     try:

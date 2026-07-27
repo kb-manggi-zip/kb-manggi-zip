@@ -105,31 +105,63 @@ def inspect_one() -> None:
     )
 
 
-def main() -> None:
-    key = settings.sbiz_api_key
-    if not key:
-        log.error("SBIZ_API_KEY 없음 → .env에 추가(Decoding 키) 후 재실행.")
-        sys.exit(1)
-
+def _collect_region_facts() -> None:
+    """상권 집계(SBIZ). 키 없으면 건너뜀."""
+    if not settings.sbiz_api_key:
+        log.warning("SBIZ_API_KEY 없음 → 상권 수집 건너뜀.")
+        return
     from PublicDataReader import SmallShop
 
-    api = SmallShop(key)
+    api = SmallShop(settings.sbiz_api_key)
     source = f"소상공인시장진흥공단 상가정보 ({datetime.now().strftime('%Y-%m')})"
-    ok = 0
     for region_id, name, lat, lng in DEMO_REGIONS:
         try:
             df = api.get_data(service_name=SERVICE, radius=RADIUS, cx=lng, cy=lat, translate=False)
             facts = to_facts(count_by_field(df))
-            if not facts:
-                log.warning("%s(%s): 집계 0 → 스킵", region_id, name)
             for field, (values, n) in facts.items():
                 trades_store.write_region_facts(region_id, field, values, n, source)
-            log.info("%s(%s): %s", region_id, name, {k: n for k, (_, n) in facts.items()})
-            ok += bool(facts)
-        except Exception as e:  # 실패는 스킵+로그 (전체 중단 안 함)
-            log.warning("%s(%s) 스킵: %s", region_id, name, e)
-        time.sleep(0.3)  # 트래픽 안전
-    log.info("완료: %d/%d 지역 집계 저장 (DB=%s)", ok, len(DEMO_REGIONS), trades_store.resolve_db_path(write=True))
+            log.info("[상권] %s(%s): %s", region_id, name, {k: n for k, (_, n) in facts.items()})
+        except Exception as e:
+            log.warning("[상권] %s(%s) 스킵: %s", region_id, name, e)
+        time.sleep(0.3)
+
+
+def _workplaces() -> list[dict]:
+    """spending_profiles의 대표 직장(중복 제거)."""
+    from app.agents.narrator import _profiles
+
+    p = _profiles()
+    seen: dict = {}
+    for prof in list(p.get("profiles", {}).values()) + [p.get("default", {})]:
+        wp = prof.get("workplace")
+        if wp:
+            seen[wp["name"]] = wp
+    return list(seen.values())
+
+
+def _collect_transit() -> None:
+    """통근시간(ODsay 실측). 키 없으면 건너뜀(런타임은 예상치 폴백). 실측만 캐싱."""
+    if not settings.odsay_api_key:
+        log.warning("ODSAY_API_KEY 없음 → 통근 실측 건너뜀(런타임 예상치 사용).")
+        return
+    from app.tools import transit
+
+    wps = _workplaces()
+    for region_id, name, lat, lng in DEMO_REGIONS:
+        n = 0
+        for wp in wps:
+            c = transit.commute(lat, lng, wp["lat"], wp["lng"])
+            if not c["estimated"]:  # 실측만 저장(예상치는 런타임이 순수계산)
+                trades_store.write_region_transit(region_id, wp["name"], c["minutes"], c["transfers"], c["estimated"])
+                n += 1
+            time.sleep(0.3)
+        log.info("[통근] %s(%s): 실측 %d/%d", region_id, name, n, len(wps))
+
+
+def main() -> None:
+    _collect_region_facts()
+    _collect_transit()
+    log.info("완료 (DB=%s)", trades_store.resolve_db_path(write=True))
 
 
 if __name__ == "__main__":

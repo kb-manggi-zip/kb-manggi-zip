@@ -48,6 +48,16 @@ CREATE TABLE IF NOT EXISTS region_facts (
     collected_at TEXT NOT NULL,
     PRIMARY KEY (region_id, field)
 );
+
+CREATE TABLE IF NOT EXISTS region_transit (
+    region_id    TEXT NOT NULL,          -- 프론트 Region.id
+    workplace    TEXT NOT NULL,          -- 직장 라벨 (예: '여의도(금융권)')
+    minutes      INTEGER NOT NULL,
+    transfers    INTEGER,                -- 환승 횟수 (예상치는 NULL)
+    estimated    INTEGER NOT NULL DEFAULT 0,  -- 1=직선거리 예상, 0=ODsay 실측
+    collected_at TEXT NOT NULL,
+    PRIMARY KEY (region_id, workplace)
+);
 """
 
 
@@ -204,6 +214,39 @@ def read_region_facts(region_id: str, *, db_path: Optional[str] = None) -> dict:
     finally:
         conn.close()
     return {field: json.loads(vj) for field, vj in rows}
+
+
+def write_region_transit(
+    region_id: str, workplace: str, minutes: int, transfers, estimated: bool, *, db_path: Optional[str] = None
+) -> None:
+    """통근시간 1건 저장(멱등 PK(region_id, workplace)). refresh에서만 호출(실 API)."""
+    path = db_path or resolve_db_path(write=True)
+    conn = connect(path)
+    try:
+        conn.execute(
+            "INSERT OR REPLACE INTO region_transit "
+            "(region_id, workplace, minutes, transfers, estimated, collected_at) VALUES (?,?,?,?,?,?)",
+            (region_id, workplace, int(minutes), transfers, int(estimated), datetime.now(timezone.utc).isoformat()),
+        )
+        conn.commit()
+    finally:
+        conn.close()
+
+
+def read_region_transit(region_id: str, workplace: str, *, db_path: Optional[str] = None) -> Optional[dict]:
+    """(region_id, workplace) → {minutes, transfers, estimated} 또는 None(런타임은 이것만 읽음)."""
+    path = db_path or resolve_db_path(write=False)
+    if not path or not Path(path).exists():
+        return None
+    conn = connect(path)
+    try:
+        row = conn.execute(
+            "SELECT minutes, transfers, estimated FROM region_transit WHERE region_id=? AND workplace=?",
+            (region_id, workplace),
+        ).fetchone()
+    finally:
+        conn.close()
+    return {"minutes": row[0], "transfers": row[1], "estimated": bool(row[2])} if row else None
 
 
 def sample_trade(umd_name: str, trade_type: str, *, db_path: Optional[str] = None) -> Optional[dict]:

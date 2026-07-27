@@ -121,7 +121,10 @@ def _transit_fact(reg: dict, household: str | None) -> str:
     wp = profile_for(household).get("workplace")
     if not (lat and lng and wp):
         return ""
-    c = transit.commute(float(lat), float(lng), wp["lat"], wp["lng"])
+    # 런타임은 DB 캐시(refresh가 ODsay 실측 적재)만 읽고, 없으면 순수 추정 — 라이브 호출·오프라인 안전.
+    c = trades_store.read_region_transit(reg.get("id") or "", wp["name"]) or transit.estimate(
+        float(lat), float(lng), wp["lat"], wp["lng"]
+    )
     tr = f", 환승 {c['transfers']}회" if c.get("transfers") else ""
     tag = "(예상)" if c.get("estimated") else ""
     # 직장은 '가정'(모를 수 있음) → 조건부로. 프롬프트가 '~라면'으로 서술.

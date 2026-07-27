@@ -131,3 +131,22 @@ def test_transit_fact_in_narrator():
     f = narrator._transit_fact(reg, "1인")  # 1인 → 판교
     assert "판교" in f and "분" in f
     assert narrator._transit_fact({"name": "좌표없음"}, "1인") == ""  # 좌표 없으면 빈 문자열
+
+
+def test_region_transit_roundtrip(tmp_path):
+    db = str(tmp_path / "t.db")
+    trades_store.write_region_transit("seongbuk", "여의도(금융권)", 46, 1, False, db_path=db)
+    got = trades_store.read_region_transit("seongbuk", "여의도(금융권)", db_path=db)
+    assert got == {"minutes": 46, "transfers": 1, "estimated": False}
+    assert trades_store.read_region_transit("seongbuk", "없는직장", db_path=db) is None
+
+
+def test_narrator_transit_prefers_cache(tmp_path, monkeypatch):
+    from app.agents import narrator
+
+    db = str(tmp_path / "t.db")
+    trades_store.write_region_transit("seongbuk", "여의도(금융권)", 46, 1, False, db_path=db)
+    monkeypatch.setenv("TRADES_DB", db)
+    reg = {"id": "seongbuk", "name": "성북구 길음동", "lat": 37.6038, "lng": 127.0193}
+    f = narrator._transit_fact(reg, "신혼")  # 신혼 → 여의도, 캐시 실측
+    assert "여의도" in f and "46분" in f and "환승 1회" in f and "예상" not in f
