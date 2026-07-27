@@ -7,6 +7,7 @@ venv/
 *.db
 # 발표 데모용 스냅샷은 커밋 (네트워크 없이 재현)
 !data/trades.demo.db
+!data/mydata.demo.db
 cache/*
 !cache/.gitkeep
 # compare_cases.json 은 커밋한다 (fresh clone에서 node 없이 pytest 통과)
