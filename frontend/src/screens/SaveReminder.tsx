@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { useApp } from '../store';
 import { COLORS, BRANCH_COLORS, BRANCH_ICONS } from '../theme';
 import { MobileShell, JourneyHeader, PrimaryBtn, Disclaimer } from '../components/ui';
-import { formatAmount, formatDate, formatDday } from '../utils/format';
+import { formatAmount, formatDate, formatDday, ddayText } from '../utils/format';
 
 export default function SaveReminder() {
   const { state, dispatch } = useApp();
@@ -45,7 +45,7 @@ export default function SaveReminder() {
             아직 결정 전이어도 괜찮아요 🌤
           </p>
           {dday && (
-            <p className="text-sm text-muted-foreground mt-1">만기 D-{dday}에 다시 만나요 👋</p>
+            <p className="text-sm text-muted-foreground mt-1">만기 {ddayText(dday)}에 다시 만나요 👋</p>
           )}
         </div>
 

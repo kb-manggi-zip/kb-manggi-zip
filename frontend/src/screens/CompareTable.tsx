@@ -7,7 +7,7 @@ import {
   DdayChip, BasisChip, Accordion, Disclaimer, Toast
 } from '../components/ui';
 import AiBriefing from '../components/AiBriefing';
-import { formatAmount, formatMonthly, formatDate } from '../utils/format';
+import { formatAmount, formatMonthly, formatDate, ddayText } from '../utils/format';
 import { briefings } from '../api/client';
 import type { BranchResult, Branch, FirstHome } from '../api/types';
 
@@ -88,17 +88,22 @@ export default function CompareTable() {
       </div>
 
       {noticeDaysLeft !== null && noticeDaysLeft <= 30 && (
-        <div className="mx-5 mb-3 px-4 py-2 rounded-xl text-xs font-semibold text-white"
-          style={{ background: COLORS.CORAL }}>
-          ⚠️ 갱신 의사 통보 기한이 {noticeDaysLeft}일 남았어요 ({formatDate(new Date(noticeDeadline))})
+        <div className="mx-5 mb-3 px-4 py-2.5 rounded-xl text-xs font-semibold flex items-center gap-1.5"
+          style={{ background: '#5C5147', color: '#FFE9C7' }}>
+          {noticeDaysLeft < 0 ? (
+            <span>통보기한이 지났어요 — <span style={{ color: '#FF8A70' }}>묵시적 갱신</span> 가능성이 있어요. 임대인과 확인하세요.</span>
+          ) : (
+            <span>갱신 의사 통보기한 <b style={{ color: COLORS.KB_YELLOW }}>D-{noticeDaysLeft}</b> · <span style={{ color: '#FF8A70' }}>{formatDate(new Date(noticeDeadline))}</span>까지</span>
+          )}
+          <span className="ml-auto cursor-help select-none" title="만기 6~2개월 전까지 갱신 여부를 알려야 해요 (주택임대차보호법 제6조의3)">ⓘ</span>
         </div>
       )}
 
       {/* AI 브리핑 */}
       <AiBriefing text={briefText} />
 
-      {/* 카드 탭 인디케이터 */}
-      <div className="flex px-5 gap-2 mb-3">
+      {/* 3갈래 미니 요약 바 — 갈래+월부담, 현재 갈래 하이라이트, 탭하면 해당 카드로 */}
+      <div className="flex px-5 gap-2 mb-3 sticky top-0 z-10 py-1" style={{ background: COLORS.BG }}>
         {branches.map((b, i) => (
           <button
             key={b.branch}
@@ -106,13 +111,14 @@ export default function CompareTable() {
               setActiveCard(i);
               scrollRef.current?.children[i].scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
             }}
-            className="flex-1 py-2 rounded-xl text-xs font-semibold transition-all"
+            className="flex-1 py-2 rounded-xl text-xs font-semibold transition-all leading-tight"
             style={{
               background: activeCard === i ? BRANCH_COLORS[b.branch] : COLORS.BORDER,
               color: activeCard === i ? COLORS.TEXT : COLORS.SUB,
             }}
           >
-            {BRANCH_ICONS[b.branch]} {b.branch}
+            {BRANCH_ICONS[b.branch]} {b.branch}<br />
+            <span className="font-bold">{Math.round(b.monthlyBurden / 10_000)}만</span>
           </button>
         ))}
       </div>
@@ -135,16 +141,10 @@ export default function CompareTable() {
             contractType={contract.type}
             monthlyToDeposit={comparison.monthlyToDeposit}
             firstHome={finance?.firstHome}
+            assumptions={assumptions}
             onSelect={() => selectBranch(b.branch)}
           />
         ))}
-      </div>
-
-      {/* 가정 아코디언 */}
-      <div className="px-5 pb-4">
-        <Accordion title="이 계산의 가정 보기">
-          {assumptions.map(a => <p key={a} className="text-xs py-0.5">• {a}</p>)}
-        </Accordion>
       </div>
 
       <Disclaimer />
@@ -175,7 +175,7 @@ const ShareCard = React.forwardRef<HTMLDivElement, { branches: BranchResult[]; n
         <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6 }}>
           <div style={{ background: COLORS.KB_YELLOW, borderRadius: 10, width: 32, height: 32, display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 900, fontSize: 11 }}>KB</div>
           <span style={{ fontWeight: 700, color: COLORS.KB_GRAY }}>KB 만기상담소</span>
-          <span style={{ marginLeft: 'auto', fontSize: 12, color: COLORS.SUB }}>D-{dday}</span>
+          <span style={{ marginLeft: 'auto', fontSize: 12, color: COLORS.SUB }}>{ddayText(dday)}</span>
         </div>
         <p style={{ fontSize: 16, fontWeight: 700, color: COLORS.KB_GRAY, margin: 0 }}>{name}님 비교 결과</p>
       </div>
@@ -204,11 +204,21 @@ const ShareCard = React.forwardRef<HTMLDivElement, { branches: BranchResult[]; n
   )
 );
 
+// 공통 가정(모든 갈래) + 갈래별 가정만 골라 보여준다(이사 카드에 매매 가정 섞임 방지).
+function assumptionForBranch(a: string, branch: Branch): 'common' | 'branch' | null {
+  if (/사전 가늠|기존 대출/.test(a)) return 'common';
+  if (branch === '매매') return /LTV|주택구입|스트레스 DSR|생애최초|취득세/.test(a) ? 'branch' : null;
+  if (branch === '갱신') return /법정 상한 5%|전월세전환|HF 공시|보증료/.test(a) ? 'branch' : null;
+  if (branch === '이사') return /HF 공시|보증료/.test(a) ? 'branch' : null;
+  return null;
+}
+
 function BranchCardView({
-  branch, contractType, monthlyToDeposit, firstHome, onSelect
-}: { branch: BranchResult; contractType: string; monthlyToDeposit: number; firstHome?: FirstHome; onSelect: () => void }) {
+  branch, contractType, monthlyToDeposit, firstHome, assumptions, onSelect
+}: { branch: BranchResult; contractType: string; monthlyToDeposit: number; firstHome?: FirstHome; assumptions: string[]; onSelect: () => void }) {
   const color = BRANCH_COLORS[branch.branch];
   const icon = BRANCH_ICONS[branch.branch];
+  const branchAssumptions = assumptions.map(a => [a, assumptionForBranch(a, branch.branch)] as const).filter(([, k]) => k);
 
   // 매매 근거 칩: LTV / KB한도 / 디딤돌 3개 + 출처 툴팁 (스트레스 DSR은 가정 아코디언으로)
   const basisChips =
@@ -297,6 +307,25 @@ function BranchCardView({
           {basisChips.map(c => <BasisChip key={c.label} label={c.label} tip={c.tip} />)}
         </div>
       </div>
+
+      {/* 이 갈래의 가정만 (공통 + 갈래별) */}
+      {branchAssumptions.length > 0 && (
+        <div className="px-5 py-2">
+          <Accordion title={`${branch.branch} 계산의 가정 보기`}>
+            {branchAssumptions.filter(([, k]) => k === 'branch').map(([a]) => (
+              <p key={a} className="text-xs py-0.5">• {a}</p>
+            ))}
+            {branchAssumptions.some(([, k]) => k === 'common') && (
+              <>
+                <p className="text-[11px] font-semibold mt-1.5" style={{ color: COLORS.SUB }}>공통</p>
+                {branchAssumptions.filter(([, k]) => k === 'common').map(([a]) => (
+                  <p key={a} className="text-xs py-0.5">• {a}</p>
+                ))}
+              </>
+            )}
+          </Accordion>
+        </div>
+      )}
 
       <div className="px-5 pb-5">
         <button

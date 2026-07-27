@@ -3,7 +3,7 @@ import { useApp } from '../store';
 import { COLORS } from '../theme';
 import { MobileShell, JourneyHeader, BackBtn, PrimaryBtn, BasisChip, Disclaimer, Toast } from '../components/ui';
 import AiBriefing from '../components/AiBriefing';
-import { formatDate, formatNoticeDeadline, formatAmount } from '../utils/format';
+import { formatDate, formatNoticeDeadline, formatAmount, noticeText } from '../utils/format';
 import { NOTICE_DEADLINE_MONTHS, briefings, api } from '../api/client';
 
 interface CheckItem {
@@ -211,7 +211,7 @@ export default function RenewalChecklist() {
                           className="text-xs font-bold px-2 py-0.5 rounded-full text-white"
                           style={{ background: COLORS.CORAL }}
                         >
-                          ⚠️ {noticeDaysLeft}일 남음
+                          ⚠️ {noticeText(noticeDaysLeft)}
                         </span>
                       )}
                       {item.tip && <BasisChip label={item.tipLabel || '근거'} tip={item.tip} />}

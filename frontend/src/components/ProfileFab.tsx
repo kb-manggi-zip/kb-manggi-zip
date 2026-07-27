@@ -61,12 +61,12 @@ export default function ProfileFab() {
               </div>
             </div>
 
-            {/* 성향 칩 (실측 배지 구분) */}
-            {persona && (persona.consumptionSignals?.length ?? 0) > 0 && (
+            {/* 성향 칩 (세그먼트·실측) */}
+            {persona && persona.consumptionSignals?.some(s => s.source !== '진술') && (
               <div className="rounded-2xl border border-border p-4 space-y-2">
                 <p className="text-xs font-semibold" style={{ color: COLORS.SUB }}>성향</p>
                 <div className="flex flex-wrap gap-1.5">
-                  {persona.consumptionSignals!.map((s, i) => (
+                  {persona.consumptionSignals!.filter(s => s.source !== '진술').map((s, i) => (
                     <span key={i} title={s.reason}
                       className="text-[11px] px-2 py-0.5 rounded-full"
                       style={s.source === '실측'
@@ -79,6 +79,17 @@ export default function ProfileFab() {
                 <p className="text-[11px] leading-snug" style={{ color: COLORS.SUB }}>
                   '실측' 배지는 시연용 합성 데이터 기준이에요. 실서비스에서는 마이데이터 동의 후 실제 내역으로 분석됩니다.
                 </p>
+              </div>
+            )}
+
+            {/* 조정 이력 (본인 진술 → 반영). 수정은 문진에서. */}
+            {persona && persona.consumptionSignals?.some(s => s.source === '진술') && (
+              <div className="rounded-2xl border border-border p-4 space-y-2">
+                <p className="text-xs font-semibold" style={{ color: COLORS.SUB }}>조정 이력 (내가 말한 것)</p>
+                {persona.consumptionSignals!.filter(s => s.source === '진술').map((s, i) => (
+                  <p key={i} className="text-xs" style={{ color: COLORS.TEXT }}>✓ {s.label}</p>
+                ))}
+                <p className="text-[11px]" style={{ color: COLORS.SUB }}>수정은 아래 '문진으로 돌아가' 버튼에서 해제·추가할 수 있어요.</p>
               </div>
             )}
 

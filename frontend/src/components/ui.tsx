@@ -227,13 +227,14 @@ export function BasisChip({ label, tip }: { label: string; tip: string }) {
 
 // ─── D-day Chip ──────────────────────────────────────────────────────────────
 export function DdayChip({ dday }: { dday: number }) {
+  const passed = dday < 0;
   const urgent = dday <= 30;
   return (
     <span
       className="inline-flex items-center gap-1 text-xs font-bold px-3 py-1 rounded-full"
-      style={{ background: urgent ? COLORS.CORAL : COLORS.KB_YELLOW, color: COLORS.TEXT }}
+      style={{ background: passed ? '#5C5147' : urgent ? COLORS.CORAL : COLORS.KB_YELLOW, color: passed ? '#FFE9C7' : COLORS.TEXT }}
     >
-      D-{dday}
+      {passed ? '만기 지남' : `D-${dday}`}
     </span>
   );
 }

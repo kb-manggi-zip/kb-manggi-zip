@@ -5,7 +5,7 @@ import { newSession } from './api/session';
 export type Screen =
   | 'SC-01' | 'SC-02' | 'SC-03' | 'SC-04' | 'SC-05'
   | 'SC-06' | 'SC-07' | 'SC-08' | 'SC-09' | 'SC-10'
-  | 'SC-11' | 'SC-12' | 'SC-13';
+  | 'SC-11' | 'SC-12' | 'SC-13' | 'SC-14';
 
 export interface AppState {
   screen: Screen;

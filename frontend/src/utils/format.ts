@@ -34,6 +34,15 @@ export function parsePriceInput(raw: string): number {
   return parseInt(raw.replace(/,/g, '').replace(/[^0-9]/g, ''), 10) || 0;
 }
 
+// D-day 표기(음수 방어) — 만기 지난 경우 'D--50' 대신 상태 문구.
+export function ddayText(dday: number): string {
+  return dday < 0 ? '만기 지남' : `D-${dday}`;
+}
+// 통보기한 표기(음수 방어).
+export function noticeText(days: number): string {
+  return days < 0 ? '통보기한이 지났어요' : `통보기한 D-${days}`;
+}
+
 export function formatDday(expiryDate: string): number {
   const now = new Date();
   const expiry = new Date(expiryDate);
