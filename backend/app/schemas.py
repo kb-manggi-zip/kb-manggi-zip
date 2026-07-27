@@ -85,6 +85,17 @@ class CompareResponse(BaseModel):
 
 
 # ── 동네 ────────────────────────────────────────────────────────────
+class JeonseRatio(BaseModel):
+    """전세가율 리스크 지표 — 보증금 ÷ 같은 동 매매 중위가(실거래). 예측 아님."""
+
+    ratio: float  # 0.87 = 87%
+    saleMedian: int  # 동 매매 중위가(원)
+    sampleCount: int  # 매매 표본 수
+    band: str  # safe | caution | alert
+    label: str  # 구간 안내 문구
+    basis: str  # "최근 6개월 …동 매매 N건 중위가 기준"
+
+
 class Region(BaseModel):
     id: str
     name: str
@@ -98,6 +109,7 @@ class Region(BaseModel):
     branch: Branch
     score: Optional[float] = None  # 개인화 스코어(통계근거 가중합)
     scoreReasons: list[str] = []  # 왜 이 순위 (근거 노출)
+    jeonseRatio: Optional[JeonseRatio] = None  # 전세 후보일 때 전세가율 리스크 지표(표본<5면 None)
 
 
 # ── 명확화(판단 노드) + 개인화 조합 레이어 ─────────────────────────

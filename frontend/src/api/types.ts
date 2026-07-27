@@ -50,6 +50,15 @@ export interface CompareResponse {
   assumptions: string[];
 }
 
+export interface JeonseRatio {
+  ratio: number;       // 0.87 = 87%
+  saleMedian: number;  // 동 매매 중위가(원)
+  sampleCount: number; // 매매 표본 수
+  band: 'safe' | 'caution' | 'alert';
+  label: string;       // 구간 안내 문구
+  basis: string;       // "최근 6개월 …동 매매 N건 중위가 기준"
+}
+
 export interface Region {
   id: string;
   name: string;
@@ -63,6 +72,7 @@ export interface Region {
   branch: Branch;
   score?: number;        // 개인화 스코어(통계근거 가중합)
   scoreReasons?: string[]; // 왜 이 순위
+  jeonseRatio?: JeonseRatio; // 전세 후보일 때 전세가율 리스크 지표(표본<5면 없음)
 }
 
 export interface Scene {
