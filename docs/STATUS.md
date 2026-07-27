@@ -12,7 +12,7 @@
 - **발품(차별점)**: `narrator` — 소비 프로필 + **상권 실집계(소상공인API)** + **통근 실측(ODsay)** + **국토부 실거래 사례** → 개인화 하루 서사(LLM).
 - **에이전트**: `/api/analyze` = LangGraph 6노드 `intake → clarify → compare → route → persona → narrate`. Langfuse 한 trace(세션 그룹핑).
 - **개인화**: 명확화·스코어 가중치·발품 프레임 전부 **통계/실데이터 근거 + 화면 노출**(블랙박스 아님). 파이프라인 상세: `docs/개인화_파이프라인.md`.
-- **Trust Layer**: 숫자=코드 · verify 가드레일(권유·환각 차단) · 근거·출처 노출 · Langfuse.
+- **Trust Layer**: 숫자=코드 · verify 가드레일(권유·환각 차단) · 근거·출처 노출 · **Langfuse 관측**(6노드 span에 input/output/metadata — 규칙 스냅샷·가중치 조정 전→후·발품 facts·verify 결과 + **HITL 확정 이벤트**).
 
 ## ✅ 완료
 | 영역 | 상태 |

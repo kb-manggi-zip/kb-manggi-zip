@@ -90,8 +90,8 @@ export default function RegionList() {
           <ClarifyBanner
             clarify={clarify}
             applied={applyNote}
-            onApply={() => setApplyNote(true)}
-            onSkip={() => setApplyNote(false)}
+            onApply={() => { setApplyNote(true); api.hitl('applied', clarify.noteSignals ?? [], note); }}
+            onSkip={() => { setApplyNote(false); api.hitl('skipped', clarify.noteSignals ?? [], note); }}
           />
         )}
 

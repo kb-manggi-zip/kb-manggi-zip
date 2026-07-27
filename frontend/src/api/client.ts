@@ -61,6 +61,17 @@ export const api = {
     );
   },
 
+  // HITL 확정 이벤트 — 관측 전용(Langfuse 세션에 '제안→사용자 확정' 기록). 로컬 모드는 no-op.
+  async hitl(choice: 'applied' | 'skipped', signals: string[], note: string): Promise<void> {
+    if (!API_URL) return;
+    try {
+      await fetch(`${API_URL}/api/hitl`, {
+        method: 'POST', headers: apiHeaders(),
+        body: JSON.stringify({ choice, signals, note }),
+      });
+    } catch { /* 관측 실패는 UX를 막지 않음 */ }
+  },
+
   // 개인화 조합 레이어 — 완성 페르소나 → 리소스 조합 산출물(프로필 카드).
   async persona(contract: ContractInfo, finance: FinanceInfo): Promise<PersonaProfile> {
     return localOrRemote(

@@ -20,6 +20,7 @@ from sqlalchemy.orm import Session
 from sse_starlette.sse import EventSourceResponse
 
 from ..agents import briefing, drafter, matcher, narrator
+from ..core import tracing
 from ..core.db import get_db
 from ..core.tracing import session_scope
 from ..graph import build_analyze_graph, build_compare_graph, build_regions_graph
@@ -33,6 +34,7 @@ from ..schemas import (
     CompareResponse,
     DraftNoticeRequest,
     DraftNoticeResponse,
+    HitlRequest,
     HousingType,
     PersonaProfile,
     ProductsRequest,
@@ -73,9 +75,9 @@ def compare(req: CompareRequest, session_id: str | None = Depends(get_session_id
 _analyze_graph = build_analyze_graph()
 
 
-@observe(name="analyze_agent")
+@observe(name="journey")
 def _run_analyze(contract: dict, finance: dict) -> dict:
-    """부모 span — 그래프 6노드(intake/clarify/compare/route/persona/narrate)가 이 trace에 nested로 묶인다."""
+    """부모 span(=여정) — 그래프 6노드(intake/clarify/compare/route/persona/narrate)가 이 trace에 nested."""
     return _analyze_graph.invoke({"contract": contract, "finance": finance})
 
 
@@ -103,6 +105,17 @@ def clarify_endpoint(req: CompareRequest, session_id: str | None = Depends(get_s
     with session_scope(session_id):
         result = clarify_agent.clarify(req.contract.model_dump(), req.finance.model_dump(), note=req.contract.note)
     return ClarifyResult(**result)
+
+
+@router.post("/hitl")
+def hitl(req: HitlRequest, session_id: str | None = Depends(get_session_id)) -> dict:
+    """HITL 확정 이벤트 기록(관측 전용) — 같은 세션 trace에 '제안→사용자 확정'을 박제. 계산 부작용 없음."""
+    with session_scope(session_id):
+        tracing.trace_event(
+            "hitl_persona_confirm",
+            metadata={"choice": req.choice, "signals": req.signals, "note": req.note},
+        )
+    return {"ok": True}
 
 
 @router.post("/persona", response_model=PersonaProfile)

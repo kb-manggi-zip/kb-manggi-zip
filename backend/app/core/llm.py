@@ -46,27 +46,55 @@ def generate(
         fallback: 폴백 텍스트 생성기 (프론트 briefings.ts 이식 템플릿)
         allowed_numbers: 출력에 허용되는 숫자 집합. None이면 숫자 검증 생략(하위호환).
     """
+    from .tracing import span_update  # 지연 import(순환 방지)
+
     if not settings.llm_active:
+        span_update(metadata={"llm_active": False, "llm_fell_back": True, "llm_reason": "LLM_ENABLED off"})
         return fallback()
 
+    solicitation_blocks = 0
+    ungrounded_blocks = 0
     for attempt in range(3):
         try:
             text = _call_claude(system, user)
         except Exception as e:
             log.warning("LLM 호출 실패 → 폴백: %s", e)
+            span_update(metadata={"llm_active": True, "llm_fell_back": True, "llm_reason": f"call error: {e}"})
             return fallback()
 
         if contains_solicitation(text):
             log.info("권유 표현 감지 (시도 %d) → 재생성", attempt + 1)
+            solicitation_blocks += 1
             continue
 
         if allowed_numbers is not None and not numbers_grounded(text, allowed_numbers):
             log.info("숫자 불일치 감지 (시도 %d) → 재생성", attempt + 1)
+            ungrounded_blocks += 1
             continue
 
+        # verify 통과 — '무엇을 대조해 통과시켰는지' 관측
+        span_update(
+            metadata={
+                "llm_active": True,
+                "llm_fell_back": False,
+                "llm_attempts": attempt + 1,
+                "verify_solicitation_blocked": solicitation_blocks,
+                "verify_numbers_grounded": allowed_numbers is not None,
+                "verify_ungrounded_retries": ungrounded_blocks,
+            }
+        )
         return text
 
     log.warning("재생성 2회 모두 실패 → 폴백")
+    span_update(
+        metadata={
+            "llm_active": True,
+            "llm_fell_back": True,
+            "llm_reason": "verify 재생성 3회 실패",
+            "verify_solicitation_blocked": solicitation_blocks,
+            "verify_ungrounded_retries": ungrounded_blocks,
+        }
+    )
     return fallback()
 
 

@@ -207,6 +207,14 @@ class SimulateRequest(BaseModel):
     regionId: str
 
 
+class HitlRequest(BaseModel):
+    """HITL 확정 이벤트(관측 전용) — '제안은 AI, 확정은 사람'을 Langfuse 세션에 남긴다. types.ts 계약 아님."""
+
+    choice: Literal["applied", "skipped"]
+    signals: list[str] = []  # 제안됐던 조정(자유입력 신호)
+    note: str = ""
+
+
 class ProductsRequest(BaseModel):
     branch: Branch
     # client.ts는 {branch}만 보냄. comparison은 향후 확장용(Optional).
