@@ -108,7 +108,7 @@ export default function RegionList() {
           <h2 className="text-base font-bold text-foreground">동네 후보</h2>
           {regions.some(r => r.jeonseRatio) && (
             <p className="text-xs text-muted-foreground -mt-1">
-              전세가율은 동네 유사평형 매매 중위가 기준 참고 지표예요. 개별 주택의 시세·권리관계는 확인이 필요해요.
+              실거래 중위가 대비 참고 지표예요. 실제 보증 가입은 선순위 채권과 기관 산정 주택가격 기준(HUG 90%)으로 심사돼요.
             </p>
           )}
           {regions.map(r => (
