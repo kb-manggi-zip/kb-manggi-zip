@@ -107,11 +107,13 @@ export const api = {
     );
   },
 
-  async regions(branch: Branch, _budget: number, housingType?: HousingType, preferredArea?: string, household?: string, note?: string, personaId?: string): Promise<Region[]> {
+  async regions(branch: Branch, _budget: number, housingType?: HousingType, preferredArea?: string, household?: string, note?: string, personaId?: string, noteAdjust?: Record<string, number>): Promise<Region[]> {
+    const hasAdjust = noteAdjust && Object.keys(noteAdjust).length > 0;
     const q = (housingType ? `&housingType=${housingType}` : '')
       + (preferredArea ? `&preferredArea=${encodeURIComponent(preferredArea)}` : '')
       + (household ? `&household=${encodeURIComponent(household)}` : '')
       + (note ? `&note=${encodeURIComponent(note)}` : '')
+      + (hasAdjust ? `&adjust=${encodeURIComponent(JSON.stringify(noteAdjust))}` : '')
       + (personaId ? `&personaId=${personaId}` : '');
     return localOrRemote(
       () => branch === '매매' ? REGIONS_BUY : branch === '이사' ? REGIONS_MOVE : REGIONS_MONTHLY,

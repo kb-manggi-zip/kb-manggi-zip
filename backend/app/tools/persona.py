@@ -71,7 +71,7 @@ def build_persona(
     for s in (clarify_result or {}).get("noteSignals", []):
         signals.append({"label": s, "source": "진술"})
 
-    weights = clarify_mod.note_weights(household, note)
+    weights = clarify_mod.note_weights(household, note, contract.get("noteAdjust"))
     priorities = (clarify_result or {}).get("priorities") or [
         clarify_mod.AXIS_LABEL[k] for k, _ in sorted(weights.items(), key=lambda kv: -kv[1])
     ]
@@ -108,7 +108,8 @@ def scoring_ctx(
         "workplace": (prof.get("workplace") or {}).get("name"),
         "traits": prof.get("traits", []),
         "in_preferred": in_preferred,
-        "weights": clarify_mod.note_weights(household, note),
+        # 확정된 조정(noteAdjust)이 있으면 그걸로 랭킹(자연어→LLM 확정분 반영), 없으면 note 키워드.
+        "weights": clarify_mod.note_weights(household, note, contract.get("noteAdjust")),
     }
     if persona_id:
         from .personal_traits import derive_personal_traits, values_food_override

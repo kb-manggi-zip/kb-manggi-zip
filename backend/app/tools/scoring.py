@@ -11,6 +11,16 @@ from typing import Optional
 
 from . import trades_store
 
+# 시군구코드 → 수집된 구 fact-id(상권·통근 자료가 있는 대표 id). 동 facts 없을 때 '구 기준' 폴백.
+_FACT_ID_BY_SIGUNGU = {
+    "11260": "jungnang",
+    "11290": "seongbuk",
+    "11320": "dobong",
+    "11350": "nowon",
+    "11380": "eunpyeong",
+    "11440": "mapo",
+}
+
 # ── 가중치 도출: 국토부 2024 주거실태조사 '이사 사유' 응답률 ──────────────────
 # 직주근접 30.6% + 교통편리 25.5% = 56.1%(확정). consumption/budget/preference는 보도자료 근사(🔴 원문 표로 교체).
 # 출처: 국토부 2024 주거실태조사(보도자료 251117) / 통계누리 hRsId=327 / 청년의삶 실태조사(통근 39.2% 1위)
@@ -102,11 +112,24 @@ def score_region(region: dict, ctx: dict) -> dict:
     w = ctx.get("weights") or weights_for(household)
     rid = region.get("id") or ""
 
-    # commute: region_transit 캐시(실측) 조회
+    # 동 facts 없으면 같은 구(fact-id)로 폴백 — '구 기준'으로 표기(동 특성처럼 단정 금지).
+    gu_id = _FACT_ID_BY_SIGUNGU.get(region.get("sigunguCode") or "")
+    gu_used = False
+
+    # commute: region_transit 캐시(실측) 조회 (동 → 구 폴백)
     wp = ctx.get("workplace")
-    tr = trades_store.read_region_transit(rid, wp) if wp else None
+    tr = (trades_store.read_region_transit(rid, wp) if wp else None) or None
+    if tr is None and wp and gu_id:
+        tr = trades_store.read_region_transit(gu_id, wp)
+        if tr:
+            gu_used = True
     minutes = tr["minutes"] if tr else None
+
     dc = _dc_count(rid)
+    if dc is None and gu_id:
+        dc = _dc_count(gu_id)
+        if dc:
+            gu_used = True
     # 실측 override(persona.scoring_ctx가 실어줌)가 있으면 그것을, 없으면 세그먼트 traits에서 판정.
     values_food = ctx.get("values_food")
     if values_food is None:
@@ -120,11 +143,12 @@ def score_region(region: dict, ctx: dict) -> dict:
     }
     total = round(sum(axes[k] * w[k] for k in axes), 3)
 
+    gu_tag = " (구 기준)" if gu_used else ""
     reasons = []
     if minutes is not None:
-        reasons.append(f"통근 {minutes}분 (가중치 {int(w['commute'] * 100)}%·조사상 최우선)")
+        reasons.append(f"통근 {minutes}분{gu_tag} (가중치 {int(w['commute'] * 100)}%·조사상 최우선)")
     if dc:
-        reasons.append(f"음식점·카페 {dc}곳{'·소비 성향과 매칭' if values_food else ''}")
+        reasons.append(f"음식점·카페 {dc}곳{gu_tag}{'·소비 성향과 매칭' if values_food else ''}")
     if budget > 0 and region.get("surplus", 0) > 0:
         reasons.append("예산 여유 있음")
     return {"total": total, "reasons": reasons, "breakdown": {k: round(axes[k], 3) for k in axes}, "weights": w}

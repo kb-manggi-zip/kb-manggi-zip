@@ -184,10 +184,19 @@ def regions(
     housingType: HousingType | None = Query(default=None),
     preferredArea: str = Query(default=""),  # 선호지역 구명 → 그 구에서 우선 추천(없으면 6구 전체)
     household: str = Query(default=""),  # 개인화 스코어 가중치·통근 직장 결정용
-    note: str = Query(default=""),  # 자유입력 → 명확화 보정 가중치가 순위에 반영
+    note: str = Query(default=""),  # 자유입력 → (adjust 없을 때) 키워드 보정
+    adjust: str = Query(default=""),  # HITL 확정된 축별 배수(JSON) → 랭킹에 직접 반영(자연어 확정분)
     personaId: str = Query(default=""),  # 실측 소비 override(values_food)를 순위에 반영
     session_id: str | None = Depends(get_session_id),
 ) -> list[Region]:
+    import json
+
+    try:
+        note_adjust = json.loads(adjust) if adjust else {}
+        if not isinstance(note_adjust, dict):
+            note_adjust = {}
+    except json.JSONDecodeError:
+        note_adjust = {}
     # housingType이 국토부 API property_type과 동일 값('아파트'|'연립다세대')이라 변환 없이 그대로 씀
     house_type = housingType
     with session_scope(session_id):
@@ -199,6 +208,7 @@ def regions(
                 "sigungu": _sigungu_code(preferredArea),
                 "household": household or None,
                 "note": note or None,
+                "noteAdjust": note_adjust,
                 "personaId": personaId or None,
             }
         )

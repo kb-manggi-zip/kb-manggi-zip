@@ -138,7 +138,7 @@ def read_trades(
         )
     conn = connect(path)
     try:
-        q = "SELECT umd_name, price, monthly, area_m2, deal_ym, house_type FROM trades WHERE trade_type=?"
+        q = "SELECT umd_name, price, monthly, area_m2, deal_ym, house_type, sigungu_code FROM trades WHERE trade_type=?"
         params: list = [trade_type]
         if sigungu_code:
             q += " AND sigungu_code=?"
@@ -151,8 +151,8 @@ def read_trades(
             params.append(house_type)
         cur = conn.execute(q, params)
         rows = [
-            {"umd_name": u, "price": p, "monthly": m, "area_m2": a, "deal_ym": ym, "house_type": ht}
-            for (u, p, m, a, ym, ht) in cur.fetchall()
+            {"umd_name": u, "price": p, "monthly": m, "area_m2": a, "deal_ym": ym, "house_type": ht, "sigungu_code": sg}
+            for (u, p, m, a, ym, ht, sg) in cur.fetchall()
         ]
     finally:
         conn.close()

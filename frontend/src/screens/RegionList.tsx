@@ -21,7 +21,7 @@ export default function RegionList() {
   useEffect(() => {
     if (!selectedBranch || !comparison) return;
     const budget = comparison.branches.find(b => b.branch === selectedBranch)?.depositOrPrice || 0;
-    api.regions(selectedBranch, budget, state.contract?.housingType, state.contract?.preferredArea, state.finance?.household, applyNote ? note : '', personaIdFor(state.contract, state.finance)).then(setRegions);
+    api.regions(selectedBranch, budget, state.contract?.housingType, state.contract?.preferredArea, state.finance?.household, applyNote ? note : '', personaIdFor(state.contract, state.finance), applyNote ? state.contract?.noteAdjust : undefined).then(setRegions);
   }, [selectedBranch, comparison, state.contract?.housingType, state.contract?.preferredArea, state.finance?.household, note, applyNote]);
 
   // 개인화 프로필 카드 — 확정 여부에 따라 note를 넣거나 뺀 계약으로 조합(가중치가 확정에 반응).

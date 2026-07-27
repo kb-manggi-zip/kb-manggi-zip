@@ -32,7 +32,7 @@ def test_write_read_and_idempotent(tmp_path):
     assert len(got) == 3
     assert got[0]["umd_name"] == "합정동"
     assert got[0]["house_type"] == "아파트"  # 기본값
-    assert set(got[0]) == {"umd_name", "price", "monthly", "area_m2", "deal_ym", "house_type"}
+    assert set(got[0]) == {"umd_name", "price", "monthly", "area_m2", "deal_ym", "house_type", "sigungu_code"}
 
 
 def test_house_type_batches_dont_clobber_each_other(tmp_path):

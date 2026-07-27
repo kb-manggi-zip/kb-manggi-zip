@@ -29,6 +29,9 @@ const NOTE_MAP: Array<{ keys: string[]; label: string; boost: Record<string, num
   { keys: ['반려동물', '강아지', '고양이', '반려견', '반려묘'], label: '반려동물 — 산책·생활공간 중시 → 선호지역↑·생활편의↑', boost: { preference: 1.2, consumption: 1.2 } },
   { keys: ['학교', '학군', '등하교', '등하원'], label: '자녀 학군 근접 중시 → 선호지역↑', boost: { preference: 1.3 } },
   { keys: ['부모님', '부모님 근처', '가족 근처'], label: '가족 근접 선호 → 선호지역↑', boost: { preference: 1.3 } },
+  { keys: ['지하철', '전철', '역 가까', '역세권'], label: '대중교통 접근 중시 → 통근 편의↑', boost: { commute: 1.2 } },
+  { keys: ['번화가', '시내', '상권 좋', '핫플'], label: '번화가·상권 선호 → 상권 매치↑', boost: { consumption: 1.3 } },
+  { keys: ['한적한 동네', '공원', '산책로', '자연'], label: '쾌적·정주 환경 선호 → 선호지역↑', boost: { preference: 1.2 } },
 ];
 const HOUSEHOLD_HINTS: Record<string, string[]> = {
   '자녀': ['아이', '자녀', '학군', '육아', '등원', '등하교', '학교', '어린이집'],
@@ -61,11 +64,11 @@ function noteSignals(note: string) {
   return { labels, boost };
 }
 
-function noteWeights(household: string, note: string): Record<string, number> {
+function noteWeights(household: string, note: string, adjust?: Record<string, number>): Record<string, number> {
   const adj = PERSONA_ADJUST[household] ?? {};
   let w = Object.fromEntries(Object.entries(SURVEY).map(([k, v]) => [k, v * (adj[k] ?? 1)]));
   w = normalize(w);
-  const { boost } = noteSignals(note);
+  const boost = adjust && Object.keys(adjust).length ? adjust : noteSignals(note).boost;
   w = Object.fromEntries(Object.entries(w).map(([k, v]) => [k, v * (boost[k] ?? 1)]));
   return normalize(w);
 }
@@ -111,15 +114,16 @@ export function localClarify(contract: ContractInfo, finance: FinanceInfo, prior
     }
   }
   const questions = [...conflicts];
+  const weightAdjust = sig.boost;
   if (['통근', '출퇴근', '회사', '직장'].some(k => note.includes(k)))
     questions.push('통근 발품 정확도를 높이려면 주 근무지를 알려주세요 (지금은 가구 유형 기준 대표 직장으로 가정).');
-  return { persona: SEGMENT_LABEL[household] ?? '임차 가구', priorities, conflicts, questions, noteSignals: sig.labels };
+  return { persona: SEGMENT_LABEL[household] ?? '임차 가구', weightAdjust, priorities, conflicts, questions, noteSignals: sig.labels };
 }
 
 export function localPersona(contract: ContractInfo, finance: FinanceInfo, budget = 0): PersonaProfile {
   const household = finance.household ?? '1인';
   const note = contract.note ?? '';
-  const weights = noteWeights(household, note);
+  const weights = noteWeights(household, note, contract.noteAdjust);
   const priorities = Object.entries(weights).sort((a, b) => b[1] - a[1]).map(([k]) => AXIS_LABEL[k]);
   const segment = SEGMENT_LABEL[household] ?? '임차 가구';
   const workplace = WORKPLACE[household];

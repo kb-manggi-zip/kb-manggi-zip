@@ -48,6 +48,7 @@ class ContractInfo(BaseModel):
     housingType: HousingType = "아파트"  # HUG 보증료 요율만 좌우(세금·대출은 둘 다 주택 동일)
     preferredArea: str = ""  # 선호지역 구명(예 "마포구") — 동네 후보를 그 구에서 우선. 빈값=6구 전체
     note: str = ""  # 문진 말미 자유입력(선택) — 명확화 노드가 세그먼트·우선순위 항목으로 제약 해석
+    noteAdjust: dict = {}  # HITL로 확정된 축별 배수(자연어 해석 확정분). 있으면 랭킹이 이걸 씀(결정론)
 
 
 class FinanceInfo(BaseModel):
@@ -110,6 +111,7 @@ class Region(BaseModel):
     score: Optional[float] = None  # 개인화 스코어(통계근거 가중합)
     scoreReasons: list[str] = []  # 왜 이 순위 (근거 노출)
     jeonseRatio: Optional[JeonseRatio] = None  # 전세 후보일 때 전세가율 리스크 지표(표본<5면 None)
+    sigunguCode: Optional[str] = None  # 시군구코드 — 동 facts 없을 때 구 단위 상권/통근 폴백용(내부)
 
 
 # ── 명확화(판단 노드) + 개인화 조합 레이어 ─────────────────────────
@@ -121,6 +123,7 @@ class ClarifyResult(BaseModel):
     """
 
     persona: str  # 확정 세그먼트 라벨 (예 "1인 청년 임차")
+    weightAdjust: dict = {}  # 이 입력의 적용 boost(축별 배수) — HITL 확정 시 랭킹에 실림
     priorities: list[str]  # 우선순위 축 라벨 순서 (스코어 가중치 상위)
     conflicts: list[str] = []  # 감지된 모순(예 예산↔선호지역 시세) — 실데이터 근거
     questions: list[str] = []  # 되물을 질문(닫힌 루프)

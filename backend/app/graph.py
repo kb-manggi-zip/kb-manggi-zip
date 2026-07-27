@@ -93,12 +93,32 @@ class RegionsState(TypedDict):
     sigungu: str | None
     household: str | None
     note: str | None
+    noteAdjust: dict | None
     personaId: str | None
     regions: list
 
 
+# 결정론 재계산 방지 캐시 (같은 입력 → 같은 순위). 프론트가 note 토글/재조회 시 효과.
+_REGIONS_CACHE: dict = {}
+_REGIONS_CACHE_MAX = 256
+
+
 @observe(name="regions_node")
 def regions_node(state: RegionsState) -> dict:
+    _ckey = (
+        state["branch"],
+        state["budget"],
+        state.get("houseType"),
+        state.get("sigungu"),
+        state.get("household"),
+        state.get("note"),
+        state.get("personaId"),
+        tuple(sorted((state.get("noteAdjust") or {}).items())),
+    )
+    _hit = _REGIONS_CACHE.get(_ckey)
+    if _hit is not None:
+        return {"regions": _hit}
+
     # 후보 풀(top=8) → 개인화 스코어(통계근거 가중합)로 재정렬 → 상위 3 + 근거
     pool = molit.regions_by_branch(
         state["branch"], state["budget"], house_type=state.get("houseType"), sigungu=state.get("sigungu"), top=8
@@ -107,7 +127,7 @@ def regions_node(state: RegionsState) -> dict:
 
     # 스코어 입력은 조합 레이어(persona.scoring_ctx) 단일 소스로 — 자유입력·실측 override 포함.
     ctx = persona.scoring_ctx(
-        {"note": state.get("note") or ""},
+        {"note": state.get("note") or "", "noteAdjust": state.get("noteAdjust") or {}},
         {"household": state.get("household")},
         state["budget"],
         True if state.get("sigungu") else None,
@@ -132,6 +152,9 @@ def regions_node(state: RegionsState) -> dict:
             "score_breakdown": breakdown,
         },
     )
+    if len(_REGIONS_CACHE) >= _REGIONS_CACHE_MAX:
+        _REGIONS_CACHE.clear()
+    _REGIONS_CACHE[_ckey] = ranked
     return {"regions": ranked}
 
 
