@@ -240,20 +240,18 @@ function BranchCardView({
       </div>
 
       <div className="px-5 pb-3 border-b border-border">
-        <p className="text-xs text-muted-foreground">월 부담</p>
+        {/* monthlyBurden은 이미 반환보증료 포함(=실질). 이중으로 더하지 않고 이자/월세 + 보증료로 분해 표시. */}
+        <p className="text-xs text-muted-foreground">실질 월 부담 <span className="opacity-70">(반환보증료 포함)</span></p>
         <div className="flex items-baseline gap-2">
           <span className="text-3xl font-bold text-foreground">
             {Math.round(branch.monthlyBurden / 10_000)}만원
           </span>
-          {branch.guaranteeMonthly > 0 && (
-            <span className="text-xs text-muted-foreground">
-              +보증료 {Math.round(branch.guaranteeMonthly / 10_000)}만
-            </span>
-          )}
         </div>
-        <p className="text-xs text-muted-foreground mt-0.5">
-          실질 월 부담: {formatMonthly(branch.monthlyBurden + branch.guaranteeMonthly)}
-        </p>
+        {branch.guaranteeMonthly > 0 && (
+          <p className="text-xs text-muted-foreground mt-0.5">
+            이자·월세 {formatMonthly(branch.monthlyBurden - branch.guaranteeMonthly)} + 반환보증료 {formatMonthly(branch.guaranteeMonthly)} 포함
+          </p>
+        )}
       </div>
 
       <div className="px-5 py-3 space-y-2 text-sm border-b border-border">
