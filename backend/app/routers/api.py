@@ -107,13 +107,20 @@ def regions(
     budget: int = 0,
     housingType: HousingType | None = Query(default=None),
     preferredArea: str = Query(default=""),  # 선호지역 구명 → 그 구에서 우선 추천(없으면 6구 전체)
+    household: str = Query(default=""),  # 개인화 스코어 가중치·통근 직장 결정용
     session_id: str | None = Depends(get_session_id),
 ) -> list[Region]:
     # housingType이 국토부 API property_type과 동일 값('아파트'|'연립다세대')이라 변환 없이 그대로 씀
     house_type = housingType
     with session_scope(session_id):
         result = _regions_graph.invoke(
-            {"branch": branch, "budget": budget, "houseType": house_type, "sigungu": _sigungu_code(preferredArea)}
+            {
+                "branch": branch,
+                "budget": budget,
+                "houseType": house_type,
+                "sigungu": _sigungu_code(preferredArea),
+                "household": household or None,
+            }
         )
     return result["regions"]
 

@@ -95,6 +95,8 @@ class Region(BaseModel):
     lat: float
     lng: float
     branch: Branch
+    score: Optional[float] = None  # 개인화 스코어(통계근거 가중합)
+    scoreReasons: list[str] = []  # 왜 이 순위 (근거 노출)
 
 
 # ── 하루 시뮬레이션 ─────────────────────────────────────────────────

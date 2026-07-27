@@ -60,6 +60,8 @@ export interface Region {
   lat: number;
   lng: number;
   branch: Branch;
+  score?: number;        // 개인화 스코어(통계근거 가중합)
+  scoreReasons?: string[]; // 왜 이 순위
 }
 
 export interface Scene {

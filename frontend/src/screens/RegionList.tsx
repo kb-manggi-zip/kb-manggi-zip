@@ -15,8 +15,8 @@ export default function RegionList() {
   useEffect(() => {
     if (!selectedBranch || !comparison) return;
     const budget = comparison.branches.find(b => b.branch === selectedBranch)?.depositOrPrice || 0;
-    api.regions(selectedBranch, budget, state.contract?.housingType, state.contract?.preferredArea).then(setRegions);
-  }, [selectedBranch, comparison, state.contract?.housingType, state.contract?.preferredArea]);
+    api.regions(selectedBranch, budget, state.contract?.housingType, state.contract?.preferredArea, state.finance?.household).then(setRegions);
+  }, [selectedBranch, comparison, state.contract?.housingType, state.contract?.preferredArea, state.finance?.household]);
 
   if (!selectedBranch || !comparison) return null;
 
@@ -110,6 +110,14 @@ function RegionCard({ region, color, onSelect }: { region: Region; color: string
           <span key={t} className="text-xs px-2 py-0.5 bg-muted rounded-full text-muted-foreground">{t}</span>
         ))}
       </div>
+      {region.scoreReasons && region.scoreReasons.length > 0 && (
+        <div className="text-xs space-y-0.5 pt-1" style={{ color: COLORS.SUB }}>
+          <span className="font-semibold" style={{ color }}>왜 추천?</span>
+          {region.scoreReasons.map((r, i) => (
+            <div key={i}>· {r}</div>
+          ))}
+        </div>
+      )}
       <div className="flex items-center justify-between pt-1 border-t border-border">
         <p className="text-xs text-muted-foreground">하루 살아보기 →</p>
         <span className="text-xs font-semibold" style={{ color }}>이 동네 하루 보기 →</span>
