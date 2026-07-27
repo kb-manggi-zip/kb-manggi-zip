@@ -144,6 +144,34 @@ class PersonaProfile(BaseModel):
     budgetBand: str  # 예산 밴드 설명
 
 
+# ── 지출 분석 + 만기 결정 리포트 ────────────────────────────────────
+class SpendAnalysis(BaseModel):
+    """개인 지출 집계(합성 마이데이터, 가드레일 T2SQL/표준쿼리). ⚠️ compare에 유입 금지 — 리포트 맥락만."""
+
+    monthlyTotal: int  # 월평균 총지출
+    fixedMonthly: int  # 월평균 고정지출
+    variableMonthly: int  # 월평균 변동지출(여력)
+    topCategories: list[dict]  # [{category, monthly}]
+    trend: list[dict]  # [{month, total}]
+    dynamicQueries: list[dict] = []  # LLM 동적 질문/SQL/결과/폴백여부
+    synthetic: bool = True  # 합성 시연 데이터
+
+
+class DecisionReport(BaseModel):
+    """만기 결정 리포트 — 최종 산출물. ①상황 ②채점 ③동네 ④하루 ⑤지출 실현가능성 ⑥액션."""
+
+    persona: "PersonaProfile"
+    clarify: Optional["ClarifyResult"] = None  # ① HITL 반영 내역
+    comparison: "CompareResponse"  # ② 3갈래 (compare 출력, 읽기전용)
+    selectedBranch: Branch
+    topRegion: Optional["Region"] = None  # ③④ 동네·발품
+    dayBrief: str = ""  # ④ 발품 핵심
+    spend: Optional[SpendAnalysis] = None  # ⑤ (없으면 리포트는 ①~④+⑥로 완성)
+    feasibility: str = ""  # ⑤ 정보형 문장
+    dday: int
+    noticeDeadline: str
+
+
 # ── 하루 시뮬레이션 ─────────────────────────────────────────────────
 class Scene(BaseModel):
     time: str
@@ -217,6 +245,14 @@ class CompareRequest(BaseModel):
 class SimulateRequest(BaseModel):
     branch: Branch
     regionId: str
+
+
+class ReportRequest(BaseModel):
+    contract: ContractInfo
+    finance: FinanceInfo
+    branch: Branch
+    personaId: Optional[str] = None  # 'P1'|'P2'|'P3' (합성 마이데이터). 없으면 가구/계약에서 추론
+    regionId: Optional[str] = None
 
 
 class HitlRequest(BaseModel):

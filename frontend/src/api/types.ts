@@ -151,6 +151,31 @@ export interface PersonaProfile {
   budgetBand: string;
 }
 
+// 지출 집계(합성 마이데이터, 가드레일 T2SQL) — compare에 유입 금지, 리포트 맥락만
+export interface SpendAnalysis {
+  monthlyTotal: number;
+  fixedMonthly: number;
+  variableMonthly: number;
+  topCategories: { category: string; monthly: number }[];
+  trend: { month: string; total: number }[];
+  dynamicQueries?: { question: string; sql: string | null; result: number | null; fellBack: boolean; blockReason?: string }[];
+  synthetic: boolean;
+}
+
+// 만기 결정 리포트 — 최종 산출물(①상황 ②채점 ③동네 ④하루 ⑤지출 ⑥액션)
+export interface DecisionReport {
+  persona: PersonaProfile;
+  clarify?: ClarifyResult;
+  comparison: CompareResponse;
+  selectedBranch: Branch;
+  topRegion?: Region;
+  dayBrief: string;
+  spend?: SpendAnalysis;
+  feasibility: string;
+  dday: number;
+  noticeDeadline: string;
+}
+
 // 분석 에이전트(intake→clarify→compare→route→persona→narrate) 결과
 export interface AnalyzeResponse {
   comparison: CompareResponse;

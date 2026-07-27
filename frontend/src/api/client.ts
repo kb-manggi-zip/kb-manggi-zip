@@ -13,7 +13,7 @@ import type {
   ReservationRequest, Branch, HousingType,
   BriefingRequest, BriefingResponse,
   DraftNoticeRequest, DraftNoticeResponse,
-  AnalyzeResponse, ClarifyResult, PersonaProfile,
+  AnalyzeResponse, ClarifyResult, PersonaProfile, DecisionReport,
 } from './types';
 
 // Static exports for screens (screens must not import engine/ or data/ directly)
@@ -78,6 +78,24 @@ export const api = {
       () => localPersona(contract, finance, budget),
       `/api/persona?budget=${budget}`,
       { method: 'POST', body: JSON.stringify({ contract, finance }) }
+    );
+  },
+
+  // 만기 결정 리포트 — 원격이면 백엔드 조립(⑤ 지출=합성 마이데이터 T2SQL), 로컬이면 compare+persona만(⑤ 생략).
+  async report(contract: ContractInfo, finance: FinanceInfo, branch: Branch, personaId?: string): Promise<DecisionReport> {
+    return localOrRemote(
+      () => ({
+        persona: localPersona(contract, finance),
+        clarify: localClarify(contract, finance),
+        comparison: compare(contract, finance),
+        selectedBranch: branch,
+        dayBrief: '',
+        feasibility: '지출로 본 실현 가능성은 백엔드 연결(합성 마이데이터) 시 제공됩니다.',
+        dday: compare(contract, finance).dday,
+        noticeDeadline: compare(contract, finance).noticeDeadline,
+      }),
+      '/api/report',
+      { method: 'POST', body: JSON.stringify({ contract, finance, branch, personaId }) }
     );
   },
 
