@@ -91,17 +91,30 @@ def analyze(req: CompareRequest, session_id: str | None = Depends(get_session_id
 _regions_graph = build_regions_graph()
 
 
+def _sigungu_code(area: str) -> str | None:
+    """선호지역 구명(예 '마포구') → 시군구코드('11440'). 빈값/미매칭 → None(6구 전체)."""
+    if not area:
+        return None
+    from ..core.rules import read_yaml
+
+    entry = (read_yaml("regions.yaml").get("sigungu") or {}).get(area)
+    return entry.get("code") if entry else None
+
+
 @router.get("/regions", response_model=list[Region])
 def regions(
     branch: str = Query(...),
     budget: int = 0,
     housingType: HousingType | None = Query(default=None),
+    preferredArea: str = Query(default=""),  # 선호지역 구명 → 그 구에서 우선 추천(없으면 6구 전체)
     session_id: str | None = Depends(get_session_id),
 ) -> list[Region]:
     # housingType이 국토부 API property_type과 동일 값('아파트'|'연립다세대')이라 변환 없이 그대로 씀
     house_type = housingType
     with session_scope(session_id):
-        result = _regions_graph.invoke({"branch": branch, "budget": budget, "houseType": house_type})
+        result = _regions_graph.invoke(
+            {"branch": branch, "budget": budget, "houseType": house_type, "sigungu": _sigungu_code(preferredArea)}
+        )
     return result["regions"]
 
 

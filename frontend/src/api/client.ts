@@ -51,16 +51,18 @@ export const api = {
     );
   },
 
-  async regions(branch: Branch, _budget: number, housingType?: HousingType): Promise<Region[]> {
-    const q = housingType ? `&housingType=${housingType}` : '';
+  async regions(branch: Branch, _budget: number, housingType?: HousingType, preferredArea?: string): Promise<Region[]> {
+    const q = (housingType ? `&housingType=${housingType}` : '')
+      + (preferredArea ? `&preferredArea=${encodeURIComponent(preferredArea)}` : '');
     return localOrRemote(
       () => branch === '매매' ? REGIONS_BUY : branch === '이사' ? REGIONS_MOVE : REGIONS_MONTHLY,
       `/api/regions?branch=${branch}&budget=${_budget}${q}`
     );
   },
 
-  async regionsMonthly(housingType?: HousingType): Promise<Region[]> {
-    const q = housingType ? `&housingType=${housingType}` : '';
+  async regionsMonthly(housingType?: HousingType, preferredArea?: string): Promise<Region[]> {
+    const q = (housingType ? `&housingType=${housingType}` : '')
+      + (preferredArea ? `&preferredArea=${encodeURIComponent(preferredArea)}` : '');
     return localOrRemote(() => REGIONS_MONTHLY, `/api/regions?branch=이사-월세${q}`);
   },
 

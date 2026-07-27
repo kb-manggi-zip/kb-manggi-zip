@@ -46,6 +46,7 @@ class ContractInfo(BaseModel):
     expiryDate: str  # ISO date string
     renewalUsed: RenewalUsed
     housingType: HousingType = "아파트"  # HUG 보증료 요율만 좌우(세금·대출은 둘 다 주택 동일)
+    preferredArea: str = ""  # 선호지역 구명(예 "마포구") — 동네 후보를 그 구에서 우선. 빈값=6구 전체
 
 
 class FinanceInfo(BaseModel):

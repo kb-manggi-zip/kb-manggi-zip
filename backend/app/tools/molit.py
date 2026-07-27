@@ -141,14 +141,17 @@ def fetch_trades(
     )
 
 
-def regions_by_branch(branch: str, budget: int, house_type: Optional[str] = None) -> list[Region]:
+def regions_by_branch(
+    branch: str, budget: int, house_type: Optional[str] = None, sigungu: Optional[str] = None
+) -> list[Region]:
     """예산 필터된 동네 후보 상위 3. branch: '매매'|'이사'|'이사-월세'.
 
-    house_type: '아파트' | '연립다세대' | None(전체 블렌드, 기본값 — 입력 UI 없으면 이 동작).
+    house_type: '아파트' | '연립다세대' | None(전체 블렌드, 기본값).
+    sigungu: 선호지역 시군구코드(예 '11440'=마포). None이면 6구 전체에서 추천.
     """
     monthly = branch == "이사-월세"
     region_branch: Branch = "매매" if branch == "매매" else "이사"
     trade_type = _TRADE_TYPE.get(branch, "sale")
 
-    rows = fetch_trades(trade_type, house_type=house_type)  # DB (없으면 RuntimeError)
+    rows = fetch_trades(trade_type, sigungu_code=sigungu, house_type=house_type)  # DB (없으면 RuntimeError)
     return aggregate_to_regions(rows, region_branch, budget, monthly=monthly, enrich=load_enrich())

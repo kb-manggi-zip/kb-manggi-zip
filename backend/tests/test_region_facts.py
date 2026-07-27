@@ -150,3 +150,12 @@ def test_narrator_transit_prefers_cache(tmp_path, monkeypatch):
     reg = {"id": "seongbuk", "name": "성북구 길음동", "lat": 37.6038, "lng": 127.0193}
     f = narrator._transit_fact(reg, "신혼")  # 신혼 → 여의도, 캐시 실측
     assert "여의도" in f and "46분" in f and "환승 1회" in f and "예상" not in f
+
+
+def test_preferred_area_to_sigungu():
+    from app.routers.api import _sigungu_code
+
+    assert _sigungu_code("마포구") == "11440"
+    assert _sigungu_code("노원구") == "11350"
+    assert _sigungu_code("") is None  # 상관없음 → 전체
+    assert _sigungu_code("없는구") is None

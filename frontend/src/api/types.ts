@@ -13,6 +13,7 @@ export interface ContractInfo {
   expiryDate: string; // ISO date string
   renewalUsed: RenewalUsed;
   housingType?: HousingType; // HUG 보증료 요율만 좌우(세금·대출은 둘 다 주택 동일). 기본 아파트
+  preferredArea?: string; // 선호지역 구명(예 '마포구') — 동네 후보를 그 구에서 우선. 빈값=전체
 }
 
 export interface FinanceInfo {
