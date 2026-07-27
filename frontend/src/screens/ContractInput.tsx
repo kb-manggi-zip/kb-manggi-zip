@@ -233,12 +233,15 @@ export default function ContractInput() {
                     <span className="w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold shrink-0"
                       style={{ background: COLORS.KB_YELLOW, color: COLORS.TEXT }}>AI</span>
                     <p className="text-sm leading-snug" style={{ color: COLORS.TEXT }}>
-                      {(interp.noteSignals?.length ?? 0) > 0
-                        ? '이렇게 이해했어요 — 동네 추천에 반영할까요?'
-                        : '입력을 확인했어요. 이대로 반영할까요?'}
+                      {(interp.conflicts?.length ?? 0) > 0
+                        ? '입력이 서로 상충돼요 — 어느 쪽인지 정해 주세요.'
+                        : (interp.noteSignals?.length ?? 0) > 0
+                          ? '이렇게 이해했어요 — 동네 추천에 반영할까요?'
+                          : '입력을 확인했어요. 이대로 반영할까요?'}
                     </p>
                   </div>
-                  {(interp.noteSignals ?? []).length > 0 && (
+                  {/* 충돌 없을 때만 조정 칩 표시(상충 입력은 상쇄값 노출 금지) */}
+                  {(interp.conflicts?.length ?? 0) === 0 && (interp.noteSignals ?? []).length > 0 && (
                     <div className="flex flex-wrap gap-1.5 pl-8">
                       {interp.noteSignals!.map((s, i) => (
                         <span key={i} className="text-[11px] px-2 py-0.5 rounded-full"
@@ -247,28 +250,47 @@ export default function ContractInput() {
                     </div>
                   )}
                   {(interp.conflicts ?? []).map((c, i) => (
-                    <p key={i} className="text-xs pl-8" style={{ color: COLORS.SUB }}>💬 {c}</p>
+                    <p key={i} className="text-xs pl-8 font-medium" style={{ color: '#9A5B00' }}>⚠️ {c}</p>
                   ))}
-                  <div className="flex gap-2 pl-8 pt-0.5">
-                    <button onClick={() => {
-                      // 반영은 확정 후에만: 스택 누적 + HITL '수락' 기록
-                      api.hitl('applied', interp?.noteSignals ?? [], note.trim());
-                      setReflected(r => [...r, { text: note.trim(), signals: interp?.noteSignals ?? [] }]);
-                      setNote(''); setInterp(null);
-                    }}
-                      className="flex-1 text-xs font-semibold py-2 rounded-xl"
-                      style={{ background: COLORS.KB_YELLOW, color: COLORS.TEXT }}>
-                      네, 맞아요
-                    </button>
-                    <button onClick={() => {
-                      api.hitl('skipped', interp?.noteSignals ?? [], note.trim());  // 미반영 기록
-                      setNote(''); setInterp(null);
-                    }}
-                      className="flex-1 text-xs font-semibold py-2 rounded-xl border"
-                      style={{ borderColor: COLORS.BORDER, color: COLORS.SUB, background: COLORS.CARD }}>
-                      아니요, 그대로
-                    </button>
-                  </div>
+                  {(interp.conflicts?.length ?? 0) > 0 ? (
+                    // 충돌 → 정정 우선(조용한 덮어쓰기 금지)
+                    <div className="flex gap-2 pl-8 pt-0.5">
+                      <button onClick={() => { setNote(''); setInterp(null); }}
+                        className="flex-1 text-xs font-semibold py-2 rounded-xl"
+                        style={{ background: COLORS.KB_YELLOW, color: COLORS.TEXT }}>
+                        다시 입력할게요
+                      </button>
+                      <button onClick={() => {
+                        api.hitl('applied', interp?.noteSignals ?? [], note.trim());
+                        setReflected(r => [...r, { text: note.trim(), signals: interp?.noteSignals ?? [] }]);
+                        setNote(''); setInterp(null);
+                      }}
+                        className="flex-1 text-xs font-semibold py-2 rounded-xl border"
+                        style={{ borderColor: COLORS.BORDER, color: COLORS.SUB, background: COLORS.CARD }}>
+                        그래도 이대로 반영
+                      </button>
+                    </div>
+                  ) : (
+                    <div className="flex gap-2 pl-8 pt-0.5">
+                      <button onClick={() => {
+                        api.hitl('applied', interp?.noteSignals ?? [], note.trim());
+                        setReflected(r => [...r, { text: note.trim(), signals: interp?.noteSignals ?? [] }]);
+                        setNote(''); setInterp(null);
+                      }}
+                        className="flex-1 text-xs font-semibold py-2 rounded-xl"
+                        style={{ background: COLORS.KB_YELLOW, color: COLORS.TEXT }}>
+                        네, 맞아요
+                      </button>
+                      <button onClick={() => {
+                        api.hitl('skipped', interp?.noteSignals ?? [], note.trim());
+                        setNote(''); setInterp(null);
+                      }}
+                        className="flex-1 text-xs font-semibold py-2 rounded-xl border"
+                        style={{ borderColor: COLORS.BORDER, color: COLORS.SUB, background: COLORS.CARD }}>
+                        아니요, 그대로
+                      </button>
+                    </div>
+                  )}
                 </div>
               )}
 

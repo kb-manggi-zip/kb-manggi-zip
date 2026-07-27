@@ -86,6 +86,20 @@ export function localClarify(contract: ContractInfo, finance: FinanceInfo, prior
     if (seg !== household && keys.some(k => note.includes(k)))
       conflicts.push(`'${seg}' 관련 언급이 있는데 가구 유형은 '${household}'로 선택하셨어요. 맞는지 확인해 주세요.`);
   }
+  // 한 입력 안에 같은 축을 높이는+낮추는 표현이 함께 → 되묻기(조용한 상쇄 금지)
+  const dirs: Record<string, Set<number>> = {};
+  for (const { keys, boost } of NOTE_MAP) {
+    if (keys.some(k => note.includes(k))) {
+      for (const [axis, mult] of Object.entries(boost)) {
+        const d = mult > 1.05 ? 1 : mult < 0.95 ? -1 : 0;
+        if (d) (dirs[axis] ??= new Set()).add(d);
+      }
+    }
+  }
+  for (const [axis, ds] of Object.entries(dirs)) {
+    if (ds.has(1) && ds.has(-1))
+      conflicts.push(`'${AXIS_LABEL[axis]}'을(를) 높이는 표현과 낮추는 표현이 함께 있어요. 어느 쪽으로 반영할지 정해 주세요.`);
+  }
   // 이전 반영과 방향 충돌 → 되묻기
   if (priorNotes.length) {
     const prior = noteSignals(priorNotes.join(' ')).boost;

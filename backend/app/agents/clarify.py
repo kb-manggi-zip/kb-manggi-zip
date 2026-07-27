@@ -79,6 +79,26 @@ def _axis_dir(boost: dict, axis: str) -> int:
     return 1 if v > 1.05 else (-1 if v < 0.95 else 0)
 
 
+def _intra_note_contradiction(note: str) -> list[str]:
+    """한 입력 안에 같은 축을 '높이는+낮추는' 표현이 함께 있으면 되묻기(조용한 상쇄 금지).
+
+    예: '재택근무해요 통근해요' → 통근을 낮추는 재택 + 높이는 통근 → 충돌.
+    """
+    dirs: dict[str, set] = {}
+    for keys, _label, b in _NOTE_MAP:
+        if any(k in note for k in keys):
+            for axis, mult in b.items():
+                d = 1 if mult > 1.05 else (-1 if mult < 0.95 else 0)
+                if d:
+                    dirs.setdefault(axis, set()).add(d)
+    out = []
+    for axis, ds in dirs.items():
+        if 1 in ds and -1 in ds:
+            label = AXIS_LABEL[axis]
+            out.append(f"'{label}'을(를) 높이는 표현과 낮추는 표현이 함께 있어요. 어느 쪽으로 반영할지 정해 주세요.")
+    return out
+
+
 def _contradictions(prior_notes: list, note: str) -> list[str]:
     """이전에 반영·확정한 조정과 이번 입력이 축 방향에서 충돌하면 되묻기(조용한 덮어쓰기 금지)."""
     if not prior_notes:
@@ -195,8 +215,12 @@ def clarify(contract: dict, finance: dict, note: str = "", prior_notes: Optional
     household = finance.get("household") or "1인"
     note = note or contract.get("note") or ""
 
-    # 1) 모순 감지 = 항상 결정론 (가구유형 불일치 + 이전 반영과 방향 충돌)
-    conflicts = _household_conflict(household, note) + _contradictions(prior_notes or [], note)
+    # 1) 모순 감지 = 항상 결정론 (가구유형 불일치 + 한 입력 내 상충 + 이전 반영과 방향 충돌)
+    conflicts = (
+        _household_conflict(household, note)
+        + _intra_note_contradiction(note)
+        + _contradictions(prior_notes or [], note)
+    )
 
     # 2) 신호 라벨 = LLM(제약) 우선, 실패/비활성 시 키워드. (LLM은 '해석'만)
     llm = _llm_interpret(note, household, conflicts) if (note and settings.llm_active) else None

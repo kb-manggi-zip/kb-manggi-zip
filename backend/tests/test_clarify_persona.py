@@ -46,6 +46,12 @@ def test_household_conflict_detected():
     assert "자녀" in r["conflicts"][0]
 
 
+def test_intra_note_contradiction():
+    # 한 입력에 재택(통근↓)+통근(통근↑) 함께 → 조용한 상쇄 대신 되묻기
+    r = clarify.clarify({}, {"household": "1인"}, note="재택근무해요 통근해요")
+    assert any("통근" in c and ("상충" in c or "함께" in c) for c in r["conflicts"])
+
+
 def test_prior_contradiction_reask():
     # 재택(통근↓) 반영 후 '통근 중요'(통근↑) → 되묻기(조용한 덮어쓰기 금지)
     r = clarify.clarify({}, {"household": "1인"}, note="통근이 제일 중요해요", prior_notes=["재택근무예요"])
