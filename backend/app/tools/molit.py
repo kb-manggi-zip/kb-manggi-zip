@@ -14,7 +14,8 @@ from typing import Optional, TypedDict
 import yaml
 
 from ..core.config import BACKEND_ROOT
-from ..schemas import Branch, Region
+from ..schemas import Branch, JeonseRatio, Region
+from . import jeonse_ratio as jeonse_ratio_tool
 from . import trades_store
 
 # branch(문자열) → DB trade_type
@@ -94,11 +95,15 @@ def aggregate_to_regions(
     for r in rows:
         groups.setdefault(r["umd_name"], []).append(r)
 
+    # 전세가율은 '이사'(전세 후보)에만 — 동 중위 전세가 ÷ 동 매매 중위가(실거래). 매매/월세는 N/A.
+    want_ratio = branch == "이사" and not monthly
+
     regions: list[Region] = []
     for umd, items in groups.items():
         mid = int(median(sorted(x["price"] for x in items)))
         monthly_mid = int(median(sorted(x["monthly"] for x in items))) if monthly else None
         e = enrich.get(umd, {})
+        jr = jeonse_ratio_tool.jeonse_ratio(mid, umd) if want_ratio else None  # 표본<5면 None
         regions.append(
             Region(
                 id=e.get("id", umd),
@@ -111,6 +116,7 @@ def aggregate_to_regions(
                 lat=e.get("lat", 0.0),
                 lng=e.get("lng", 0.0),
                 branch=branch,
+                jeonseRatio=JeonseRatio(**jr) if jr else None,
             )
         )
 

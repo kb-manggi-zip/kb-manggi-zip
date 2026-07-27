@@ -157,6 +157,10 @@ def build_lifestyle_prompt(ctx: dict) -> tuple[str, str]:
     trade_line = f"{trade}\n" if trade else ""
     commute = _transit_fact(reg, fin.get("household"))  # 직장까지 통근시간
     commute_line = f"{commute}\n" if commute else ""
+    jr = reg.get("jeonseRatio")
+    jeonse_line = (
+        f"전세가율(실거래): {round(jr['ratio'] * 100)}% — {jr['label']}\n" if (jr and branch == "이사") else ""
+    )
     system = _profiles()["base"].strip()
     user = (
         f"동네: {name}\n"
@@ -164,6 +168,7 @@ def build_lifestyle_prompt(ctx: dict) -> tuple[str, str]:
         f"{facts}"
         f"{commute_line}"
         f"{trade_line}"
+        f"{jeonse_line}"
         f"검토 갈래: {branch}\n"
         f"이 사용자 소비 성향: {', '.join(prof.get('traits', []))}\n"
         f"관심 키워드: {', '.join(prof.get('keywords', []))}\n"
@@ -207,6 +212,14 @@ def _facts_used(ctx: dict) -> list[dict]:
     trade = _trade_fact(reg.get("name") or "", ctx.get("branch") or "")
     if trade:
         out.append({"type": "실거래(국토부)", "value": trade})
+    jr = reg.get("jeonseRatio")  # 전세 후보면 Region에 부착됨(표본<5면 없음)
+    if jr and ctx.get("branch") == "이사":
+        out.append(
+            {
+                "type": "전세가율(실거래)",
+                "value": f"전세가율 {round(jr['ratio'] * 100)}% — {jr['label']} ({jr['basis']})",
+            }
+        )
     return out
 
 

@@ -1,0 +1,13 @@
+# 전세가율 구간 판정 기준 — 실거래 기반(예측·ML 아님, trades.db 나눗셈)
+# 출처: HUG 전세보증금반환보증 가입요건 — 주택가격의 90% 이내(담보인정비율).
+#   2023.5 개편으로 100%→90% 강화 (khug.or.kr 보증요건 페이지).
+# 🔴 사람 확인 대기(checked_at=null): HUG 담보인정비율 90% + '주택가격' 산정 기준(공시가×140% 등)을
+#   공시 페이지에서 재확인 후 checked_at 기입. 70~90 라벨은 "가입 가능하나 여유 적음"이라는 제도 사실 안내(예측 아님).
+checked_at: null
+source_url: "https://www.khug.or.kr"
+
+# ratio(=보증금÷매매중위가)가 max 이하이면 해당 구간. 위에서부터 매칭.
+bands:
+  - {max: 0.70, level: safe,    label: "여유 구간"}
+  - {max: 0.90, level: caution, label: "반환보증 가입을 권장하는 구간"}
+  - {max: 9.99, level: alert,   label: "반환보증 가입이 어려울 수 있는 구간 (HUG 90% 기준 초과)"}

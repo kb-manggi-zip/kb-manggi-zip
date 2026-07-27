@@ -106,6 +106,11 @@ export default function RegionList() {
 
         <div className="px-5 py-3 space-y-3">
           <h2 className="text-base font-bold text-foreground">동네 후보</h2>
+          {regions.some(r => r.jeonseRatio) && (
+            <p className="text-xs text-muted-foreground -mt-1">
+              전세가율은 동네 유사평형 매매 중위가 기준 참고 지표예요. 개별 주택의 시세·권리관계는 확인이 필요해요.
+            </p>
+          )}
           {regions.map(r => (
             <RegionCard key={r.id} region={r} color={color} onSelect={() => selectRegion(r)} />
           ))}
@@ -115,6 +120,13 @@ export default function RegionList() {
       </div>
     </MobileShell>
   );
+}
+
+// 전세가율 구간 색 (판정·안내형 — 공포 아님): safe=민트, caution=옐로, alert=레드
+function bandStyle(band: string): React.CSSProperties {
+  if (band === 'safe') return { background: COLORS.MINT + '22', color: COLORS.MINT };
+  if (band === 'alert') return { background: '#D6454522', color: '#C33' };
+  return { background: COLORS.KB_YELLOW + '33', color: '#9A7B00' }; // caution
 }
 
 // 개인화 조합 산출물 — 세그먼트·우선순위 가중치·조합 리소스를 근거와 함께 노출(블랙박스 아님).
@@ -239,6 +251,17 @@ function RegionCard({ region, color, onSelect }: { region: Region; color: string
           <span key={t} className="text-xs px-2 py-0.5 bg-muted rounded-full text-muted-foreground">{t}</span>
         ))}
       </div>
+      {region.jeonseRatio && (
+        <div className="flex items-center gap-1.5 flex-wrap" title={region.jeonseRatio.basis}>
+          <span
+            className="text-xs font-semibold px-2 py-0.5 rounded-full"
+            style={bandStyle(region.jeonseRatio.band)}
+          >
+            전세가율 {Math.round(region.jeonseRatio.ratio * 100)}%
+          </span>
+          <span className="text-xs text-muted-foreground">{region.jeonseRatio.label}</span>
+        </div>
+      )}
       {region.scoreReasons && region.scoreReasons.length > 0 && (
         <div className="text-xs space-y-0.5 pt-1" style={{ color: COLORS.SUB }}>
           <span className="font-semibold" style={{ color }}>왜 추천?</span>

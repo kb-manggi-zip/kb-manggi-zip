@@ -164,6 +164,39 @@ def read_trades(
     return rows
 
 
+def sale_prices(
+    umd_name: str,
+    *,
+    area_lo: Optional[float] = None,
+    area_hi: Optional[float] = None,
+    since_ym: Optional[str] = None,
+    db_path: Optional[str] = None,
+) -> list[int]:
+    """동의 매매 실거래 가격 목록 (전세가율 계산용). area(±범위)·최근개월(since_ym) 필터 옵션.
+
+    DB 없거나 해당 조건 표본 없으면 [] (호출부가 표본 부족을 판단 → 지표 미표시). 지어내지 않는다.
+    """
+    path = db_path or resolve_db_path(write=False)
+    if not path or not Path(path).exists():
+        return []
+    conn = connect(path)
+    try:
+        rows = conn.execute(
+            "SELECT price, area_m2, deal_ym FROM trades WHERE umd_name=? AND trade_type='sale' AND price>0",
+            (umd_name,),
+        ).fetchall()
+    finally:
+        conn.close()
+    out: list[int] = []
+    for price, area, ym in rows:
+        if area_lo is not None and area is not None and not (area_lo <= area <= area_hi):
+            continue
+        if since_ym and ym and ym < since_ym:  # 'YYYYMM' 문자열 비교
+            continue
+        out.append(int(price))
+    return out
+
+
 def count(db_path: Optional[str] = None) -> int:
     path = db_path or resolve_db_path(write=False)
     if not path or not Path(path).exists():
