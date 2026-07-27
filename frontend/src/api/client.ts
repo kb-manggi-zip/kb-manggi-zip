@@ -72,11 +72,11 @@ export const api = {
     } catch { /* 관측 실패는 UX를 막지 않음 */ }
   },
 
-  // 개인화 조합 레이어 — 완성 페르소나 → 리소스 조합 산출물(프로필 카드).
-  async persona(contract: ContractInfo, finance: FinanceInfo): Promise<PersonaProfile> {
+  // 개인화 조합 레이어 — 완성 페르소나 → 리소스 조합 산출물(프로필 카드). budget=고른 갈래 예산(밴드 표기용).
+  async persona(contract: ContractInfo, finance: FinanceInfo, budget = 0): Promise<PersonaProfile> {
     return localOrRemote(
-      () => localPersona(contract, finance),
-      '/api/persona',
+      () => localPersona(contract, finance, budget),
+      `/api/persona?budget=${budget}`,
       { method: 'POST', body: JSON.stringify({ contract, finance }) }
     );
   },

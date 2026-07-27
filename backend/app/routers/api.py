@@ -119,7 +119,11 @@ def hitl(req: HitlRequest, session_id: str | None = Depends(get_session_id)) -> 
 
 
 @router.post("/persona", response_model=PersonaProfile)
-def persona_endpoint(req: CompareRequest, session_id: str | None = Depends(get_session_id)) -> PersonaProfile:
+def persona_endpoint(
+    req: CompareRequest,
+    budget: int = Query(default=0),  # 프론트가 고른 갈래 예산 → budgetBand 표기용
+    session_id: str | None = Depends(get_session_id),
+) -> PersonaProfile:
     """개인화 조합 레이어 — 확정 페르소나 → 리소스 조합 산출물(화면 프로필 카드)."""
     from ..agents import clarify as clarify_agent
     from ..tools import persona as persona_tool
@@ -128,7 +132,7 @@ def persona_endpoint(req: CompareRequest, session_id: str | None = Depends(get_s
         c = req.contract.model_dump()
         f = req.finance.model_dump()
         cl = clarify_agent.clarify(c, f, note=req.contract.note)
-        prof = persona_tool.build_persona(c, f, budget=0, clarify_result=cl)
+        prof = persona_tool.build_persona(c, f, budget=budget, clarify_result=cl)
     return PersonaProfile(**prof)
 
 
