@@ -123,6 +123,14 @@ export default function DayPlayer() {
           >
             {icon} {selectedBranch}
           </span>
+          {comparison && (
+            <span
+              className="ml-auto inline-flex items-center text-xs font-semibold px-3 py-1 rounded-full"
+              style={{ background: 'rgba(0,0,0,0.35)', color: '#fff' }}
+            >
+              만기 D-{comparison.dday}
+            </span>
+          )}
         </div>
       </div>
 

@@ -93,6 +93,7 @@ class RegionsState(TypedDict):
     sigungu: str | None
     household: str | None
     note: str | None
+    personaId: str | None
     regions: list
 
 
@@ -104,12 +105,13 @@ def regions_node(state: RegionsState) -> dict:
     )
     from .tools import persona, scoring
 
-    # 스코어 입력은 조합 레이어(persona.scoring_ctx) 단일 소스로 — 자유입력(note) 보정 가중치 포함.
+    # 스코어 입력은 조합 레이어(persona.scoring_ctx) 단일 소스로 — 자유입력·실측 override 포함.
     ctx = persona.scoring_ctx(
         {"note": state.get("note") or ""},
         {"household": state.get("household")},
         state["budget"],
         True if state.get("sigungu") else None,
+        persona_id=state.get("personaId"),
     )
     pool_dicts = [r.model_dump() for r in pool]
     ranked = scoring.rank(pool_dicts, ctx, top=3)
@@ -201,9 +203,12 @@ def persona_node(state: AnalyzeState) -> dict:
         if b.get("branch") == rec:
             budget = b.get("depositOrPrice", 0)
             break
-    prof = persona_tool.build_persona(state["contract"], state["finance"], budget, state.get("clarify"))
+    from .agents.report import persona_id_for
 
-    # 관측: 가중치 '조정 전(가구 통계) → 후(자유입력 반영)' 비교 + 소비성향 출처 + 직장
+    pid = persona_id_for(state["finance"], state["contract"])
+    prof = persona_tool.build_persona(state["contract"], state["finance"], budget, state.get("clarify"), persona_id=pid)
+
+    # 관측: 가중치 조정 전→후 + 소비성향 신호별 출처(세그먼트/실측/진술) — 증거 위계
     from .tools import scoring
 
     base_weights = scoring.weights_for(state["finance"].get("household"))
@@ -214,7 +219,7 @@ def persona_node(state: AnalyzeState) -> dict:
             "weights_before": base_weights,
             "weights_after": prof["weights"],
             "weight_basis": prof["weightBasis"],
-            "consumption_source": "카드소비 통계(연령 세그먼트, 2026-03)",
+            "consumption_sources": [s["source"] for s in prof.get("consumptionSignals", [])],
         },
     )
     return {"persona": prof}

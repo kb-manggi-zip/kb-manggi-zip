@@ -81,18 +81,20 @@ def guarded_execute(sql: str, persona_id: str, *, db_path: Optional[str] = None)
     path = db_path or (str(MYDATA_DB) if MYDATA_DB.exists() else None)
     if not path:
         raise GuardrailError("mydata DB 없음 (scripts/gen_mydata.py)")
-    conn = sqlite3.connect(path)
-    conn.set_authorizer(_authorizer)  # 가드레일 1·2·3
+    conn = None
     try:
+        conn = sqlite3.connect(path)
+        conn.set_authorizer(_authorizer)  # 가드레일 1·2·3
         cur = conn.execute(sql, {"pid": persona_id})
         rows = cur.fetchmany(1001)
         if len(rows) > 1000:  # 가드레일 5
             raise GuardrailError("행 상한 초과")
         return rows
-    except sqlite3.DatabaseError as e:  # authorizer denial 등
+    except sqlite3.Error as e:  # authorizer denial·연결/실행 실패 등 → 차단
         raise GuardrailError(f"실행 차단: {e}")
     finally:
-        conn.close()
+        if conn is not None:
+            conn.close()
 
 
 # ── 표준 쿼리 5종 (결정론 폴백 = LLM off 경로) ────────────────────────

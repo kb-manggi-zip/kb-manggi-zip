@@ -3,7 +3,7 @@ import { useApp } from '../store';
 import { COLORS, BRANCH_COLORS, BRANCH_ICONS } from '../theme';
 import { MobileShell, FlowProgress, BackBtn, Disclaimer, DdayBadge } from '../components/ui';
 import AiBriefing from '../components/AiBriefing';
-import { api, briefings } from '../api/client';
+import { api, briefings, personaIdFor } from '../api/client';
 import { formatAmount } from '../utils/format';
 import type { Region, PersonaProfile, ClarifyResult } from '../api/types';
 
@@ -21,7 +21,7 @@ export default function RegionList() {
   useEffect(() => {
     if (!selectedBranch || !comparison) return;
     const budget = comparison.branches.find(b => b.branch === selectedBranch)?.depositOrPrice || 0;
-    api.regions(selectedBranch, budget, state.contract?.housingType, state.contract?.preferredArea, state.finance?.household, applyNote ? note : '').then(setRegions);
+    api.regions(selectedBranch, budget, state.contract?.housingType, state.contract?.preferredArea, state.finance?.household, applyNote ? note : '', personaIdFor(state.contract, state.finance)).then(setRegions);
   }, [selectedBranch, comparison, state.contract?.housingType, state.contract?.preferredArea, state.finance?.household, note, applyNote]);
 
   // 개인화 프로필 카드 — 확정 여부에 따라 note를 넣거나 뺀 계약으로 조합(가중치가 확정에 반응).
@@ -152,6 +152,21 @@ function PersonaCardView({ persona, color }: { persona: PersonaProfile; color: s
         ))}
       </div>
       <p className="text-[11px] text-muted-foreground leading-snug">근거: {persona.weightBasis}</p>
+      {/* 소비 성향 — 증거 위계(세그먼트/실측/진술). 실측은 배지 + 근거(탭) */}
+      {(persona.consumptionSignals?.length ?? 0) > 0 && (
+        <div className="flex flex-wrap gap-1.5 pt-1 border-t border-border/60">
+          {persona.consumptionSignals!.map((s, i) => (
+            <span key={i} title={s.reason}
+              className="text-[11px] px-2 py-0.5 rounded-full flex items-center gap-1"
+              style={s.source === '실측'
+                ? { background: color + '22', color, fontWeight: 600 }
+                : { background: '#00000008', color: COLORS.SUB }}>
+              {s.source === '실측' && <span style={{ fontSize: 9 }}>실측</span>}
+              {s.label}
+            </span>
+          ))}
+        </div>
+      )}
       {/* 조합된 리소스 — 이 하루에 실제 등장할 것만('빼기의 개인화') */}
       <div className="flex flex-wrap gap-1.5 pt-1 border-t border-border/60">
         {persona.resources.map(r => (
