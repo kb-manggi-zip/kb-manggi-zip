@@ -15,8 +15,8 @@ export default function RegionList() {
   useEffect(() => {
     if (!selectedBranch || !comparison) return;
     const budget = comparison.branches.find(b => b.branch === selectedBranch)?.depositOrPrice || 0;
-    api.regions(selectedBranch, budget, state.contract?.housingType).then(setRegions);
-  }, [selectedBranch, comparison, state.contract?.housingType]);
+    api.regions(selectedBranch, budget, state.contract?.housingType, state.contract?.preferredArea).then(setRegions);
+  }, [selectedBranch, comparison, state.contract?.housingType, state.contract?.preferredArea]);
 
   if (!selectedBranch || !comparison) return null;
 

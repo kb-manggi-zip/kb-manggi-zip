@@ -57,6 +57,7 @@ export default function ContractInput() {
   const [expiryDate, setExpiryDate] = useState(state.contract?.expiryDate || '');
   const [renewalUsed, setRenewalUsed] = useState<RenewalUsed>(state.contract?.renewalUsed || '미사용');
   const [housingType, setHousingType] = useState<HousingType>(state.contract?.housingType || '아파트');
+  const [preferredArea, setPreferredArea] = useState<string>(state.contract?.preferredArea || '');
   const [annualIncome, setAnnualIncome] = useState(state.finance?.annualIncome || 0);
   const [ownCapital, setOwnCapital] = useState(state.finance?.ownCapital || 0);
   const [household, setHousehold] = useState<Household>(state.finance?.household || '1인');
@@ -96,6 +97,7 @@ export default function ContractInput() {
         expiryDate,
         renewalUsed,
         housingType,
+        preferredArea,
       },
     });
     dispatch({
@@ -157,6 +159,27 @@ export default function ContractInput() {
                   <div className="font-semibold">원룸·투룸·빌라</div>
                   <div className="text-xs text-muted-foreground mt-0.5">연립·다세대</div>
                 </SelectCard>
+              </div>
+            </div>
+            <div className="mt-5">
+              <div className="text-sm font-medium mb-2">
+                선호 지역 <span className="text-xs text-muted-foreground">(동네 후보를 이 근처에서)</span>
+              </div>
+              <div className="flex flex-wrap gap-2">
+                {['', '마포구', '은평구', '도봉구', '성북구', '노원구', '중랑구'].map(gu => (
+                  <button
+                    key={gu || 'any'}
+                    onClick={() => setPreferredArea(gu)}
+                    className="text-sm px-3 py-1.5 rounded-full border"
+                    style={{
+                      borderColor: preferredArea === gu ? COLORS.KB_YELLOW : COLORS.BORDER,
+                      background: preferredArea === gu ? COLORS.YELLOW_SURFACE : COLORS.CARD,
+                      color: preferredArea === gu ? COLORS.TEXT : COLORS.SUB,
+                    }}
+                  >
+                    {gu || '상관없음'}
+                  </button>
+                ))}
               </div>
             </div>
           </StepView>
