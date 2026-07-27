@@ -3,7 +3,7 @@ import { useApp } from '../store';
 import { COLORS, BRANCH_COLORS, BRANCH_ICONS } from '../theme';
 import { MobileShell, PrimaryBtn, Toast } from '../components/ui';
 import AiBriefing from '../components/AiBriefing';
-import { formatDday, formatDate, formatNoticeDeadline, formatAmount } from '../utils/format';
+import { formatDday, formatDate, formatNoticeDeadline, formatAmount, ddayText } from '../utils/format';
 import { PERSONAS, briefings } from '../api/client';
 
 const DEMO_TOAST_MSG = 'P2 신혼 데모 데이터가 채워졌어요 ✓';
@@ -91,7 +91,7 @@ export default function HomeEntry() {
                 <p className="text-xs text-muted-foreground mb-1">계약 만기까지</p>
                 <div className="flex items-baseline gap-2">
                   <span className="font-black text-5xl leading-none" style={{ color: COLORS.KB_GRAY }}>
-                    D-{dday}
+                    {ddayText(dday)}
                   </span>
                   <span className="text-sm text-muted-foreground">
                     {formatDate(new Date(contract!.expiryDate))} 만기
@@ -140,7 +140,7 @@ export default function HomeEntry() {
                   className="text-xs font-semibold px-3 py-1.5 rounded-xl text-white text-center"
                   style={{ background: COLORS.CORAL }}
                 >
-                  ⚠️ 갱신 의사 통보 기한이 {noticeDaysLeft}일 남았어요
+                  ⚠️ {noticeDaysLeft < 0 ? '갱신 통보기한이 지났어요' : `갱신 의사 통보기한 D-${noticeDaysLeft}`}
                 </div>
               )}
             </div>

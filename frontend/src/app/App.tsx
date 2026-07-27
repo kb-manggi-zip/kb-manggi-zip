@@ -15,6 +15,7 @@ import FinancePackage from '../screens/FinancePackage';
 import ReservationSheet from '../screens/ReservationSheet';
 import SaveReminder from '../screens/SaveReminder';
 import DecisionReportScreen from '../screens/DecisionReportScreen';
+import ProfileConfirm from '../screens/ProfileConfirm';
 
 function Router() {
   const { state } = useApp();
@@ -37,6 +38,7 @@ function Router() {
     case 'SC-10': return <ReservationSheet />;
     case 'SC-11': return <SaveReminder />;
     case 'SC-13': return <DecisionReportScreen />;
+    case 'SC-14': return <ProfileConfirm />;
     default: return <HomeEntry />;
   }
 }

@@ -11,7 +11,7 @@ export function DdayBadge({ dday }: { dday: number }) {
       style={{ background: '#FDECEC', color: '#D64545' }}
       title="계약 만기까지 남은 날"
     >
-      ⏰ 만기 D-{dday}
+      ⏰ 만기 {dday < 0 ? '지남' : `D-${dday}`}
     </span>
   );
 }
@@ -29,23 +29,25 @@ export function MobileShell({ children, className = '' }: { children: React.Reac
   );
 }
 
-// ─── 만기 D-day 바 (1층) — 딥네이비, 만기+통보기한. 음수(기한 지남) 방어 ──────
+// ─── 만기 D-day 배너 (1층) — KB 회갈색 배경 + 크림 텍스트, 강조는 옐로우(빨강 없음) ──
+// 색을 바꾸는 유일한 곳. 만기일 '확정 이후'(comparison 존재)에만 렌더한다(호출부가 조건 제어).
+const _CREAM = '#FFF7E0';
+const _YELLOW = '#FFBC00';
 export function DdayBar({ dday, noticeDaysLeft }: { dday?: number; noticeDaysLeft?: number }) {
   const expiryPassed = dday !== undefined && dday < 0;
   const noticePassed = noticeDaysLeft !== undefined && noticeDaysLeft < 0;
   return (
-    <div className="flex items-center justify-center gap-3 px-5" style={{ background: '#1A1E27', height: 32 }}>
+    <div className="flex items-center justify-center gap-2 px-5" style={{ background: '#60584C', height: 32, fontSize: 12 }}>
       {expiryPassed ? (
-        <span style={{ color: '#FF7A7A', fontWeight: 700, fontSize: 12 }}>만기가 지났어요 · 계약 상태를 확인하세요</span>
+        <span style={{ color: _CREAM }}>만기 <b style={{ color: _YELLOW }}>지남</b> · 계약 상태를 지금 확인하세요</span>
       ) : noticePassed ? (
-        <span style={{ color: '#FF7A7A', fontWeight: 700, fontSize: 12 }}>통보기한 지남 · 갱신 의사를 지금 확인하세요</span>
+        <span style={{ color: _CREAM }}>통보기한 <b style={{ color: _YELLOW }}>지남</b> · 갱신 의사를 지금 확인하세요</span>
       ) : (
-        <>
-          {dday !== undefined && <span style={{ color: '#fff', fontWeight: 700, fontSize: 12 }}>만기 D-{dday}</span>}
-          {noticeDaysLeft !== undefined && (
-            <span style={{ color: '#FFBC00', fontWeight: 700, fontSize: 12 }}>통보기한 D-{noticeDaysLeft}</span>
-          )}
-        </>
+        <span style={{ color: _CREAM }}>
+          {dday !== undefined && <>만기 <b style={{ color: _YELLOW }}>D-{dday}</b></>}
+          {dday !== undefined && noticeDaysLeft !== undefined && ' · '}
+          {noticeDaysLeft !== undefined && <>통보기한 <b style={{ color: _YELLOW }}>D-{noticeDaysLeft}</b></>}
+        </span>
       )}
     </div>
   );
@@ -227,13 +229,14 @@ export function BasisChip({ label, tip }: { label: string; tip: string }) {
 
 // ─── D-day Chip ──────────────────────────────────────────────────────────────
 export function DdayChip({ dday }: { dday: number }) {
+  const passed = dday < 0;
   const urgent = dday <= 30;
   return (
     <span
       className="inline-flex items-center gap-1 text-xs font-bold px-3 py-1 rounded-full"
-      style={{ background: urgent ? COLORS.CORAL : COLORS.KB_YELLOW, color: COLORS.TEXT }}
+      style={{ background: passed ? '#5C5147' : urgent ? COLORS.CORAL : COLORS.KB_YELLOW, color: passed ? '#FFE9C7' : COLORS.TEXT }}
     >
-      D-{dday}
+      {passed ? '만기 지남' : `D-${dday}`}
     </span>
   );
 }

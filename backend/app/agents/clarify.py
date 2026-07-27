@@ -73,6 +73,29 @@ _HOUSEHOLD_HINTS = {
 _COMMUTE_KEYS = ("통근", "출퇴근", "회사", "직장")
 
 
+def _axis_dir(boost: dict, axis: str) -> int:
+    """축 보정 방향: 1=높임, -1=낮춤, 0=변화없음."""
+    v = boost.get(axis, 1.0)
+    return 1 if v > 1.05 else (-1 if v < 0.95 else 0)
+
+
+def _contradictions(prior_notes: list, note: str) -> list[str]:
+    """이전에 반영·확정한 조정과 이번 입력이 축 방향에서 충돌하면 되묻기(조용한 덮어쓰기 금지)."""
+    if not prior_notes:
+        return []
+    prior = note_signals(" ".join(prior_notes))["boost"]
+    new = note_signals(note)["boost"]
+    out = []
+    for axis in _AXES:
+        pd, nd = _axis_dir(prior, axis), _axis_dir(new, axis)
+        if pd and nd and pd != nd:
+            label = AXIS_LABEL[axis]
+            was = "낮추기로" if pd < 0 else "높이기로"
+            verb = "다시 높일까요" if pd < 0 else "다시 낮출까요"
+            out.append(f"이전엔 '{label}'을 {was} 하셨는데 이번엔 반대네요. {label} 비중을 {verb}?")
+    return out
+
+
 # ── 키워드 폴백 경로 ──────────────────────────────────────────────────
 def note_signals(note: str) -> dict:
     """자유입력 → {labels: 반영한 신호, boost: 축별 배수}. 정해진 축만(창작 금지)."""
@@ -163,16 +186,17 @@ def _household_conflict(household: Optional[str], note: str) -> list[str]:
     return out
 
 
-def clarify(contract: dict, finance: dict, note: str = "") -> dict:
+def clarify(contract: dict, finance: dict, note: str = "", prior_notes: Optional[list] = None) -> dict:
     """폼값+자유입력 → ClarifyResult(dict).
 
+    prior_notes: 이미 반영·확정한 자유입력들. 이번 입력이 이와 축 방향에서 충돌하면 되묻는다.
     반환: {persona, priorities, conflicts, questions, noteSignals}
     """
     household = finance.get("household") or "1인"
     note = note or contract.get("note") or ""
 
-    # 1) 모순 감지 = 항상 결정론
-    conflicts = _household_conflict(household, note)
+    # 1) 모순 감지 = 항상 결정론 (가구유형 불일치 + 이전 반영과 방향 충돌)
+    conflicts = _household_conflict(household, note) + _contradictions(prior_notes or [], note)
 
     # 2) 신호 라벨 = LLM(제약) 우선, 실패/비활성 시 키워드. (LLM은 '해석'만)
     llm = _llm_interpret(note, household, conflicts) if (note and settings.llm_active) else None

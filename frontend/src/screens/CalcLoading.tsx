@@ -27,7 +27,7 @@ export default function CalcLoading() {
         const result = await api.analyze({ contract: state.contract, finance: state.finance });
         // 에이전트가 만든 개인화 통역(narrate)을 함께 저장 → CompareTable에서 재사용(중복 LLM 호출 없음)
         dispatch({ type: 'SET_COMPARISON', comparison: result.comparison, briefing: result.briefing });
-        dispatch({ type: 'NAVIGATE', screen: 'SC-03' });
+        dispatch({ type: 'NAVIGATE', screen: 'SC-14' });
       } catch (e) {
         setError('계산 중 오류가 발생했어요. 다시 시도해주세요.');
       }

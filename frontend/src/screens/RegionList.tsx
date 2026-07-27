@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useApp } from '../store';
 import { COLORS, BRANCH_COLORS, BRANCH_ICONS } from '../theme';
-import { MobileShell, JourneyHeader, BackBtn, Disclaimer } from '../components/ui';
+import { MobileShell, JourneyHeader, BackBtn, Disclaimer, Accordion } from '../components/ui';
 import AiBriefing from '../components/AiBriefing';
 import { api, briefings, personaIdFor } from '../api/client';
 import { formatAmount } from '../utils/format';
@@ -132,47 +132,46 @@ function bandStyle(band: string): React.CSSProperties {
 const AXIS_LABEL: Record<string, string> = { commute: '통근', consumption: '생활·소비', budget: '예산', preference: '선호지역' };
 function PersonaCardView({ persona, color }: { persona: PersonaProfile; color: string }) {
   const weights = Object.entries(persona.weights).sort((a, b) => b[1] - a[1]);
+  const personal = (persona.consumptionSignals ?? []).filter(s => s.source !== '세그먼트');  // 실측·진술
+  const segment = (persona.consumptionSignals ?? []).filter(s => s.source === '세그먼트');
   return (
-    <div className="mx-5 mt-4 rounded-2xl border p-4 space-y-3" style={{ borderColor: color + '55', background: color + '0D' }}>
+    <div className="mx-5 mt-4 rounded-2xl border p-4 space-y-2" style={{ borderColor: color + '55', background: color + '0D' }}>
       <div className="flex items-center gap-2">
         <span className="text-base">🎯</span>
-        <span className="font-bold text-sm" style={{ color }}>{persona.headline}</span>
+        <span className="font-bold text-sm" style={{ color }}>{persona.segment} 맞춤 추천</span>
       </div>
-      {/* 우선순위 가중치 막대 — "감이 아니라 통계 근거" */}
-      <div className="space-y-1">
-        {weights.map(([k, v]) => (
-          <div key={k} className="flex items-center gap-2">
-            <span className="text-xs w-14 shrink-0 text-muted-foreground">{AXIS_LABEL[k] ?? k}</span>
-            <div className="flex-1 h-2 rounded-full overflow-hidden" style={{ background: '#0000000d' }}>
-              <div className="h-full rounded-full" style={{ width: `${Math.round(v * 100)}%`, background: color }} />
-            </div>
-            <span className="text-xs w-9 text-right tabular-nums text-muted-foreground">{Math.round(v * 100)}%</span>
-          </div>
-        ))}
-      </div>
-      <p className="text-[11px] text-muted-foreground leading-snug">근거: {persona.weightBasis}</p>
-      {/* 소비 성향 — 증거 위계(세그먼트/실측/진술). 실측은 배지 + 근거(탭) */}
-      {(persona.consumptionSignals?.length ?? 0) > 0 && (
-        <div className="flex flex-wrap gap-1.5 pt-1 border-t border-border/60">
-          {persona.consumptionSignals!.map((s, i) => (
-            <span key={i} title={s.reason}
-              className="text-[11px] px-2 py-0.5 rounded-full flex items-center gap-1"
-              style={s.source === '실측'
-                ? { background: color + '22', color, fontWeight: 600 }
-                : { background: '#00000008', color: COLORS.SUB }}>
-              {s.source === '실측' && <span style={{ fontSize: 9 }}>실측</span>}
-              {s.label}
+      {/* 개인 신호(실측·본인 진술)만 겉에 */}
+      {personal.length > 0 && (
+        <div className="flex flex-wrap gap-1.5">
+          {personal.map((s, i) => (
+            <span key={i} title={s.reason} className="text-[11px] px-2 py-0.5 rounded-full"
+              style={s.source === '실측' ? { background: color + '22', color, fontWeight: 600 } : { background: '#00000008', color: COLORS.SUB }}>
+              {s.source === '실측' ? '실측 ' : ''}{s.label}
             </span>
           ))}
         </div>
       )}
-      {/* 조합된 리소스 — 이 하루에 실제 등장할 것만('빼기의 개인화') */}
-      <div className="flex flex-wrap gap-1.5 pt-1 border-t border-border/60">
-        {persona.resources.map(r => (
-          <span key={r} className="text-[11px] px-2 py-0.5 bg-muted rounded-full text-muted-foreground">{r}</span>
-        ))}
-      </div>
       <p className="text-[11px] text-muted-foreground">{persona.budgetBand}</p>
+
+      {/* 추천 기준 보기 — 세그먼트 가중치·근거는 접어둔다('당신은'이 아니라 '이 세그먼트는') */}
+      <Accordion title="추천 기준 보기">
+        <p className="text-[11px] pb-1">이 세그먼트는 동네를 볼 때 아래 순서로 봐요. 자유입력을 반영하면 여기 가중치가 함께 조정돼요.</p>
+        <div className="space-y-1 py-1">
+          {weights.map(([k, v]) => (
+            <div key={k} className="flex items-center gap-2">
+              <span className="text-xs w-14 shrink-0 text-muted-foreground">{AXIS_LABEL[k] ?? k}</span>
+              <div className="flex-1 h-2 rounded-full overflow-hidden" style={{ background: '#0000000d' }}>
+                <div className="h-full rounded-full" style={{ width: `${Math.round(v * 100)}%`, background: color }} />
+              </div>
+              <span className="text-xs w-9 text-right tabular-nums text-muted-foreground">{Math.round(v * 100)}%</span>
+            </div>
+          ))}
+        </div>
+        <p className="text-[11px] leading-snug">근거: {persona.weightBasis}</p>
+        {segment.length > 0 && (
+          <p className="text-[11px] pt-1">이 세그먼트 소비 성향: {segment.map(s => s.label).join(' · ')}</p>
+        )}
+      </Accordion>
     </div>
   );
 }
@@ -259,12 +258,13 @@ function RegionCard({ region, color, onSelect }: { region: Region; color: string
           </span>
         )}
       </div>
-      <div className="flex items-center gap-2 flex-wrap">
-        <span className="text-xs text-muted-foreground">최근 실거래 {region.tradeCount}건</span>
-        {region.tags.map(t => (
-          <span key={t} className="text-xs px-2 py-0.5 bg-muted rounded-full text-muted-foreground">{t}</span>
-        ))}
-      </div>
+      {/* 특징 한 줄 — 스코어 근거(통근) + region_facts(태그). 전부 실측/facts 값 */}
+      {(() => {
+        const commute = (region.scoreReasons ?? []).map(r => (r.match(/통근 \d+분/) || [])[0]).find(Boolean);
+        const feature = [...region.tags, commute].filter(Boolean).slice(0, 3).join(' · ');
+        return feature ? <p className="text-xs" style={{ color: COLORS.SUB }}>{feature}</p> : null;
+      })()}
+      <span className="text-xs text-muted-foreground">최근 실거래 {region.tradeCount}건</span>
       {region.jeonseRatio && (
         <div className="flex items-center gap-1.5 flex-wrap" title={region.jeonseRatio.basis}>
           <span

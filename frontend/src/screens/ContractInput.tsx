@@ -2,11 +2,10 @@ import React, { useState, useEffect } from 'react';
 import { useApp } from '../store';
 import { COLORS } from '../theme';
 import {
-  MobileShell, DdayBar, BackBtn,
+  MobileShell, BackBtn,
   PrimaryBtn, GhostBtn, SelectCard, AmountInput
 } from '../components/ui';
 import { api } from '../api/client';
-import { formatDday, formatNoticeDeadline } from '../utils/format';
 import type { ContractType, RenewalUsed, Household, FirstHome, HousingType, ClarifyResult } from '../api/types';
 
 // ─── 스텝 정의 ─────────────────────────────────────────────────────────────
@@ -60,9 +59,12 @@ export default function ContractInput() {
   const [renewalUsed, setRenewalUsed] = useState<RenewalUsed>(state.contract?.renewalUsed || '미사용');
   const [housingType, setHousingType] = useState<HousingType>(state.contract?.housingType || '아파트');
   const [preferredArea, setPreferredArea] = useState<string>(state.contract?.preferredArea || '');
-  const [note, setNote] = useState<string>(state.contract?.note || '');
+  const [note, setNote] = useState<string>('');
   const [interp, setInterp] = useState<ClarifyResult | null>(null);
-  const [noteOk, setNoteOk] = useState<boolean>(!!state.contract?.note);
+  // 확정된 자유입력 누적(반영한 내용). 각 항목: {말한 것, 해석 신호들}
+  const [reflected, setReflected] = useState<{ text: string; signals: string[] }[]>(
+    state.contract?.note ? [{ text: state.contract.note, signals: [] }] : []
+  );
   const [annualIncome, setAnnualIncome] = useState(state.finance?.annualIncome || 0);
   const [ownCapital, setOwnCapital] = useState(state.finance?.ownCapital || 0);
   const [household, setHousehold] = useState<Household>(state.finance?.household || '1인');
@@ -76,6 +78,7 @@ export default function ContractInput() {
       api.clarify(
         { type: contractType, deposit: 0, monthlyRent: 0, expiryDate: '', renewalUsed, housingType, note },
         { annualIncome: 0, ownCapital: 0, household, firstHome, under35 },
+        reflected.map(r => r.text),  // 이전 반영 → 모순 되묻기
       ).then(setInterp).catch(() => setInterp(null));
     }, 400);
     return () => clearTimeout(t);
@@ -115,7 +118,7 @@ export default function ContractInput() {
         renewalUsed,
         housingType,
         preferredArea,
-        note,
+        note: [...reflected.map(r => r.text), note.trim()].filter(Boolean).join(' '),
       },
     });
     dispatch({
@@ -130,13 +133,9 @@ export default function ContractInput() {
     else dispatch({ type: 'NAVIGATE', screen: 'SC-01' });
   }
 
-  const dday = expiryDate ? formatDday(expiryDate) : undefined;
-  const noticeLeft = expiryDate ? formatDday(formatNoticeDeadline(expiryDate, 2).toISOString()) : undefined;
-
+  // §3: 만기 배너는 만기일 '확정 이후'(문진 완료·비교 존재) 화면에서만. 문진 진행 중엔 숨김(잔존값 노출 금지).
   return (
     <MobileShell>
-      {expiryDate && <DdayBar dday={dday} noticeDaysLeft={noticeLeft} />}
-
       {/* 스텝 진행바 — 현재 index / steps.length (하드코딩 없음) */}
       <div className="flex items-center px-4 pt-2 pb-2">
         <BackBtn onClick={back} />
@@ -251,17 +250,43 @@ export default function ContractInput() {
                     <p key={i} className="text-xs pl-8" style={{ color: COLORS.SUB }}>💬 {c}</p>
                   ))}
                   <div className="flex gap-2 pl-8 pt-0.5">
-                    <button onClick={() => setNoteOk(true)}
+                    <button onClick={() => {
+                      // 반영은 확정 후에만: 스택 누적 + HITL '수락' 기록
+                      api.hitl('applied', interp?.noteSignals ?? [], note.trim());
+                      setReflected(r => [...r, { text: note.trim(), signals: interp?.noteSignals ?? [] }]);
+                      setNote(''); setInterp(null);
+                    }}
                       className="flex-1 text-xs font-semibold py-2 rounded-xl"
-                      style={noteOk ? { background: COLORS.KB_YELLOW, color: COLORS.TEXT }
-                        : { background: COLORS.KB_YELLOW, color: COLORS.TEXT }}>
-                      {noteOk ? '✓ 반영했어요' : '네, 맞아요'}
+                      style={{ background: COLORS.KB_YELLOW, color: COLORS.TEXT }}>
+                      네, 맞아요
                     </button>
-                    <button onClick={() => { setNote(''); setInterp(null); setNoteOk(false); }}
+                    <button onClick={() => {
+                      api.hitl('skipped', interp?.noteSignals ?? [], note.trim());  // 미반영 기록
+                      setNote(''); setInterp(null);
+                    }}
                       className="flex-1 text-xs font-semibold py-2 rounded-xl border"
                       style={{ borderColor: COLORS.BORDER, color: COLORS.SUB, background: COLORS.CARD }}>
                       아니요, 그대로
                     </button>
+                  </div>
+                </div>
+              )}
+
+              {/* 반영한 내용 — 확정 누적, X로 해제 */}
+              {reflected.length > 0 && (
+                <div className="mt-3">
+                  <p className="text-xs font-medium mb-1.5" style={{ color: COLORS.SUB }}>반영한 내용</p>
+                  <div className="flex flex-wrap gap-1.5">
+                    {reflected.flatMap((r, ri) =>
+                      (r.signals.length ? r.signals : [r.text]).map((s, si) => (
+                        <span key={`${ri}-${si}`} className="inline-flex items-center gap-1 text-[11px] px-2 py-1 rounded-full"
+                          style={{ background: COLORS.YELLOW_SURFACE, color: COLORS.TEXT }}>
+                          ✓ {s}
+                          <button onClick={() => setReflected(list => list.filter((_, i) => i !== ri))}
+                            className="opacity-60 hover:opacity-100" aria-label="해제">✕</button>
+                        </span>
+                      ))
+                    )}
                   </div>
                 </div>
               )}

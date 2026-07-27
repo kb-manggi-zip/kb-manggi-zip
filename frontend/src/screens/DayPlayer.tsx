@@ -3,8 +3,17 @@ import { useApp } from '../store';
 import { COLORS, BRANCH_COLORS, BRANCH_ICONS } from '../theme';
 import { MobileShell, BasisChip } from '../components/ui';
 import { api, briefings } from '../api/client';
-import { formatAmount } from '../utils/format';
+import { formatAmount, ddayText } from '../utils/format';
 import type { Scene } from '../api/types';
+
+// 시간대 그라디언트 — 스톡사진 대신 시간의 '색'으로 하루를 표현(아침 웜/낮 스카이/저녁 앰버/밤 네이비).
+function timeGradient(time: string): string {
+  const h = parseInt((time.match(/(\d{1,2}):/) || [])[1] || '12', 10);
+  if (h >= 5 && h < 10) return 'linear-gradient(160deg, #FFD9A0 0%, #FFB86C 55%, #E8925A 100%)';   // 아침
+  if (h >= 10 && h < 16) return 'linear-gradient(160deg, #CDEBFF 0%, #9FD0F5 55%, #6FB0E8 100%)';  // 낮
+  if (h >= 16 && h < 19) return 'linear-gradient(160deg, #FFC98A 0%, #FF9E5E 55%, #D9663C 100%)';  // 저녁
+  return 'linear-gradient(160deg, #3A3F6B 0%, #23264A 55%, #14162E 100%)';                          // 밤
+}
 
 export default function DayPlayer() {
   const { state, dispatch } = useApp();
@@ -48,6 +57,8 @@ export default function DayPlayer() {
   const icon = BRANCH_ICONS[selectedBranch];
   const scene = scenes[current];
   const isLast = current === scenes.length - 1;
+  // §4.3: 마지막 씬 월 부담 = 비교표(compare)의 선택 갈래 값(일관). 씬 fixture(monthlyCost)와의 불일치 해소.
+  const selectedBurden = comparison?.branches.find(b => b.branch === selectedBranch)?.monthlyBurden;
 
   // 1초 인트로 카드
   if (showIntro) {
@@ -88,12 +99,9 @@ export default function DayPlayer() {
       style={{ width: '100%', maxWidth: 390, height: '100dvh', margin: '0 auto', background: '#111' }}
       onClick={handleTap}
     >
-      {/* 배경 이미지 */}
-      <div
-        className="absolute inset-0 bg-cover bg-center transition-all duration-700"
-        style={{ backgroundImage: `url(${scene.visual})` }}
-      >
-        <div className="absolute inset-0 bg-gradient-to-b from-black/20 via-transparent to-black/70" />
+      {/* 배경 — 시간대 그라디언트(스톡사진 제거) + 하단 어둡게(자막 가독) */}
+      <div className="absolute inset-0 transition-all duration-700" style={{ background: timeGradient(scene.time) }}>
+        <div className="absolute inset-0 bg-gradient-to-b from-black/15 via-transparent to-black/75" />
       </div>
 
       {/* 상단 */}
@@ -128,7 +136,7 @@ export default function DayPlayer() {
               className="ml-auto inline-flex items-center text-xs font-semibold px-3 py-1 rounded-full"
               style={{ background: 'rgba(0,0,0,0.35)', color: '#fff' }}
             >
-              만기 D-{comparison.dday}
+              만기 {ddayText(comparison.dday)}
             </span>
           )}
         </div>
@@ -146,7 +154,7 @@ export default function DayPlayer() {
       <div className="absolute bottom-0 left-0 right-0 z-20 p-6 space-y-2">
         {!isLast ? (
           <>
-            <p className="text-white text-lg font-bold leading-snug drop-shadow">{scene.caption1}</p>
+            <p className="text-white text-2xl font-bold leading-tight drop-shadow">{scene.caption1}</p>
             <p className="text-white/80 text-sm">{scene.caption2}</p>
             {scene.basis && (
               <div onClick={e => e.stopPropagation()}>
@@ -156,7 +164,16 @@ export default function DayPlayer() {
             <p className="text-white/40 text-xs pt-1">좌측 탭: 이전 · 우측 탭: 다음</p>
           </>
         ) : (
-          <div className="space-y-4" onClick={e => e.stopPropagation()}>
+          <div className="space-y-3" onClick={e => e.stopPropagation()}>
+            {/* 그 동네 좌표 — 은은한 지도 느낌(실제 lat/lng). ※ 카카오 정적 지도 연동 지점(VITE_KAKAO_KEY) */}
+            {selectedRegion?.lat ? (
+              <div className="rounded-2xl overflow-hidden relative" style={{ height: 84, background: 'rgba(255,255,255,0.08)', backgroundImage: 'linear-gradient(rgba(255,255,255,0.06) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.06) 1px, transparent 1px)', backgroundSize: '18px 18px', backdropFilter: 'blur(6px)' }}>
+                <div className="absolute inset-0 flex items-center justify-center gap-2">
+                  <span className="text-lg">📍</span>
+                  <p className="text-white text-sm font-bold">{regionName}</p>
+                </div>
+              </div>
+            ) : null}
             {lifestyle && (
               <div className="bg-black/60 rounded-2xl p-4" style={{ backdropFilter: 'blur(8px)' }}>
                 <p className="text-white/70 text-xs mb-1">💬 이 동네에서의 당신</p>
@@ -164,20 +181,28 @@ export default function DayPlayer() {
               </div>
             )}
             <div className="bg-black/60 rounded-2xl p-4" style={{ backdropFilter: 'blur(8px)' }}>
-              <p className="text-white/70 text-xs mb-1">이 하루의 월 부담</p>
-              <p className="text-white text-2xl font-bold">{formatAmount(monthlyCost)}/월</p>
+              <p className="text-white/70 text-xs mb-1">선택하신 {selectedBranch}의 월 부담 (비교표와 동일)</p>
+              <p className="text-white text-2xl font-bold">{formatAmount(selectedBurden ?? monthlyCost)}/월</p>
+              <p className="text-white/50 text-[11px] mt-1">규제·금리 기준 계산값 · {regionName} 시세로 산출</p>
             </div>
+            {/* 지출 여력으로 연결 */}
+            <button
+              onClick={() => dispatch({ type: 'NAVIGATE', screen: 'SC-13' })}
+              className="w-full py-3 rounded-full text-sm font-bold text-foreground"
+              style={{ background: COLORS.KB_YELLOW }}
+            >
+              이 하루, 실현 가능한지 볼까요? →
+            </button>
             <div className="grid grid-cols-2 gap-3">
               <button
                 onClick={() => dispatch({ type: 'NAVIGATE', screen: 'SC-03' })}
-                className="py-3 rounded-full text-sm font-semibold border border-white/50 text-white"
+                className="py-2.5 rounded-full text-sm font-semibold border border-white/50 text-white"
               >
                 세 갈래 다시 보기
               </button>
               <button
                 onClick={() => dispatch({ type: 'NAVIGATE', screen: 'SC-09' })}
-                className="py-3 rounded-full text-sm font-semibold text-foreground"
-                style={{ background: COLORS.KB_YELLOW }}
+                className="py-2.5 rounded-full text-sm font-semibold border border-white/50 text-white"
               >
                 금융 알아보기
               </button>

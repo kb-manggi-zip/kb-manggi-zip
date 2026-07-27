@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { useApp } from '../store';
 import { COLORS, BRANCH_COLORS, BRANCH_ICONS } from '../theme';
 import { MobileShell, BackBtn, JourneyHeader } from '../components/ui';
-import { formatAmount } from '../utils/format';
+import { formatAmount, ddayText } from '../utils/format';
 import { api } from '../api/client';
 import type { DecisionReport } from '../api/types';
 
@@ -134,7 +134,7 @@ export default function DecisionReportScreen() {
             )}
 
             <Section n="⑥" title="다음 액션" open={!!open['⑥']} onToggle={() => toggle('⑥')}>
-              <p className="text-sm">갱신 통보 기한 <b>D-{rep.dday}</b> · 기한일 {rep.noticeDeadline}</p>
+              <p className="text-sm">갱신 통보 기한 <b>{ddayText(rep.dday)}</b> · 기한일 {rep.noticeDeadline}</p>
             </Section>
           </>
         )}
@@ -145,7 +145,7 @@ export default function DecisionReportScreen() {
         <div className="px-5 py-3 border-t border-border flex items-center gap-3" style={{ background: COLORS.CARD }}>
           <div className="flex-1">
             <p className="text-[11px] text-muted-foreground">갱신 통보 기한</p>
-            <p className="text-sm font-bold" style={{ color: COLORS.CORAL }}>D-{rep.dday}</p>
+            <p className="text-sm font-bold" style={{ color: COLORS.CORAL }}>{ddayText(rep.dday)}</p>
           </div>
           <button onClick={() => dispatch({ type: 'NAVIGATE', screen: 'SC-10' })}
             className="px-5 py-2.5 rounded-xl text-sm font-bold" style={{ background: COLORS.KB_YELLOW, color: COLORS.TEXT }}>
