@@ -147,6 +147,7 @@ export interface PersonaProfile {
   weights: Record<string, number>;
   weightBasis: string;
   consumption: string[];
+  consumptionSignals?: { label: string; source: '세그먼트' | '실측' | '진술'; reason?: string }[];
   resources: string[];
   budgetBand: string;
 }

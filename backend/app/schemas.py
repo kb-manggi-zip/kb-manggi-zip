@@ -140,6 +140,7 @@ class PersonaProfile(BaseModel):
     weights: dict  # 스코어 가중치 (근거 노출)
     weightBasis: str  # 가중치 출처 한 줄
     consumption: list[str]  # 소비 성향(카드통계 근거)
+    consumptionSignals: list[dict] = []  # 성향 신호 + 출처(세그먼트/실측/진술) — 증거 위계 노출
     resources: list[str]  # 조합된 리소스(발품에 등장할 것들)
     budgetBand: str  # 예산 밴드 설명
 

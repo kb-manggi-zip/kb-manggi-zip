@@ -107,7 +107,10 @@ def score_region(region: dict, ctx: dict) -> dict:
     tr = trades_store.read_region_transit(rid, wp) if wp else None
     minutes = tr["minutes"] if tr else None
     dc = _dc_count(rid)
-    values_food = any(k in " ".join(ctx.get("traits") or []) for k in ("카페", "외식", "배달"))
+    # 실측 override(persona.scoring_ctx가 실어줌)가 있으면 그것을, 없으면 세그먼트 traits에서 판정.
+    values_food = ctx.get("values_food")
+    if values_food is None:
+        values_food = any(k in " ".join(ctx.get("traits") or []) for k in ("카페", "외식", "배달"))
 
     axes = {
         "commute": score_commute(minutes),

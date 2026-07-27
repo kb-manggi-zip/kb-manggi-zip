@@ -39,18 +39,37 @@ def _resources(workplace: Optional[str], consumption: list[str]) -> list[str]:
     return out
 
 
-def build_persona(contract: dict, finance: dict, budget: int = 0, clarify_result: Optional[dict] = None) -> dict:
+def build_persona(
+    contract: dict,
+    finance: dict,
+    budget: int = 0,
+    clarify_result: Optional[dict] = None,
+    persona_id: Optional[str] = None,
+) -> dict:
     """페르소나 → PersonaProfile(dict). 화면 개인화 카드 = 이 산출물.
 
-    clarify_result가 있으면 그 우선순위/신호를 반영(닫힌 루프의 '확정' 결과).
-    없으면 폼값만으로 조합.
+    소비 성향 증거 위계: 3위 세그먼트 통계 → 2위 개인 실측(persona_id) → 1위 본인 진술(clarify).
+    강한 증거가 약한 증거를 덮어쓰며, consumptionSignals에 각 값의 출처를 태그한다.
     """
     household = finance.get("household") or "1인"
     note = contract.get("note") or ""
 
     prof = profile_for(household)
     workplace = (prof.get("workplace") or {}).get("name")
-    consumption = prof.get("traits", [])
+    consumption = list(prof.get("traits", []))
+
+    # ── 소비 성향 신호(출처 태그) — 세그먼트 → 실측 override → 진술 순 ──
+    signals = [{"label": t, "source": "세그먼트"} for t in consumption]
+    if persona_id:
+        from .personal_traits import derive_personal_traits
+
+        for cat, o in derive_personal_traits(persona_id).items():
+            lvl = "많이 쓰는 편" if o["level"] == "high" else "적게 쓰는 편"
+            signals.append(
+                {"label": f"{cat} {lvl}", "source": "실측", "reason": f"{o['reason']} · 시연용 합성 데이터 기준"}
+            )
+    for s in (clarify_result or {}).get("noteSignals", []):
+        signals.append({"label": s, "source": "진술"})
 
     weights = clarify_mod.note_weights(household, note)
     priorities = (clarify_result or {}).get("priorities") or [
@@ -66,20 +85,24 @@ def build_persona(contract: dict, finance: dict, budget: int = 0, clarify_result
         "weights": weights,
         "weightBasis": WEIGHT_BASIS,
         "consumption": consumption,
+        "consumptionSignals": signals,
         "resources": _resources(workplace, consumption),
         "budgetBand": _budget_band(budget),
     }
 
 
-def scoring_ctx(contract: dict, finance: dict, budget: int, in_preferred: Optional[bool]) -> dict:
+def scoring_ctx(
+    contract: dict, finance: dict, budget: int, in_preferred: Optional[bool], persona_id: Optional[str] = None
+) -> dict:
     """페르소나 → 동네 스코어 입력(단일 소스). regions 노드가 인라인으로 만들던 ctx를 여기로 통일.
 
-    자유입력 보정 가중치(weights)를 함께 실어 명확화가 순위에 반영되게 한다.
+    자유입력 보정 가중치(weights) + (persona_id 시) 실측 소비 override(values_food)를 실어
+    스코어·발품이 페르소나 조합과 같은 성향값을 쓰게 한다(일관성).
     """
     household = finance.get("household")
     note = contract.get("note") or ""
     prof = profile_for(household)
-    return {
+    ctx = {
         "household": household,
         "budget": budget,
         "workplace": (prof.get("workplace") or {}).get("name"),
@@ -87,3 +110,10 @@ def scoring_ctx(contract: dict, finance: dict, budget: int, in_preferred: Option
         "in_preferred": in_preferred,
         "weights": clarify_mod.note_weights(household, note),
     }
+    if persona_id:
+        from .personal_traits import derive_personal_traits, values_food_override
+
+        vf = values_food_override(derive_personal_traits(persona_id))
+        if vf is not None:
+            ctx["values_food"] = vf  # 실측이 세그먼트 성향을 덮어씀
+    return ctx

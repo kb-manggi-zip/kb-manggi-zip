@@ -34,6 +34,13 @@ async function localOrRemote<T>(local: () => T, path: string, opts?: RequestInit
   return res.json();
 }
 
+// 데모 매핑: 가구/계약 → 합성 마이데이터 페르소나(P1/P2/P3). 백엔드 report.persona_id_for와 동일.
+export function personaIdFor(contract: ContractInfo | null, finance: FinanceInfo | null): string {
+  if (finance?.household === '신혼') return 'P2';
+  if (contract?.type === '월세') return 'P3';
+  return 'P1';
+}
+
 export const api = {
   async compare(req: { contract: ContractInfo; finance: FinanceInfo }): Promise<CompareResponse> {
     return localOrRemote(
@@ -72,11 +79,12 @@ export const api = {
     } catch { /* 관측 실패는 UX를 막지 않음 */ }
   },
 
-  // 개인화 조합 레이어 — 완성 페르소나 → 리소스 조합 산출물(프로필 카드). budget=고른 갈래 예산(밴드 표기용).
+  // 개인화 조합 레이어 — 완성 페르소나 → 리소스 조합 산출물(프로필 카드). budget=밴드 표기, personaId=실측 소비 override.
   async persona(contract: ContractInfo, finance: FinanceInfo, budget = 0): Promise<PersonaProfile> {
+    const pid = personaIdFor(contract, finance);
     return localOrRemote(
       () => localPersona(contract, finance, budget),
-      `/api/persona?budget=${budget}`,
+      `/api/persona?budget=${budget}&personaId=${pid}`,
       { method: 'POST', body: JSON.stringify({ contract, finance }) }
     );
   },
@@ -99,11 +107,12 @@ export const api = {
     );
   },
 
-  async regions(branch: Branch, _budget: number, housingType?: HousingType, preferredArea?: string, household?: string, note?: string): Promise<Region[]> {
+  async regions(branch: Branch, _budget: number, housingType?: HousingType, preferredArea?: string, household?: string, note?: string, personaId?: string): Promise<Region[]> {
     const q = (housingType ? `&housingType=${housingType}` : '')
       + (preferredArea ? `&preferredArea=${encodeURIComponent(preferredArea)}` : '')
       + (household ? `&household=${encodeURIComponent(household)}` : '')
-      + (note ? `&note=${encodeURIComponent(note)}` : '');
+      + (note ? `&note=${encodeURIComponent(note)}` : '')
+      + (personaId ? `&personaId=${personaId}` : '');
     return localOrRemote(
       () => branch === '매매' ? REGIONS_BUY : branch === '이사' ? REGIONS_MOVE : REGIONS_MONTHLY,
       `/api/regions?branch=${branch}&budget=${_budget}${q}`

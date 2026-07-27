@@ -144,17 +144,20 @@ def hitl(req: HitlRequest, session_id: str | None = Depends(get_session_id)) -> 
 def persona_endpoint(
     req: CompareRequest,
     budget: int = Query(default=0),  # 프론트가 고른 갈래 예산 → budgetBand 표기용
+    personaId: str = Query(default=""),  # 합성 마이데이터 페르소나 → 실측 소비 override
     session_id: str | None = Depends(get_session_id),
 ) -> PersonaProfile:
     """개인화 조합 레이어 — 확정 페르소나 → 리소스 조합 산출물(화면 프로필 카드)."""
     from ..agents import clarify as clarify_agent
+    from ..agents.report import persona_id_for
     from ..tools import persona as persona_tool
 
     with session_scope(session_id):
         c = req.contract.model_dump()
         f = req.finance.model_dump()
         cl = clarify_agent.clarify(c, f, note=req.contract.note)
-        prof = persona_tool.build_persona(c, f, budget=budget, clarify_result=cl)
+        pid = personaId or persona_id_for(f, c)
+        prof = persona_tool.build_persona(c, f, budget=budget, clarify_result=cl, persona_id=pid)
     return PersonaProfile(**prof)
 
 
@@ -179,6 +182,7 @@ def regions(
     preferredArea: str = Query(default=""),  # 선호지역 구명 → 그 구에서 우선 추천(없으면 6구 전체)
     household: str = Query(default=""),  # 개인화 스코어 가중치·통근 직장 결정용
     note: str = Query(default=""),  # 자유입력 → 명확화 보정 가중치가 순위에 반영
+    personaId: str = Query(default=""),  # 실측 소비 override(values_food)를 순위에 반영
     session_id: str | None = Depends(get_session_id),
 ) -> list[Region]:
     # housingType이 국토부 API property_type과 동일 값('아파트'|'연립다세대')이라 변환 없이 그대로 씀
@@ -192,6 +196,7 @@ def regions(
                 "sigungu": _sigungu_code(preferredArea),
                 "household": household or None,
                 "note": note or None,
+                "personaId": personaId or None,
             }
         )
     return result["regions"]

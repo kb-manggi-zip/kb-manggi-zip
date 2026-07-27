@@ -28,7 +28,8 @@ export function MobileShell({ children, className = '' }: { children: React.Reac
 }
 
 // ─── Flow Progress Bar ───────────────────────────────────────────────────────
-const FLOW_LABELS = ['F1 진입', 'F2 입력', 'F3 비교', 'F4 상세', 'F5 체감', 'F6 금융', 'F7 마무리'];
+// 여정 7단계 — 문진→해석(AI)→비교(3갈래)→동네→발품→여력(지출)→리포트
+const FLOW_LABELS = ['문진', '해석', '비교', '동네', '발품', '여력', '리포트'];
 export function FlowProgress({ current }: { current: number }) {
   return (
     <div className="flex items-center px-5 pt-3 pb-2 gap-1.5">

@@ -66,9 +66,11 @@ def build_report(
     selected = next((b for b in comparison.branches if b.branch == branch), comparison.branches[0])
     budget = selected.depositOrPrice
 
-    # ① 상황 — 명확화(HITL 반영 내역) + 페르소나 조합
+    pid = persona_id or persona_id_for(finance, contract)
+
+    # ① 상황 — 명확화(HITL 반영) + 페르소나 조합(persona_id로 실측 소비 override 반영)
     cl = clarify_agent.clarify(contract, finance, note=contract.get("note", ""))
-    prof = persona_tool.build_persona(contract, finance, budget, cl)
+    prof = persona_tool.build_persona(contract, finance, budget, cl, persona_id=pid)
 
     # ③④ 동네·발품 — 이사/매매만(갱신은 현 동네 유지). regions_node와 동일하게 스코어링 태워 근거 확보.
     top_region = None
@@ -78,7 +80,7 @@ def build_report(
 
         pool = molit.regions_by_branch(branch, budget, house_type=contract.get("housingType"), top=8)
         if pool:
-            ctx = persona_tool.scoring_ctx(contract, finance, budget, None)
+            ctx = persona_tool.scoring_ctx(contract, finance, budget, None, persona_id=pid)
             ranked = scoring.rank([r.model_dump() for r in pool], ctx, top=1)
             if ranked:
                 top_region = Region(**ranked[0])
@@ -87,7 +89,6 @@ def build_report(
     # ⑤ 지출 실현가능성 — 합성 마이데이터 집계(가드레일 T2SQL/표준). compare와 단방향.
     from . import spend_query
 
-    pid = persona_id or persona_id_for(finance, contract)
     persona_ctx = f"{finance.get('household')} 가구 · {contract.get('type')} 계약 · note={contract.get('note', '')}"
     spend = spend_query.analyze_spending(pid, persona_ctx=persona_ctx, branch=branch)
     feasibility = _feasibility_sentence(selected, spend)
