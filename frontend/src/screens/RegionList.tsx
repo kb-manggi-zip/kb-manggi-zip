@@ -25,11 +25,13 @@ export default function RegionList() {
   }, [selectedBranch, comparison, state.contract?.housingType, state.contract?.preferredArea, state.finance?.household, note, applyNote]);
 
   // 개인화 프로필 카드 — 확정 여부에 따라 note를 넣거나 뺀 계약으로 조합(가중치가 확정에 반응).
+  // budget = 고른 갈래 예산 → budgetBand가 실제로 표시됨.
   useEffect(() => {
-    if (!state.contract || !state.finance) return;
+    if (!state.contract || !state.finance || !selectedBranch || !comparison) return;
     const c = applyNote ? state.contract : { ...state.contract, note: '' };
-    api.persona(c, state.finance).then(setPersona).catch(() => setPersona(null));
-  }, [state.contract, state.finance, applyNote]);
+    const budget = comparison.branches.find(b => b.branch === selectedBranch)?.depositOrPrice || 0;
+    api.persona(c, state.finance, budget).then(setPersona).catch(() => setPersona(null));
+  }, [state.contract, state.finance, applyNote, selectedBranch, comparison]);
 
   // 명확화 '제안'은 항상 실제 자유입력으로 계산(반영 여부와 무관하게 무엇을 제안할지 보여줌).
   useEffect(() => {

@@ -3,8 +3,19 @@
 핵심: 자유입력은 정해진 축으로만 매핑(창작 금지), 모순은 되묻기, 조합은 결정론.
 """
 
+import json
+
 from app.agents import clarify
+from app.core.config import settings
 from app.tools import persona
+
+
+def _force_llm(monkeypatch, response: str):
+    """llm_active=True로 만들고 clarify.generate를 캔드 응답으로 모킹."""
+    monkeypatch.setattr(settings, "llm_enabled", True)
+    monkeypatch.setattr(settings, "anthropic_api_key", "test-key")
+    assert settings.llm_active  # 게이트 열림 확인
+    monkeypatch.setattr(clarify, "generate", lambda **kw: response)
 
 
 # ── 명확화: 자유입력 → 제약된 신호 ──────────────────────────────────
@@ -45,6 +56,55 @@ def test_clarify_no_note_no_conflict():
     assert r["conflicts"] == []
     assert r["persona"] == "신혼 가구"
     assert len(r["priorities"]) == 4
+
+
+# ── LLM 경로 (제약된 해석) ──────────────────────────────────────────
+def test_llm_path_used_when_active_and_valid(monkeypatch):
+    resp = json.dumps(
+        {
+            "interpretation": ["재택 언급 → 통근 비중 낮춤"],
+            "weight_adjustments": {"commute": 0.5, "consumption": 1.3},
+            "question": "",
+        }
+    )
+    _force_llm(monkeypatch, resp)
+    r = clarify.clarify({}, {"household": "1인"}, note="집에서 대부분 시간을 보내요")
+    # noteSignals가 LLM interpretation에서 옴(키워드 라벨 아님)
+    assert r["noteSignals"] == ["재택 언급 → 통근 비중 낮춤"]
+
+
+def test_llm_out_of_axis_falls_back_to_keyword(monkeypatch):
+    # 축 밖 키(foo) → 제약 위반 → 키워드 폴백
+    _force_llm(monkeypatch, json.dumps({"interpretation": ["x"], "weight_adjustments": {"foo": 1.5}, "question": ""}))
+    r = clarify.clarify({}, {"household": "1인"}, note="카페 자주 가요")
+    kw = clarify.note_signals("카페 자주 가요")["labels"]
+    assert r["noteSignals"] == kw  # 폴백 경로 라벨과 동일
+
+
+def test_llm_bad_multiplier_falls_back(monkeypatch):
+    # 배수 범위(0.3~2.0) 위반 → 폴백
+    _force_llm(
+        monkeypatch, json.dumps({"interpretation": ["x"], "weight_adjustments": {"commute": 9.0}, "question": ""})
+    )
+    r = clarify.clarify({}, {"household": "1인"}, note="카페 자주 가요")
+    assert r["noteSignals"] == clarify.note_signals("카페 자주 가요")["labels"]
+
+
+def test_llm_garbage_output_falls_back(monkeypatch):
+    _force_llm(monkeypatch, "여기 JSON 없음 그냥 텍스트")
+    r = clarify.clarify({}, {"household": "1인"}, note="재택근무예요")
+    assert r["noteSignals"] == clarify.note_signals("재택근무예요")["labels"]
+
+
+def test_llm_phrases_conflict_question_when_detected(monkeypatch):
+    # 모순 감지는 결정론, LLM은 되묻기 문구만 자연스럽게
+    resp = json.dumps(
+        {"interpretation": [], "weight_adjustments": {}, "question": "혹시 아이와 함께 지내실 계획인가요?"}
+    )
+    _force_llm(monkeypatch, resp)
+    r = clarify.clarify({}, {"household": "1인"}, note="아이 학군이 좋았으면 해요")
+    assert r["conflicts"]  # 감지는 그대로(결정론)
+    assert r["questions"][0] == "혹시 아이와 함께 지내실 계획인가요?"  # 문구는 LLM
 
 
 # ── 개인화 조합 레이어 ──────────────────────────────────────────────

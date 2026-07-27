@@ -1,16 +1,22 @@
 """LangGraph 오케스트레이션 — Phase B3 구현·연결 완료.
 
 라우터(routers/api.py)가 아래 컴파일된 그래프를 경유해 호출한다:
-  - build_compare_graph()  : compare 노드            → /api/compare
-  - build_regions_graph()  : regions 노드            → /api/regions
-  - build_analyze_graph()  : intake → compare → narrate (다단계 분석 에이전트) → /api/analyze
+  - build_compare_graph()  : compare 노드                                   → /api/compare
+  - build_regions_graph()  : regions 노드                                   → /api/regions
+  - build_analyze_graph()  : intake → clarify → compare → route → persona → narrate → /api/analyze
 
-전 노드에 Langfuse `@observe` 부착 + `analyze_agent` 부모 span으로 **한 trace에 nested**,
+노드별 LLM/결정론(정직 표기):
+  - clarify : LLM(llm_active 시 자유입력 해석, 축 제약) + 키워드 폴백. 모순 감지는 결정론.
+  - compare : 결정론(순수 산술 + rules YAML).
+  - route   : 결정론(if문 라우팅. 자율 에이전트 아님).
+  - persona : 결정론(세그먼트 프로필 lookup + 가중치 조합).
+  - narrate : LLM(통역) + 템플릿 폴백.
+
+전 노드에 Langfuse `@observe` + 부모 span 'journey'로 **한 trace에 nested**,
 프론트 `X-Session-Id` → `core/tracing.session_scope`로 **한 여정 = 한 Langfuse Session** 그룹핑.
-(검증: tests/, in-memory OTel exporter로 session.id 전파 확인)
+각 span에 input/output/metadata 기록(무엇을 보고/판단해/넘겼는지).
 
 남은 확장(선택):
-  - Supervisor 분기: renewal 선택 시 regions/simulate 스킵 → finance 직행 (현재는 화면 흐름이 담당)
   - simulate 노드의 LLM 내레이션(현재 narrator는 결정론 YAML fixture)
   - 계약서 Vision(extractor) 노드
 """
@@ -216,9 +222,9 @@ def persona_node(state: AnalyzeState) -> dict:
 
 @observe(name="route_node")
 def route_node(state: AnalyzeState) -> dict:
-    """슈퍼바이저 — '어떤 규칙 세트/어떤 갈래가 현실적인지' 라우팅(결정론).
+    """슈퍼바이저 — '어떤 규칙 세트/어떤 갈래가 현실적인지' **결정론 라우팅**(if문, 자율 아님·LLM 없음).
 
-    계산은 규칙, 여기선 '적용 선택'만. 경우의 수(주택유형×상황)가 늘수록 확장 우위 → '왜 에이전트'의 실체.
+    계산은 규칙, 여기선 '적용 선택'만. 흩어진 if문을 한 곳에 모아 유지보수·확장을 쉽게 하는 그릇.
     """
     from .agents import supervisor
 
