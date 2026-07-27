@@ -75,7 +75,7 @@ function acquisitionFee(price: number): number {
 
 export function compare(contract: ContractInfo, finance: FinanceInfo): CompareResponse {
   const { deposit, monthlyRent, type, expiryDate, renewalUsed, housingType } = contract;
-  // 주택유형 → HUG 요율 유형. 아파트/빌라(연립다세대) 둘 다 '주택'이라 세금·대출은 동일.
+  // 주택유형 → HUG 요율 유형. 아파트/연립다세대 둘 다 '주택'이라 세금·대출은 동일.
   const hugType = (housingType ?? '아파트') === '아파트' ? 'apartment' : 'other';
   const { ownCapital, annualIncome, household, firstHome, under35 } = finance;
   const { renewal, oneTime, noticeDeadlineMonths, lendingReg } = RULES;

@@ -114,7 +114,10 @@ def read_trades(
     deal_ym: Optional[str] = None,
     house_type: Optional[str] = None,
 ) -> list[dict]:
-    """trade_type 의 정규화 거래 읽기 (aggregate 입력용 TradeRow shape). house_type 미지정 시 전체(아파트+빌라)."""
+    """trade_type 의 정규화 거래 읽기 (aggregate 입력용 TradeRow shape).
+
+    house_type 미지정 시 전체(아파트+연립다세대).
+    """
     path = db_path or resolve_db_path(write=False)
     if not path or not Path(path).exists():
         raise RuntimeError(
