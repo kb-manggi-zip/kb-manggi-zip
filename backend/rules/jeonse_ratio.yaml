@@ -1,10 +1,19 @@
 # 전세가율 구간 판정 기준 — 실거래 기반(예측·ML 아님, trades.db 나눗셈)
-# 출처: HUG 전세보증금반환보증 가입요건 — 주택가격의 90% 이내(담보인정비율).
-#   2023.5 개편으로 100%→90% 강화 (khug.or.kr 보증요건 페이지).
-# 🔴 사람 확인 대기(checked_at=null): HUG 담보인정비율 90% + '주택가격' 산정 기준(공시가×140% 등)을
-#   공시 페이지에서 재확인 후 checked_at 기입. 70~90 라벨은 "가입 가능하나 여유 적음"이라는 제도 사실 안내(예측 아님).
-checked_at: null
-source_url: "https://www.khug.or.kr"
+#
+# 출처: HUG 전세보증금반환보증 가입요건 — 담보인정비율 90%.
+#   산식(원문): 보증한도 = 주택가격 × 담보인정비율(90%) − 선순위채권 등
+#   주택가격 산정: 아파트=기관 시세(KB시세 등), 연립·다세대=공시가격 × 140%
+#   적용: 신규 2023.8.31~, 갱신도 2024.1.1~ 90% 적용 (100%→90% 강화)
+#   source_url(상품): https://www.khug.or.kr/hug/web/ig/dr/igdr000001.jsp
+#                     (모바일 https://www.khug.or.kr/khmb/m/hg/gg/hggg000002_0.jsp)
+#   source_url(FAQ·산식): https://www.khug.or.kr/hug/web/ig/dr/igdr000003.jsp?tabMenu=Yfaq
+# checked_at: 2026-07-27 (사람 확인 완료)
+# ⚠️ 2024년 말 90%→80% 하향 검토 보도 있음 — 발표 직전 재확인.
+#
+# ⚠️ 우리 지표는 'HUG 가입 판정'이 아니다: HUG는 선순위 채권 포함 + 기관 산정 주택가격 기준이고,
+#    이 지표는 보증금 ÷ 실거래 매매 중위가(선순위 미반영)로 계산한 **참고 지표**다.
+checked_at: "2026-07-27"
+source_url: "https://www.khug.or.kr/hug/web/ig/dr/igdr000001.jsp"
 
 # ratio(=보증금÷매매중위가)가 max 이하이면 해당 구간. 위에서부터 매칭.
 bands:
