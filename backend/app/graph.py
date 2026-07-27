@@ -53,15 +53,29 @@ class RegionsState(TypedDict):
     budget: int
     houseType: str | None
     sigungu: str | None
+    household: str | None
     regions: list
 
 
 @observe(name="regions_node")
 def regions_node(state: RegionsState) -> dict:
-    result = molit.regions_by_branch(
-        state["branch"], state["budget"], house_type=state.get("houseType"), sigungu=state.get("sigungu")
+    # 후보 풀(top=8) → 개인화 스코어(통계근거 가중합)로 재정렬 → 상위 3 + 근거
+    pool = molit.regions_by_branch(
+        state["branch"], state["budget"], house_type=state.get("houseType"), sigungu=state.get("sigungu"), top=8
     )
-    return {"regions": [r.model_dump() for r in result]}
+    from .agents.narrator import profile_for
+    from .tools import scoring
+
+    prof = profile_for(state.get("household"))
+    ctx = {
+        "household": state.get("household"),
+        "budget": state["budget"],
+        "workplace": (prof.get("workplace") or {}).get("name"),
+        "traits": prof.get("traits", []),
+        "in_preferred": True if state.get("sigungu") else None,
+    }
+    ranked = scoring.rank([r.model_dump() for r in pool], ctx, top=3)
+    return {"regions": ranked}
 
 
 def build_regions_graph():
