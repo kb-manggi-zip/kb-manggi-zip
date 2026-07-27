@@ -32,6 +32,7 @@ from ..schemas import (
     ClarifyResult,
     CompareRequest,
     CompareResponse,
+    DecisionReport,
     DraftNoticeRequest,
     DraftNoticeResponse,
     HitlRequest,
@@ -40,6 +41,7 @@ from ..schemas import (
     ProductsRequest,
     ProductsResponse,
     Region,
+    ReportRequest,
     ReservationRequest,
     ReservationResponse,
     SimulateRequest,
@@ -105,6 +107,26 @@ def clarify_endpoint(req: CompareRequest, session_id: str | None = Depends(get_s
     with session_scope(session_id):
         result = clarify_agent.clarify(req.contract.model_dump(), req.finance.model_dump(), note=req.contract.note)
     return ClarifyResult(**result)
+
+
+@observe(name="decision_report")
+def _run_report(req: ReportRequest) -> DecisionReport:
+    from ..agents import report as report_agent
+
+    return report_agent.build_report(
+        req.contract.model_dump(),
+        req.finance.model_dump(),
+        req.branch,
+        persona_id=req.personaId,
+        region_id=req.regionId,
+    )
+
+
+@router.post("/report", response_model=DecisionReport)
+def report(req: ReportRequest, session_id: str | None = Depends(get_session_id)) -> DecisionReport:
+    """만기 결정 리포트 — 최종 산출물. ⑤ 지출은 합성 마이데이터 집계(가드레일 T2SQL), compare와 단방향."""
+    with session_scope(session_id):
+        return _run_report(req)
 
 
 @router.post("/hitl")

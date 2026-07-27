@@ -23,6 +23,7 @@ dist/
 # ── DB / 캐시 (데모 스냅샷·픽스처는 커밋) ──
 *.db
 !backend/data/trades.demo.db
+!backend/data/mydata.demo.db
 backend/cache/*
 !backend/cache/.gitkeep
 

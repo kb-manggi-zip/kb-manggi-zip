@@ -123,7 +123,16 @@ export default function SaveReminder() {
         )}
       </div>
 
-      <div className="px-5 pb-8 pt-3">
+      <div className="px-5 pb-8 pt-3 space-y-2">
+        {selectedBranch && (
+          <button
+            onClick={() => dispatch({ type: 'NAVIGATE', screen: 'SC-13' })}
+            className="w-full py-3 rounded-2xl border font-semibold text-sm"
+            style={{ borderColor: COLORS.KB_YELLOW, background: COLORS.YELLOW_SURFACE, color: COLORS.TEXT }}
+          >
+            📄 만기 결정 리포트 보기
+          </button>
+        )}
         <PrimaryBtn onClick={() => dispatch({ type: 'NAVIGATE', screen: 'SC-01' })}>
           처음으로
         </PrimaryBtn>
