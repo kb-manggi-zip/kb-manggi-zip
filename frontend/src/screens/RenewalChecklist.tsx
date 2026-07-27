@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useApp } from '../store';
 import { COLORS } from '../theme';
-import { MobileShell, FlowProgress, BackBtn, PrimaryBtn, BasisChip, Disclaimer, Toast } from '../components/ui';
+import { MobileShell, JourneyHeader, BackBtn, PrimaryBtn, BasisChip, Disclaimer, Toast } from '../components/ui';
 import AiBriefing from '../components/AiBriefing';
 import { formatDate, formatNoticeDeadline, formatAmount } from '../utils/format';
 import { NOTICE_DEADLINE_MONTHS, briefings, api } from '../api/client';
@@ -162,7 +162,7 @@ export default function RenewalChecklist() {
 
   return (
     <MobileShell>
-      <FlowProgress current={3} />
+      <JourneyHeader step={4} dday={comparison?.dday} noticeDaysLeft={comparison?.noticeDaysLeft} />
 
       <div className="flex items-center gap-2 px-5 py-3 border-b-2" style={{ borderColor: COLORS.MINT }}>
         <BackBtn onClick={() => dispatch({ type: 'NAVIGATE', screen: 'SC-03' })} />

@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useApp } from '../store';
 import { COLORS, BRANCH_COLORS, BRANCH_ICONS } from '../theme';
-import { MobileShell, FlowProgress, BackBtn, Disclaimer, DdayBadge } from '../components/ui';
+import { MobileShell, JourneyHeader, BackBtn, Disclaimer } from '../components/ui';
 import AiBriefing from '../components/AiBriefing';
 import { api, briefings, personaIdFor } from '../api/client';
 import { formatAmount } from '../utils/format';
@@ -53,15 +53,14 @@ export default function RegionList() {
 
   return (
     <MobileShell>
-      <FlowProgress current={3} />
+      <JourneyHeader step={4} dday={comparison?.dday} noticeDaysLeft={comparison?.noticeDaysLeft} />
 
-      <div className="flex items-center gap-2 px-5 py-3 border-b-2" style={{ borderColor: color }}>
+      <div className="flex items-center gap-2 px-5 py-2 border-b-2" style={{ borderColor: color }}>
         <BackBtn onClick={() => dispatch({ type: 'NAVIGATE', screen: 'SC-03' })} />
         <span className="text-lg">{icon}</span>
         <span className="font-bold" style={{ color }}>
           {selectedBranch} · 예산 최대 {formatAmount(branch.depositOrPrice)}
         </span>
-        {comparison && <span className="ml-auto"><DdayBadge dday={comparison.dday} /></span>}
       </div>
 
       <div className="flex-1 overflow-y-auto">

@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { COLORS, BRANCH_COLORS, BRANCH_ICONS } from '../theme';
 import type { Branch } from '../api/types';
+import ProfileFab from './ProfileFab';
 
 // ─── 만기 D-day 배지 (급성감 유지 — 탐색 화면에서도 "지금 결정 중"을 상기) ───
 export function DdayBadge({ dday }: { dday: number }) {
@@ -22,8 +23,47 @@ export function MobileShell({ children, className = '' }: { children: React.Reac
       className={`relative flex flex-col bg-background overflow-hidden ${className}`}
       style={{ width: '100%', maxWidth: 390, minHeight: '100dvh', margin: '0 auto' }}
     >
+      <ProfileFab />
       {children}
     </div>
+  );
+}
+
+// ─── 만기 D-day 바 (1층) — 딥네이비, 만기+통보기한. 음수(기한 지남) 방어 ──────
+export function DdayBar({ dday, noticeDaysLeft }: { dday?: number; noticeDaysLeft?: number }) {
+  const expiryPassed = dday !== undefined && dday < 0;
+  const noticePassed = noticeDaysLeft !== undefined && noticeDaysLeft < 0;
+  return (
+    <div className="flex items-center justify-center gap-3 px-5" style={{ background: '#1A1E27', height: 32 }}>
+      {expiryPassed ? (
+        <span style={{ color: '#FF7A7A', fontWeight: 700, fontSize: 12 }}>만기가 지났어요 · 계약 상태를 확인하세요</span>
+      ) : noticePassed ? (
+        <span style={{ color: '#FF7A7A', fontWeight: 700, fontSize: 12 }}>통보기한 지남 · 갱신 의사를 지금 확인하세요</span>
+      ) : (
+        <>
+          {dday !== undefined && <span style={{ color: '#fff', fontWeight: 700, fontSize: 12 }}>만기 D-{dday}</span>}
+          {noticeDaysLeft !== undefined && (
+            <span style={{ color: '#FFBC00', fontWeight: 700, fontSize: 12 }}>통보기한 D-{noticeDaysLeft}</span>
+          )}
+        </>
+      )}
+    </div>
+  );
+}
+
+// ─── 여정 헤더 (2층 통합) — D-day 바 + 얇은 진행바 + n/7 (스텝 도트 제거) ──────
+export function JourneyHeader({ step, dday, noticeDaysLeft }: { step: number; dday?: number; noticeDaysLeft?: number }) {
+  return (
+    <>
+      {(dday !== undefined || noticeDaysLeft !== undefined) && <DdayBar dday={dday} noticeDaysLeft={noticeDaysLeft} />}
+      <div className="flex items-center gap-2 px-5 pt-2.5 pb-2">
+        <div className="flex-1 h-1 bg-border rounded-full overflow-hidden">
+          <div className="h-full rounded-full transition-all duration-500"
+            style={{ width: `${Math.min(step, 7) / 7 * 100}%`, background: COLORS.KB_YELLOW }} />
+        </div>
+        <span className="text-xs text-muted-foreground font-medium whitespace-nowrap">{step}/7</span>
+      </div>
+    </>
   );
 }
 

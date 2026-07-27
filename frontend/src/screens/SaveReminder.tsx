@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useApp } from '../store';
 import { COLORS, BRANCH_COLORS, BRANCH_ICONS } from '../theme';
-import { MobileShell, FlowProgress, PrimaryBtn, Disclaimer } from '../components/ui';
+import { MobileShell, JourneyHeader, PrimaryBtn, Disclaimer } from '../components/ui';
 import { formatAmount, formatDate, formatDday } from '../utils/format';
 
 export default function SaveReminder() {
@@ -23,7 +23,7 @@ export default function SaveReminder() {
 
   return (
     <MobileShell>
-      <FlowProgress current={6} />
+      <JourneyHeader step={7} dday={comparison?.dday} noticeDaysLeft={comparison?.noticeDaysLeft} />
 
       <div className="flex-1 overflow-y-auto px-5 py-6 space-y-5">
         {/* 완료 체크 애니메이션 */}

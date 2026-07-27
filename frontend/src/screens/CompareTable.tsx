@@ -3,7 +3,7 @@ import { toPng } from 'html-to-image';
 import { useApp } from '../store';
 import { COLORS, BRANCH_COLORS, BRANCH_ICONS } from '../theme';
 import {
-  MobileShell, FlowProgress, BackBtn, PrimaryBtn,
+  MobileShell, JourneyHeader, BackBtn, PrimaryBtn,
   DdayChip, BasisChip, Accordion, Disclaimer, Toast
 } from '../components/ui';
 import AiBriefing from '../components/AiBriefing';
@@ -64,7 +64,7 @@ export default function CompareTable() {
 
   return (
     <MobileShell>
-      <FlowProgress current={2} />
+      <JourneyHeader step={3} dday={comparison?.dday} noticeDaysLeft={comparison?.noticeDaysLeft} />
 
       <div className="flex items-center justify-between px-4 py-2">
         <BackBtn onClick={() => dispatch({ type: 'NAVIGATE', screen: 'SC-02' })} />
