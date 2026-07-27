@@ -188,7 +188,43 @@ def lifestyle_fallback(ctx: dict) -> str:
     )
 
 
+def _facts_used(ctx: dict) -> list[dict]:
+    """발품에 주입된 facts 목록 + 출처 — 관측용('지어낸 것 0' 증명)."""
+    reg = _region_of(ctx)
+    fin = ctx.get("finance") or {}
+    out: list[dict] = []
+    f = _facts_for(reg.get("id"))
+    for key, src in (
+        ("dining_cafe", "상권(소상공인API)"),
+        ("grocery", "상권(소상공인API)"),
+        ("leisure", "상권(소상공인API)"),
+    ):
+        if f.get(key):
+            out.append({"type": src, "field": key, "value": f[key][:2]})
+    commute = _transit_fact(reg, fin.get("household"))
+    if commute:
+        out.append({"type": "통근(ODsay)", "value": commute})
+    trade = _trade_fact(reg.get("name") or "", ctx.get("branch") or "")
+    if trade:
+        out.append({"type": "실거래(국토부)", "value": trade})
+    return out
+
+
 def narrate_lifestyle(ctx: dict) -> str:
     """동네 실데이터 + 소비 프로필 → 생성형 내레이션(llm) / 폴백(결정론)."""
+    from ..core.tracing import span_update
+
     system, user = build_lifestyle_prompt(ctx)
-    return generate(system=system, user=user, fallback=lambda: lifestyle_fallback(ctx))
+    reg = _region_of(ctx)
+    fin = ctx.get("finance") or {}
+    # 관측: 주입된 facts(출처 포함) + 소비성향. verify/LLM 사용여부는 generate가 같은 span에 기록.
+    span_update(
+        input={
+            "region": reg.get("name"),
+            "facts": _facts_used(ctx),
+            "traits": profile_for(fin.get("household")).get("traits", []),
+        }
+    )
+    text = generate(system=system, user=user, fallback=lambda: lifestyle_fallback(ctx))
+    span_update(output={"narration": text})
+    return text

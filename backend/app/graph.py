@@ -32,12 +32,44 @@ class CompareState(TypedDict):
     comparison: dict
 
 
+def _rules_snapshot() -> dict:
+    """이 계산이 '어떤 규정·언제 기준'인지 관측에 남길 스냅샷 (LTV·KB캡·전환율 + checked_at)."""
+    from .core.rules import read_yaml
+
+    lend = read_yaml("lending_regulated.yaml")
+    renew = read_yaml("renewal.yaml")
+    conv = (renew.get("conversion_rate") or {}) if isinstance(renew, dict) else {}
+    return {
+        "ltv_first_home_regulated": lend["ltv"]["first_home"]["regulated"],
+        "ltv_no_house_regulated": lend["ltv"]["no_house"]["regulated"],
+        "kb_purchase_cap": lend["mortgage_cap"]["kb_purchase"],
+        "dsr_stress_metro": lend["dsr"]["stress_rate"]["metro_regulated"],
+        "conversion_rate": conv.get("value"),
+        "conversion_rate_checked_at": conv.get("checked_at"),
+        "lending_checked_at": "2026-07-20",  # 파일 헤더 주석 기준(값 셀단위 대조 완료)
+    }
+
+
 @observe(name="compare_node")
 def compare_node(state: CompareState) -> dict:
     contract = ContractInfo(**state["contract"])
     finance = FinanceInfo(**state["finance"])
     result = compute_compare(contract, finance)
-    return {"comparison": result.model_dump()}
+    comparison = result.model_dump()
+
+    # 관측: 무엇을 보고(입력 요약) / 어떤 규정으로(스냅샷) / 무엇을 냈는지(3갈래 요약)
+    tracing.span_update(
+        input={"contract": state["contract"], "finance": state["finance"]},
+        output={
+            "branches": [
+                {"branch": b["branch"], "depositOrPrice": b["depositOrPrice"], "monthlyBurden": b["monthlyBurden"]}
+                for b in comparison["branches"]
+            ],
+            "dday": comparison["dday"],
+        },
+        metadata={"rules": _rules_snapshot()},
+    )
+    return {"comparison": comparison}
 
 
 def build_compare_graph():
@@ -54,6 +86,7 @@ class RegionsState(TypedDict):
     houseType: str | None
     sigungu: str | None
     household: str | None
+    note: str | None
     regions: list
 
 
@@ -63,18 +96,34 @@ def regions_node(state: RegionsState) -> dict:
     pool = molit.regions_by_branch(
         state["branch"], state["budget"], house_type=state.get("houseType"), sigungu=state.get("sigungu"), top=8
     )
-    from .agents.narrator import profile_for
-    from .tools import scoring
+    from .tools import persona, scoring
 
-    prof = profile_for(state.get("household"))
-    ctx = {
-        "household": state.get("household"),
-        "budget": state["budget"],
-        "workplace": (prof.get("workplace") or {}).get("name"),
-        "traits": prof.get("traits", []),
-        "in_preferred": True if state.get("sigungu") else None,
-    }
-    ranked = scoring.rank([r.model_dump() for r in pool], ctx, top=3)
+    # 스코어 입력은 조합 레이어(persona.scoring_ctx) 단일 소스로 — 자유입력(note) 보정 가중치 포함.
+    ctx = persona.scoring_ctx(
+        {"note": state.get("note") or ""},
+        {"household": state.get("household")},
+        state["budget"],
+        True if state.get("sigungu") else None,
+    )
+    pool_dicts = [r.model_dump() for r in pool]
+    ranked = scoring.rank(pool_dicts, ctx, top=3)
+
+    # 관측: 후보별 점수 breakdown + 적용 예산필터 + 가중치(자유입력 반영본)
+    breakdown = {r["name"]: scoring.score_region(r, ctx)["breakdown"] for r in pool_dicts}
+    tracing.span_update(
+        input={
+            "branch": state["branch"],
+            "budget": state["budget"],
+            "sigungu": state.get("sigungu"),
+            "weights": ctx["weights"],
+        },
+        output={"top": [{"name": r["name"], "score": r["score"], "reasons": r["scoreReasons"]} for r in ranked]},
+        metadata={
+            "budget_filter": state["budget"],
+            "candidates_evaluated": len(pool_dicts),
+            "score_breakdown": breakdown,
+        },
+    )
     return {"regions": ranked}
 
 
@@ -92,8 +141,10 @@ class AnalyzeState(TypedDict):
     contract: dict
     finance: dict
     situation: str
+    clarify: dict
     comparison: dict
     routing: dict
+    persona: dict
     briefing: str
 
 
@@ -104,7 +155,63 @@ def intake_node(state: AnalyzeState) -> dict:
     FinanceInfo(**state["finance"])
     from .agents import briefing as briefing_agent
 
-    return {"situation": briefing_agent.situation_of(state)}
+    situation = briefing_agent.situation_of(state)
+    tracing.span_update(
+        input={"contract": state["contract"], "finance": state["finance"]},
+        output={"situation": situation},
+    )
+    return {"situation": situation}
+
+
+@observe(name="clarify_node")
+def clarify_node(state: AnalyzeState) -> dict:
+    """명확화(판단) — 폼값+자유입력을 제약된 축으로 해석 + 모순 감지(되묻기). 창작 금지·닫힌 루프."""
+    from .agents import clarify as clarify_agent
+    from .core.config import settings
+
+    note = state["contract"].get("note", "")
+    result = clarify_agent.clarify(state["contract"], state["finance"], note=note)
+    tracing.span_update(
+        input={"note": note, "household": state["finance"].get("household")},
+        output=result,  # persona·priorities·conflicts·questions·noteSignals(제약된 축 스키마)
+        metadata={
+            "conflict_detected": bool(result["conflicts"]),
+            "signals": result["noteSignals"],
+            "llm_used": settings.llm_active,  # False면 키워드 축 매핑(결정론 폴백)
+        },
+    )
+    return {"clarify": result}
+
+
+@observe(name="persona_node")
+def persona_node(state: AnalyzeState) -> dict:
+    """개인화 조합 — 확정 페르소나에 맞춰 리소스를 한 산출물(PersonaProfile)로 조합."""
+    from .tools import persona as persona_tool
+
+    # budgetBand용 예산 = 라우팅이 가리키는 갈래의 금액(없으면 0)
+    budget = 0
+    rec = (state.get("routing") or {}).get("branch")
+    for b in (state.get("comparison") or {}).get("branches", []):
+        if b.get("branch") == rec:
+            budget = b.get("depositOrPrice", 0)
+            break
+    prof = persona_tool.build_persona(state["contract"], state["finance"], budget, state.get("clarify"))
+
+    # 관측: 가중치 '조정 전(가구 통계) → 후(자유입력 반영)' 비교 + 소비성향 출처 + 직장
+    from .tools import scoring
+
+    base_weights = scoring.weights_for(state["finance"].get("household"))
+    tracing.span_update(
+        input={"household": state["finance"].get("household"), "note": state["contract"].get("note", "")},
+        output=prof,  # PersonaProfile 전체
+        metadata={
+            "weights_before": base_weights,
+            "weights_after": prof["weights"],
+            "weight_basis": prof["weightBasis"],
+            "consumption_source": "카드소비 통계(연령 세그먼트, 2026-03)",
+        },
+    )
+    return {"persona": prof}
 
 
 @observe(name="route_node")
@@ -116,6 +223,11 @@ def route_node(state: AnalyzeState) -> dict:
     from .agents import supervisor
 
     routing = supervisor.route(state["contract"], state["finance"], state["comparison"])
+    tracing.span_update(
+        input={"contract_type": state["contract"].get("type"), "housingType": state["contract"].get("housingType")},
+        output=routing,
+        metadata={"recommended_branch": routing.get("branch")},
+    )
     return {"routing": routing}
 
 
@@ -139,18 +251,36 @@ def narrate_node(state: AnalyzeState) -> dict:
             "routing": state.get("routing"),
         },
     )
-    return {"briefing": briefing_agent.run(req)}
+    text = briefing_agent.run(req)
+    # 통역 span: 무엇을 인용했는지(숫자 facts) + 생성문. verify/LLM 사용여부는 core.llm.generate가 같은 span에 기록.
+    tracing.span_update(
+        input={
+            "facts": {
+                "branches": [
+                    {"branch": b["branch"], "monthlyBurden": b["monthlyBurden"]}
+                    for b in state["comparison"]["branches"]
+                ],
+                "recommended": (state.get("routing") or {}).get("branch"),
+            }
+        },
+        output={"briefing": text},
+    )
+    return {"briefing": text}
 
 
 def build_analyze_graph():
     graph = StateGraph(AnalyzeState)
     graph.add_node("intake", intake_node)
+    graph.add_node("clarify", clarify_node)
     graph.add_node("compare", compare_node)
     graph.add_node("route", route_node)
+    graph.add_node("persona", persona_node)
     graph.add_node("narrate", narrate_node)
     graph.set_entry_point("intake")
-    graph.add_edge("intake", "compare")
+    graph.add_edge("intake", "clarify")
+    graph.add_edge("clarify", "compare")
     graph.add_edge("compare", "route")
-    graph.add_edge("route", "narrate")
+    graph.add_edge("route", "persona")
+    graph.add_edge("persona", "narrate")
     graph.add_edge("narrate", END)
     return graph.compile()

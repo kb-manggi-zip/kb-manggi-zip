@@ -1,16 +1,18 @@
 # 프로젝트 현황 & 로드맵 (한눈에)
 
 > KB 만기상담소 — 전월세 만기 D-90, 3갈래(갱신·이사·매매) 비교 에이전트. (갱신: 2026-07-27)
-> 상세: 코드 gap=`backend/STUBS.md` · 규정값 검증=`RESEARCH.md` · API=`docs/API.md` · 발표=`docs/발표_골든패스_시나리오.md`
+> 전체 그림=`docs/서비스_E2E_아키텍처.md`(정본) · 코드 gap=`backend/STUBS.md` · 규정값 검증=`RESEARCH.md` · API=`docs/API.md` · 발표=`docs/발표_골든패스_시나리오.md`
 
 ## 지금 이 서비스가 도는 방식 (한 줄씩)
 - **계산(심장)**: `tools/compare.py` — 3갈래 결정론 계산(rules YAML × 공식, 규제3겹·디딤돌·HUG·취득세구간). 프론트 `engine/compare.ts`와 **오차 0 동치**. LLM 무개입.
 - **실거래**: 국토부 6개구 **64,431건(아파트+연립다세대) → SQLite**. 런타임 DB만.
-- **동네 추천**: 예산 필터 + **선호지역**(구) + **개인화 스코어**(통계근거 가중합, `tools/scoring.py`) → top3 + "왜 추천?" 근거.
+- **명확화(판단)**: `agents/clarify.py` — 폼값+자유입력(note)을 **정해진 축으로 제약 해석** + 모순 되묻기(닫힌 루프). 창작 금지·LLM 꺼도 동작. 반영은 **HITL 확정**(사용자 [반영할게요] 시에만 순위 반영).
+- **개인화 조합 레이어**: `tools/persona.py` — 완성 페르소나 → {가중치·소비성향·직장·리소스}를 **한 산출물(PersonaProfile)로 조합**. scoring·narrator가 이 단일 소스를 공유.
+- **동네 추천**: 예산 0단계 하드필터 + **선호지역**(구) + **개인화 스코어**(통계근거 가중합, `tools/scoring.py`, note 보정 반영) → top3 + "왜 추천?" 근거.
 - **발품(차별점)**: `narrator` — 소비 프로필 + **상권 실집계(소상공인API)** + **통근 실측(ODsay)** + **국토부 실거래 사례** → 개인화 하루 서사(LLM).
-- **에이전트**: `/api/analyze` = LangGraph `intake → compare → route(supervisor) → narrate`. Langfuse 한 trace(세션 그룹핑).
-- **개인화**: 스코어 가중치·발품 프레임 전부 **통계/실데이터 근거 + 화면 노출**(블랙박스 아님).
-- **Trust Layer**: 숫자=코드 · verify 가드레일(권유·환각 차단) · 근거·출처 노출 · Langfuse.
+- **에이전트**: `/api/analyze` = LangGraph 6노드 `intake → clarify → compare → route → persona → narrate`. Langfuse 한 trace(세션 그룹핑).
+- **개인화**: 명확화·스코어 가중치·발품 프레임 전부 **통계/실데이터 근거 + 화면 노출**(블랙박스 아님). 파이프라인 상세: `docs/개인화_파이프라인.md`.
+- **Trust Layer**: 숫자=코드 · verify 가드레일(권유·환각 차단) · 근거·출처 노출 · **Langfuse 관측**(6노드 span에 input/output/metadata — 규칙 스냅샷·가중치 조정 전→후·발품 facts·verify 결과 + **HITL 확정 이벤트**).
 
 ## ✅ 완료
 | 영역 | 상태 |
@@ -27,7 +29,7 @@
 2. **🔑 실측 키 넣으면 자동완성**(선택) — `ODSAY_API_KEY`→통근 실측, `SBIZ_API_KEY`는 이미 수집됨. [API_키_발급_가이드.md]
 3. **오피스텔 rule set**(범위 확장) — 로드맵 §6. (연립다세대 HUG `other` 요율은 2026-07-27 HUG 공식 페이지 대조 완료 ✅)
 
-**✅ 최근 완료**: 발품 3중 그라운딩(상권 실집계 + 통근 조건부 + **국토부 실거래 사례**) · region_facts 상권 API 자동수집 · ODsay 통근(폴백) · 만기 D-day 전화면 유지 · disclaimer · supervisor 라우팅 · 세션 트레이싱 · 규정값 검증.
+**✅ 최근 완료**: **명확화 판단 노드 + 개인화 조합 레이어(clarify·persona, 6노드 그래프)** · 소비 프로필 카드통계 도출(#39) · 발품 3중 그라운딩(상권 실집계 + 통근 조건부 + **국토부 실거래 사례**) · region_facts 상권 API 자동수집 · ODsay 통근(폴백) · 만기 D-day 전화면 유지 · disclaimer · supervisor 라우팅 · 세션 트레이싱 · 규정값 검증.
 
 ## 핵심 결정 로그 (왜 이렇게 했나)
 - **규정값 = YAML(DB 아님)**: 소량·저빈도·감사대상 → git diff·PR리뷰·source_url/checked_at 이력이 핵심.

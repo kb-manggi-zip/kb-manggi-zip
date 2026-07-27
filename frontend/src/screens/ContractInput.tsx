@@ -58,6 +58,7 @@ export default function ContractInput() {
   const [renewalUsed, setRenewalUsed] = useState<RenewalUsed>(state.contract?.renewalUsed || '미사용');
   const [housingType, setHousingType] = useState<HousingType>(state.contract?.housingType || '아파트');
   const [preferredArea, setPreferredArea] = useState<string>(state.contract?.preferredArea || '');
+  const [note, setNote] = useState<string>(state.contract?.note || '');
   const [annualIncome, setAnnualIncome] = useState(state.finance?.annualIncome || 0);
   const [ownCapital, setOwnCapital] = useState(state.finance?.ownCapital || 0);
   const [household, setHousehold] = useState<Household>(state.finance?.household || '1인');
@@ -98,6 +99,7 @@ export default function ContractInput() {
         renewalUsed,
         housingType,
         preferredArea,
+        note,
       },
     });
     dispatch({
@@ -181,6 +183,22 @@ export default function ContractInput() {
                   </button>
                 ))}
               </div>
+            </div>
+            <div className="mt-5">
+              <div className="text-sm font-medium mb-2">
+                더 알려주고 싶은 것 <span className="text-xs text-muted-foreground">(선택 — 없어도 됩니다)</span>
+              </div>
+              <textarea
+                value={note}
+                onChange={e => setNote(e.target.value)}
+                rows={2}
+                placeholder="예: 재택근무라 집 근처에서 다 해결해요 / 카페 자주 가요 / 통근이 제일 중요해요"
+                className="w-full rounded-2xl border px-4 py-3 text-sm resize-none outline-none"
+                style={{ borderColor: COLORS.BORDER, background: COLORS.CARD, color: COLORS.TEXT }}
+              />
+              <p className="text-xs text-muted-foreground mt-1.5">
+                입력하면 동네 추천 우선순위에 반영돼요. 서로 안 맞는 내용은 되물어봐요.
+              </p>
             </div>
           </StepView>
         )}

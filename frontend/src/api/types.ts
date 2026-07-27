@@ -14,6 +14,7 @@ export interface ContractInfo {
   renewalUsed: RenewalUsed;
   housingType?: HousingType; // HUG 보증료 요율만 좌우(세금·대출은 둘 다 주택 동일). 기본 아파트
   preferredArea?: string; // 선호지역 구명(예 '마포구') — 동네 후보를 그 구에서 우선. 빈값=전체
+  note?: string; // 문진 말미 자유입력(선택) — 명확화 노드가 세그먼트·우선순위 축으로 제약 해석
 }
 
 export interface FinanceInfo {
@@ -119,8 +120,31 @@ export interface DraftNoticeResponse {
   draft: string;
 }
 
-// 분석 에이전트(intake→compare→narrate) 결과 — 계산 + 개인화 통역
+// 명확화(판단 노드) 결과 — 자연어/폼값을 제약된 축으로 해석 + 모순 되묻기(닫힌 루프)
+export interface ClarifyResult {
+  persona: string;         // 확정 세그먼트 라벨
+  priorities: string[];    // 우선순위 축 라벨 순서
+  conflicts?: string[];    // 감지된 모순(되묻기)
+  questions?: string[];    // 되물을 질문
+  noteSignals?: string[];  // 자유입력에서 뽑아낸 제약된 신호
+}
+
+// 개인화 '조합' 레이어 산출물 — 완성 페르소나 → 리소스 조합(화면 프로필 카드)
+export interface PersonaProfile {
+  segment: string;
+  headline: string;
+  workplace?: string;
+  weights: Record<string, number>;
+  weightBasis: string;
+  consumption: string[];
+  resources: string[];
+  budgetBand: string;
+}
+
+// 분석 에이전트(intake→clarify→compare→route→persona→narrate) 결과
 export interface AnalyzeResponse {
   comparison: CompareResponse;
   briefing: string;
+  clarify?: ClarifyResult;
+  persona?: PersonaProfile;
 }

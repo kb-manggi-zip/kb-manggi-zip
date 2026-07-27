@@ -20,6 +20,7 @@ from sqlalchemy.orm import Session
 from sse_starlette.sse import EventSourceResponse
 
 from ..agents import briefing, drafter, matcher, narrator
+from ..core import tracing
 from ..core.db import get_db
 from ..core.tracing import session_scope
 from ..graph import build_analyze_graph, build_compare_graph, build_regions_graph
@@ -28,11 +29,14 @@ from ..schemas import (
     AnalyzeResponse,
     BriefingRequest,
     BriefingResponse,
+    ClarifyResult,
     CompareRequest,
     CompareResponse,
     DraftNoticeRequest,
     DraftNoticeResponse,
+    HitlRequest,
     HousingType,
+    PersonaProfile,
     ProductsRequest,
     ProductsResponse,
     Region,
@@ -71,21 +75,61 @@ def compare(req: CompareRequest, session_id: str | None = Depends(get_session_id
 _analyze_graph = build_analyze_graph()
 
 
-@observe(name="analyze_agent")
+@observe(name="journey")
 def _run_analyze(contract: dict, finance: dict) -> dict:
-    """부모 span — 이 안에서 그래프가 돌면 intake/compare/narrate 노드가 이 trace에 nested로 묶인다."""
+    """부모 span(=여정) — 그래프 6노드(intake/clarify/compare/route/persona/narrate)가 이 trace에 nested."""
     return _analyze_graph.invoke({"contract": contract, "finance": finance})
 
 
 @router.post("/analyze", response_model=AnalyzeResponse)
 def analyze(req: CompareRequest, session_id: str | None = Depends(get_session_id)) -> AnalyzeResponse:
-    """분석 에이전트 — intake→compare→narrate 다단계 그래프(한 trace에 전 노드 nested).
+    """분석 에이전트 — intake→clarify→compare→route→persona→narrate 6노드 그래프(한 trace에 전 노드 nested).
 
-    계산(결정론)과 개인화 통역(LLM)을 한 번의 에이전트 실행으로. 숫자는 compare 노드만 생성.
+    계산(결정론)·명확화(판단)·조합(결정론)·통역(LLM)을 한 번의 에이전트 실행으로. 숫자는 compare 노드만 생성.
     """
     with session_scope(session_id):
         result = _run_analyze(req.contract.model_dump(), req.finance.model_dump())
-    return AnalyzeResponse(comparison=CompareResponse(**result["comparison"]), briefing=result["briefing"])
+    return AnalyzeResponse(
+        comparison=CompareResponse(**result["comparison"]),
+        briefing=result["briefing"],
+        clarify=ClarifyResult(**result["clarify"]) if result.get("clarify") else None,
+        persona=PersonaProfile(**result["persona"]) if result.get("persona") else None,
+    )
+
+
+@router.post("/clarify", response_model=ClarifyResult)
+def clarify_endpoint(req: CompareRequest, session_id: str | None = Depends(get_session_id)) -> ClarifyResult:
+    """명확화(판단) — 폼값+자유입력 → 제약 해석 + 모순 되묻기(닫힌 루프). 계산 전에 페르소나 확정."""
+    from ..agents import clarify as clarify_agent
+
+    with session_scope(session_id):
+        result = clarify_agent.clarify(req.contract.model_dump(), req.finance.model_dump(), note=req.contract.note)
+    return ClarifyResult(**result)
+
+
+@router.post("/hitl")
+def hitl(req: HitlRequest, session_id: str | None = Depends(get_session_id)) -> dict:
+    """HITL 확정 이벤트 기록(관측 전용) — 같은 세션 trace에 '제안→사용자 확정'을 박제. 계산 부작용 없음."""
+    with session_scope(session_id):
+        tracing.trace_event(
+            "hitl_persona_confirm",
+            metadata={"choice": req.choice, "signals": req.signals, "note": req.note},
+        )
+    return {"ok": True}
+
+
+@router.post("/persona", response_model=PersonaProfile)
+def persona_endpoint(req: CompareRequest, session_id: str | None = Depends(get_session_id)) -> PersonaProfile:
+    """개인화 조합 레이어 — 확정 페르소나 → 리소스 조합 산출물(화면 프로필 카드)."""
+    from ..agents import clarify as clarify_agent
+    from ..tools import persona as persona_tool
+
+    with session_scope(session_id):
+        c = req.contract.model_dump()
+        f = req.finance.model_dump()
+        cl = clarify_agent.clarify(c, f, note=req.contract.note)
+        prof = persona_tool.build_persona(c, f, budget=0, clarify_result=cl)
+    return PersonaProfile(**prof)
 
 
 _regions_graph = build_regions_graph()
@@ -108,6 +152,7 @@ def regions(
     housingType: HousingType | None = Query(default=None),
     preferredArea: str = Query(default=""),  # 선호지역 구명 → 그 구에서 우선 추천(없으면 6구 전체)
     household: str = Query(default=""),  # 개인화 스코어 가중치·통근 직장 결정용
+    note: str = Query(default=""),  # 자유입력 → 명확화 보정 가중치가 순위에 반영
     session_id: str | None = Depends(get_session_id),
 ) -> list[Region]:
     # housingType이 국토부 API property_type과 동일 값('아파트'|'연립다세대')이라 변환 없이 그대로 씀
@@ -120,6 +165,7 @@ def regions(
                 "houseType": house_type,
                 "sigungu": _sigungu_code(preferredArea),
                 "household": household or None,
+                "note": note or None,
             }
         )
     return result["regions"]
