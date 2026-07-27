@@ -71,6 +71,7 @@ def build_persona(
     for s in (clarify_result or {}).get("noteSignals", []):
         signals.append({"label": s, "source": "진술"})
 
+    base_weights = clarify_mod.note_weights(household, "")  # 가구 기본(자유입력 보정 전)
     weights = clarify_mod.note_weights(household, note, contract.get("noteAdjust"))
     priorities = (clarify_result or {}).get("priorities") or [
         clarify_mod.AXIS_LABEL[k] for k, _ in sorted(weights.items(), key=lambda kv: -kv[1])
@@ -83,6 +84,7 @@ def build_persona(
         "headline": f"{segment} · '{top}'을 가장 중시",
         "workplace": workplace,
         "weights": weights,
+        "baseWeights": base_weights,  # 가구 기본 가중치(before). weights=반영 후(after) → 화면 대비 표시(B4)
         "weightBasis": WEIGHT_BASIS,
         "consumption": consumption,
         "consumptionSignals": signals,

@@ -132,6 +132,8 @@ function bandStyle(band: string): React.CSSProperties {
 const AXIS_LABEL: Record<string, string> = { commute: '통근', consumption: '생활·소비', budget: '예산', preference: '선호지역' };
 function PersonaCardView({ persona, color }: { persona: PersonaProfile; color: string }) {
   const weights = Object.entries(persona.weights).sort((a, b) => b[1] - a[1]);
+  const base = persona.baseWeights ?? {};
+  const adjusted = weights.some(([k, v]) => Math.abs(v - (base[k] ?? v)) > 0.005);  // 자유입력이 가중치를 바꿨나
   const personal = (persona.consumptionSignals ?? []).filter(s => s.source !== '세그먼트');  // 실측·진술
   const segment = (persona.consumptionSignals ?? []).filter(s => s.source === '세그먼트');
   return (
@@ -155,17 +157,30 @@ function PersonaCardView({ persona, color }: { persona: PersonaProfile; color: s
 
       {/* 추천 기준 보기 — 세그먼트 가중치·근거는 접어둔다('당신은'이 아니라 '이 세그먼트는') */}
       <Accordion title="추천 기준 보기">
-        <p className="text-[11px] pb-1">이 세그먼트는 동네를 볼 때 아래 순서로 봐요. 자유입력을 반영하면 여기 가중치가 함께 조정돼요.</p>
+        <p className="text-[11px] pb-1">
+          이 세그먼트는 동네를 볼 때 아래 순서로 봐요. 자유입력을 반영하면 여기 가중치가 함께 조정돼요.
+          {adjusted && <span style={{ color }}> 회색 눈금 = 기본, 막대 = 반영 후.</span>}
+        </p>
         <div className="space-y-1 py-1">
-          {weights.map(([k, v]) => (
-            <div key={k} className="flex items-center gap-2">
-              <span className="text-xs w-14 shrink-0 text-muted-foreground">{AXIS_LABEL[k] ?? k}</span>
-              <div className="flex-1 h-2 rounded-full overflow-hidden" style={{ background: '#0000000d' }}>
-                <div className="h-full rounded-full" style={{ width: `${Math.round(v * 100)}%`, background: color }} />
+          {weights.map(([k, v]) => {
+            const b = base[k] ?? v;
+            const changed = Math.abs(v - b) > 0.005;
+            return (
+              <div key={k} className="flex items-center gap-2">
+                <span className="text-xs w-14 shrink-0 text-muted-foreground">{AXIS_LABEL[k] ?? k}</span>
+                <div className="relative flex-1 h-2 rounded-full overflow-hidden" style={{ background: '#0000000d' }}>
+                  <div className="h-full rounded-full" style={{ width: `${Math.round(v * 100)}%`, background: color }} />
+                  {/* 기본(before) 위치 눈금 — 반영으로 바뀐 축만 표시 */}
+                  {adjusted && changed && (
+                    <div className="absolute top-0 h-full" style={{ left: `${Math.round(b * 100)}%`, width: 2, background: COLORS.SUB, opacity: 0.55 }} />
+                  )}
+                </div>
+                <span className="text-xs w-16 text-right tabular-nums text-muted-foreground">
+                  {changed ? <span style={{ color }}>{Math.round(b * 100)}→{Math.round(v * 100)}%</span> : `${Math.round(v * 100)}%`}
+                </span>
               </div>
-              <span className="text-xs w-9 text-right tabular-nums text-muted-foreground">{Math.round(v * 100)}%</span>
-            </div>
-          ))}
+            );
+          })}
         </div>
         <p className="text-[11px] leading-snug">근거: {persona.weightBasis}</p>
         {segment.length > 0 && (

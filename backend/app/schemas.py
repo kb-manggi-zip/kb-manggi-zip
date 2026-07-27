@@ -124,6 +124,7 @@ class ClarifyResult(BaseModel):
 
     persona: str  # 확정 세그먼트 라벨 (예 "1인 청년 임차")
     weightAdjust: dict = {}  # 이 입력의 적용 boost(축별 배수) — HITL 확정 시 랭킹에 실림
+    held: bool = False  # 상충 미해결 → 자동 반영 보류('확인 대기'). 확정 전 랭킹 미반영
     priorities: list[str]  # 우선순위 축 라벨 순서 (스코어 가중치 상위)
     conflicts: list[str] = []  # 감지된 모순(예 예산↔선호지역 시세) — 실데이터 근거
     questions: list[str] = []  # 되물을 질문(닫힌 루프)
@@ -140,7 +141,8 @@ class PersonaProfile(BaseModel):
     segment: str  # 세그먼트 라벨
     headline: str  # 한 줄 요약 ("통근을 가장 중시하는 1인 가구")
     workplace: Optional[str] = None  # 대표 직장(통근 발품 기준, 가정)
-    weights: dict  # 스코어 가중치 (근거 노출)
+    weights: dict  # 스코어 가중치 (반영 후 = after)
+    baseWeights: dict = {}  # 가구 기본 가중치 (반영 전 = before) — 화면 before→after 대비(B4)
     weightBasis: str  # 가중치 출처 한 줄
     consumption: list[str]  # 소비 성향(카드통계 근거)
     consumptionSignals: list[dict] = []  # 성향 신호 + 출처(세그먼트/실측/진술) — 증거 위계 노출
@@ -161,6 +163,15 @@ class SpendAnalysis(BaseModel):
     synthetic: bool = True  # 합성 시연 데이터
 
 
+class NextAction(BaseModel):
+    """⑥ 다음 액션 — 자격 기반 정책대출 차액(버팀목/디딤돌). 상담 예약의 구체적 이유 제공."""
+
+    headline: str  # "버팀목 청년 전세대출 자격이면 이자를 아껴요"
+    detail: str  # 근거 한 줄(적용 금리·비교 대상)
+    annualSaving: int = 0  # 연 이자 절감액(원). 0=자격 미해당(요건 확인 안내)
+    eligible: bool = False
+
+
 class DecisionReport(BaseModel):
     """만기 결정 리포트 — 최종 산출물. ①상황 ②채점 ③동네 ④하루 ⑤지출 실현가능성 ⑥액션."""
 
@@ -172,6 +183,7 @@ class DecisionReport(BaseModel):
     dayBrief: str = ""  # ④ 발품 핵심
     spend: Optional[SpendAnalysis] = None  # ⑤ (없으면 리포트는 ①~④+⑥로 완성)
     feasibility: str = ""  # ⑤ 정보형 문장
+    nextAction: Optional["NextAction"] = None  # ⑥ 자격 기반 차액(버팀목/디딤돌)
     dday: int
     noticeDeadline: str
 

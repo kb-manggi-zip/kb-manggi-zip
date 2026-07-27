@@ -50,6 +50,17 @@ def test_intra_note_contradiction():
     # 한 입력에 재택(통근↓)+통근(통근↑) 함께 → 조용한 상쇄 대신 되묻기
     r = clarify.clarify({}, {"household": "1인"}, note="재택근무해요 통근해요")
     assert any("통근" in c and ("상충" in c or "함께" in c) for c in r["conflicts"])
+    assert r["held"] is True  # 상충 미해결 → 반영 보류 신호
+
+
+def test_contradictory_note_held_from_ranking():
+    # B1: 미확정 상충 입력은 랭킹에 반영 보류 — 자기상쇄 boost가 조용히 순위를 흔들면 안 됨
+    base = clarify.note_weights("1인", "")
+    held = clarify.note_weights("1인", "재택근무해요 통근해요")  # 상충, 미확정(adjust 없음)
+    assert held == base, "상충 미확정 입력은 base 가중치 그대로(보류)"
+    # 사용자가 HITL로 확정(adjust 전달)하면 그때는 반영
+    applied = clarify.note_weights("1인", "재택근무해요 통근해요", adjust={"commute": 0.5})
+    assert applied != base
 
 
 def test_prior_contradiction_reask():
@@ -135,8 +146,9 @@ def test_build_persona_combines_resources():
 
 
 def test_persona_reflects_note_in_weights():
+    # 상충 없는 단일 방향 입력(재택→통근↓)은 그대로 반영. ('통근' 키워드를 넣으면 B1 보류 대상이 됨)
     plain = persona.build_persona({"note": ""}, {"household": "1인"})
-    remote = persona.build_persona({"note": "재택근무라 통근은 상관없어요"}, {"household": "1인"})
+    remote = persona.build_persona({"note": "재택근무라 집에서 일해요"}, {"household": "1인"})
     assert remote["weights"]["commute"] < plain["weights"]["commute"]
 
 

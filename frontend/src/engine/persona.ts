@@ -64,11 +64,32 @@ function noteSignals(note: string) {
   return { labels, boost };
 }
 
+// 한 입력 안에 같은 축을 높이는+낮추는 표현이 함께 있으면 상충(예: 재택+통근).
+function intraNoteConflict(note: string): boolean {
+  const dirs: Record<string, Set<number>> = {};
+  for (const { keys, boost } of NOTE_MAP) {
+    if (keys.some(k => note.includes(k))) {
+      for (const [axis, mult] of Object.entries(boost)) {
+        const d = mult > 1.05 ? 1 : mult < 0.95 ? -1 : 0;
+        if (d) (dirs[axis] ??= new Set()).add(d);
+      }
+    }
+  }
+  return Object.values(dirs).some(ds => ds.has(1) && ds.has(-1));
+}
+
+// 자유입력이 폼 선택과 다른 가구유형을 시사하면 상충(예: 1인인데 '아이 학군').
+function householdConflict(household: string, note: string): boolean {
+  return Object.entries(HOUSEHOLD_HINTS).some(([seg, keys]) => seg !== household && keys.some(k => note.includes(k)));
+}
+
 function noteWeights(household: string, note: string, adjust?: Record<string, number>): Record<string, number> {
   const adj = PERSONA_ADJUST[household] ?? {};
   let w = Object.fromEntries(Object.entries(SURVEY).map(([k, v]) => [k, v * (adj[k] ?? 1)]));
   w = normalize(w);
-  const boost = adjust && Object.keys(adjust).length ? adjust : noteSignals(note).boost;
+  // 확정 adjust 우선. 미확정 입력에 상충(축 내부 상충 or 가구 불일치)이 있으면 반영 보류(B1, 조용한 상쇄 금지).
+  const held = !!note && (intraNoteConflict(note) || householdConflict(household, note));
+  const boost = adjust && Object.keys(adjust).length ? adjust : (held ? {} : noteSignals(note).boost);
   w = Object.fromEntries(Object.entries(w).map(([k, v]) => [k, v * (boost[k] ?? 1)]));
   return normalize(w);
 }
@@ -117,13 +138,14 @@ export function localClarify(contract: ContractInfo, finance: FinanceInfo, prior
   const weightAdjust = sig.boost;
   if (['통근', '출퇴근', '회사', '직장'].some(k => note.includes(k)))
     questions.push('통근 발품 정확도를 높이려면 주 근무지를 알려주세요 (지금은 가구 유형 기준 대표 직장으로 가정).');
-  return { persona: SEGMENT_LABEL[household] ?? '임차 가구', weightAdjust, priorities, conflicts, questions, noteSignals: sig.labels };
+  return { persona: SEGMENT_LABEL[household] ?? '임차 가구', weightAdjust, held: conflicts.length > 0, priorities, conflicts, questions, noteSignals: sig.labels };
 }
 
 export function localPersona(contract: ContractInfo, finance: FinanceInfo, budget = 0): PersonaProfile {
   const household = finance.household ?? '1인';
   const note = contract.note ?? '';
-  const weights = noteWeights(household, note, contract.noteAdjust);
+  const baseWeights = noteWeights(household, '');           // 가구 기본(before)
+  const weights = noteWeights(household, note, contract.noteAdjust);  // 반영 후(after)
   const priorities = Object.entries(weights).sort((a, b) => b[1] - a[1]).map(([k]) => AXIS_LABEL[k]);
   const segment = SEGMENT_LABEL[household] ?? '임차 가구';
   const workplace = WORKPLACE[household];
@@ -142,6 +164,7 @@ export function localPersona(contract: ContractInfo, finance: FinanceInfo, budge
     headline: `${segment} · '${priorities[0] ?? '생활 균형'}'을 가장 중시`,
     workplace,
     weights,
+    baseWeights,
     weightBasis: '국토부 2024 주거실태조사 이사사유 응답률 + 가구 세그먼트 조정 (자유입력 시 보정·재정규화)',
     consumption,
     resources,

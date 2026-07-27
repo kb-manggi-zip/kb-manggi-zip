@@ -7,6 +7,7 @@ import { PERSONAS } from '../data/personas';
 import { briefings } from '../data/briefings';
 import { RULES } from '../engine/rules';
 import { getSessionId } from './session';
+import { formatAmount } from '../utils/format';
 import type {
   ContractInfo, FinanceInfo, CompareResponse,
   Region, SimulateResponse, ProductsResponse,
@@ -92,16 +93,22 @@ export const api = {
   // 만기 결정 리포트 — 원격이면 백엔드 조립(⑤ 지출=합성 마이데이터 T2SQL), 로컬이면 compare+persona만(⑤ 생략).
   async report(contract: ContractInfo, finance: FinanceInfo, branch: Branch, personaId?: string): Promise<DecisionReport> {
     return localOrRemote(
-      () => ({
-        persona: localPersona(contract, finance),
-        clarify: localClarify(contract, finance),
-        comparison: compare(contract, finance),
-        selectedBranch: branch,
-        dayBrief: '',
-        feasibility: '지출로 본 실현 가능성은 백엔드 연결(합성 마이데이터) 시 제공됩니다.',
-        dday: compare(contract, finance).dday,
-        noticeDeadline: compare(contract, finance).noticeDeadline,
-      }),
+      () => {
+        const cmp = compare(contract, finance);
+        // 갱신: 새 발품 대신 '현재 동네 유지' 연속성 요약(백엔드 report.py와 동일 취지, B7)
+        const moveCost = cmp.branches.find(b => b.branch === '이사')?.oneTimeCost ?? 0;
+        const stayBrief = `${contract.preferredArea || '지금 사는 동네'}에서의 익숙한 동선을 그대로 이어가요. 새로 적응할 동네도, 발품도 필요 없어요. 이사였다면 들었을 일회성 비용 약 ${formatAmount(moveCost)}을(를) 아끼는 셈이에요.`;
+        return {
+          persona: localPersona(contract, finance),
+          clarify: localClarify(contract, finance),
+          comparison: cmp,
+          selectedBranch: branch,
+          dayBrief: branch === '갱신' ? stayBrief : '',
+          feasibility: '지출로 본 실현 가능성은 백엔드 연결(합성 마이데이터) 시 제공됩니다.',
+          dday: cmp.dday,
+          noticeDeadline: cmp.noticeDeadline,
+        };
+      },
       '/api/report',
       { method: 'POST', body: JSON.stringify({ contract, finance, branch, personaId }) }
     );

@@ -146,8 +146,16 @@ def note_weights(household: Optional[str], note: str, adjust: Optional[dict] = N
 
     adjust(=HITL로 확정된 축별 배수)가 있으면 그걸 쓰고(자연어→LLM 해석 확정분까지 반영),
     없으면 note 키워드로 보정(LLM-off 폴백). 둘 다 결정론.
+
+    단, **미확정 입력에 축 내부 상충(예: 재택+통근)이 있으면 반영 보류**(B1) — 자기상쇄된
+    boost가 조용히 랭킹을 흔드는 걸 막는다. 사용자가 HITL로 확정(adjust 전달)하면 그때 반영.
     """
-    boost = adjust if adjust else note_signals(note)["boost"]
+    if adjust:
+        boost = adjust
+    elif note and (_intra_note_contradiction(note) or _household_conflict(household, note)):
+        boost = {}  # 미해결 상충 → 반영 보류(조용한 상쇄 금지). base 가중치 그대로.
+    else:
+        boost = note_signals(note)["boost"]
     return _apply_boost(scoring.weights_for(household), boost)
 
 
@@ -265,6 +273,7 @@ def clarify(contract: dict, finance: dict, note: str = "", prior_notes: Optional
     result = {
         "persona": segment_label(household),
         "weightAdjust": boost,  # 확정 시 랭킹에 실릴 축별 배수(HITL 확정분만 반영)
+        "held": bool(conflicts),  # 상충 미해결 → 자동 반영 보류(UI '확인 대기'). 확정 전엔 랭킹 미반영.
         "priorities": priorities,
         "conflicts": conflicts,
         "questions": questions,

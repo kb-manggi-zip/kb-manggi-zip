@@ -238,13 +238,21 @@ export default function ContractInput() {
                   <div className="flex items-start gap-2">
                     <span className="w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold shrink-0"
                       style={{ background: COLORS.KB_YELLOW, color: COLORS.TEXT }}>AI</span>
-                    <p className="text-sm leading-snug" style={{ color: COLORS.TEXT }}>
-                      {(interp.conflicts?.length ?? 0) > 0
-                        ? '입력이 서로 상충돼요 — 어느 쪽인지 정해 주세요.'
-                        : (interp.noteSignals?.length ?? 0) > 0
-                          ? '이렇게 이해했어요 — 동네 추천에 반영할까요?'
-                          : '입력을 확인했어요. 이대로 반영할까요?'}
-                    </p>
+                    <div className="space-y-1">
+                      <p className="text-sm leading-snug" style={{ color: COLORS.TEXT }}>
+                        {(interp.conflicts?.length ?? 0) > 0
+                          ? '입력이 서로 상충돼요 — 어느 쪽인지 정해 주세요.'
+                          : (interp.noteSignals?.length ?? 0) > 0
+                            ? '이렇게 이해했어요 — 동네 추천에 반영할까요?'
+                            : '입력을 확인했어요. 이대로 반영할까요?'}
+                      </p>
+                      {interp.held && (
+                        <span className="inline-block text-[11px] px-2 py-0.5 rounded-full"
+                          style={{ background: '#00000010', color: COLORS.SUB }}>
+                          확인 대기 · 정할 때까지 동네 추천에 반영하지 않아요
+                        </span>
+                      )}
+                    </div>
                   </div>
                   {/* 충돌 없을 때만 조정 칩 표시(상충 입력은 상쇄값 노출 금지) */}
                   {(interp.conflicts?.length ?? 0) === 0 && (interp.noteSignals ?? []).length > 0 && (

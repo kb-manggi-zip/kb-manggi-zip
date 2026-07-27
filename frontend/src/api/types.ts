@@ -136,6 +136,7 @@ export interface DraftNoticeResponse {
 export interface ClarifyResult {
   persona: string;         // 확정 세그먼트 라벨
   weightAdjust?: Record<string, number>; // 이 입력의 적용 boost(HITL 확정 시 랭킹에 실림)
+  held?: boolean;          // 상충 미해결 → 자동 반영 보류('확인 대기'). 확정 전 랭킹 미반영
   priorities: string[];    // 우선순위 축 라벨 순서
   conflicts?: string[];    // 감지된 모순(되묻기)
   questions?: string[];    // 되물을 질문
@@ -147,7 +148,8 @@ export interface PersonaProfile {
   segment: string;
   headline: string;
   workplace?: string;
-  weights: Record<string, number>;
+  weights: Record<string, number>;         // 반영 후(after)
+  baseWeights?: Record<string, number>;     // 가구 기본(before) — before→after 대비(B4)
   weightBasis: string;
   consumption: string[];
   consumptionSignals?: { label: string; source: '세그먼트' | '실측' | '진술'; reason?: string }[];
@@ -166,6 +168,14 @@ export interface SpendAnalysis {
   synthetic: boolean;
 }
 
+// ⑥ 다음 액션 — 자격 기반 정책대출 차액(버팀목/디딤돌)
+export interface NextAction {
+  headline: string;
+  detail: string;
+  annualSaving: number;  // 연 이자 절감액(원). 0=자격 미해당(요건 확인 안내)
+  eligible: boolean;
+}
+
 // 만기 결정 리포트 — 최종 산출물(①상황 ②채점 ③동네 ④하루 ⑤지출 ⑥액션)
 export interface DecisionReport {
   persona: PersonaProfile;
@@ -176,6 +186,7 @@ export interface DecisionReport {
   dayBrief: string;
   spend?: SpendAnalysis;
   feasibility: string;
+  nextAction?: NextAction;  // ⑥ 자격 기반 차액
   dday: number;
   noticeDeadline: string;
 }
