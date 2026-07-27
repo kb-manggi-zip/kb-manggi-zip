@@ -59,12 +59,12 @@ export const api = {
     );
   },
 
-  // 명확화(판단) — 자연어/폼값 → 제약 해석 + 모순 되묻기. 원격이면 백엔드 노드, 로컬이면 TS 포트.
-  async clarify(contract: ContractInfo, finance: FinanceInfo): Promise<ClarifyResult> {
+  // 명확화(판단) — 자연어/폼값 → 제약 해석 + 모순 되묻기(가구불일치·이전 반영 충돌). priorNotes=확정된 조정들.
+  async clarify(contract: ContractInfo, finance: FinanceInfo, priorNotes: string[] = []): Promise<ClarifyResult> {
     return localOrRemote(
-      () => localClarify(contract, finance),
+      () => localClarify(contract, finance, priorNotes),
       '/api/clarify',
-      { method: 'POST', body: JSON.stringify({ contract, finance }) }
+      { method: 'POST', body: JSON.stringify({ contract, finance, priorNotes }) }
     );
   },
 

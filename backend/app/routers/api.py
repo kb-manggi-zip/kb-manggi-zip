@@ -29,6 +29,7 @@ from ..schemas import (
     AnalyzeResponse,
     BriefingRequest,
     BriefingResponse,
+    ClarifyRequest,
     ClarifyResult,
     CompareRequest,
     CompareResponse,
@@ -100,12 +101,14 @@ def analyze(req: CompareRequest, session_id: str | None = Depends(get_session_id
 
 
 @router.post("/clarify", response_model=ClarifyResult)
-def clarify_endpoint(req: CompareRequest, session_id: str | None = Depends(get_session_id)) -> ClarifyResult:
-    """명확화(판단) — 폼값+자유입력 → 제약 해석 + 모순 되묻기(닫힌 루프). 계산 전에 페르소나 확정."""
+def clarify_endpoint(req: ClarifyRequest, session_id: str | None = Depends(get_session_id)) -> ClarifyResult:
+    """명확화(판단) — 폼값+자유입력 → 제약 해석 + 모순 되묻기(가구불일치·이전 반영 충돌). 계산 전에 페르소나 확정."""
     from ..agents import clarify as clarify_agent
 
     with session_scope(session_id):
-        result = clarify_agent.clarify(req.contract.model_dump(), req.finance.model_dump(), note=req.contract.note)
+        result = clarify_agent.clarify(
+            req.contract.model_dump(), req.finance.model_dump(), note=req.contract.note, prior_notes=req.priorNotes
+        )
     return ClarifyResult(**result)
 
 

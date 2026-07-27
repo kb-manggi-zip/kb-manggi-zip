@@ -2,11 +2,10 @@ import React, { useState, useEffect } from 'react';
 import { useApp } from '../store';
 import { COLORS } from '../theme';
 import {
-  MobileShell, DdayBar, BackBtn,
+  MobileShell, BackBtn,
   PrimaryBtn, GhostBtn, SelectCard, AmountInput
 } from '../components/ui';
 import { api } from '../api/client';
-import { formatDday, formatNoticeDeadline } from '../utils/format';
 import type { ContractType, RenewalUsed, Household, FirstHome, HousingType, ClarifyResult } from '../api/types';
 
 // ─── 스텝 정의 ─────────────────────────────────────────────────────────────
@@ -79,6 +78,7 @@ export default function ContractInput() {
       api.clarify(
         { type: contractType, deposit: 0, monthlyRent: 0, expiryDate: '', renewalUsed, housingType, note },
         { annualIncome: 0, ownCapital: 0, household, firstHome, under35 },
+        reflected.map(r => r.text),  // 이전 반영 → 모순 되묻기
       ).then(setInterp).catch(() => setInterp(null));
     }, 400);
     return () => clearTimeout(t);
@@ -133,13 +133,9 @@ export default function ContractInput() {
     else dispatch({ type: 'NAVIGATE', screen: 'SC-01' });
   }
 
-  const dday = expiryDate ? formatDday(expiryDate) : undefined;
-  const noticeLeft = expiryDate ? formatDday(formatNoticeDeadline(expiryDate, 2).toISOString()) : undefined;
-
+  // §3: 만기 배너는 만기일 '확정 이후'(문진 완료·비교 존재) 화면에서만. 문진 진행 중엔 숨김(잔존값 노출 금지).
   return (
     <MobileShell>
-      {expiryDate && <DdayBar dday={dday} noticeDaysLeft={noticeLeft} />}
-
       {/* 스텝 진행바 — 현재 index / steps.length (하드코딩 없음) */}
       <div className="flex items-center px-4 pt-2 pb-2">
         <BackBtn onClick={back} />
@@ -255,6 +251,8 @@ export default function ContractInput() {
                   ))}
                   <div className="flex gap-2 pl-8 pt-0.5">
                     <button onClick={() => {
+                      // 반영은 확정 후에만: 스택 누적 + HITL '수락' 기록
+                      api.hitl('applied', interp?.noteSignals ?? [], note.trim());
                       setReflected(r => [...r, { text: note.trim(), signals: interp?.noteSignals ?? [] }]);
                       setNote(''); setInterp(null);
                     }}
@@ -262,7 +260,10 @@ export default function ContractInput() {
                       style={{ background: COLORS.KB_YELLOW, color: COLORS.TEXT }}>
                       네, 맞아요
                     </button>
-                    <button onClick={() => { setNote(''); setInterp(null); }}
+                    <button onClick={() => {
+                      api.hitl('skipped', interp?.noteSignals ?? [], note.trim());  // 미반영 기록
+                      setNote(''); setInterp(null);
+                    }}
                       className="flex-1 text-xs font-semibold py-2 rounded-xl border"
                       style={{ borderColor: COLORS.BORDER, color: COLORS.SUB, background: COLORS.CARD }}>
                       아니요, 그대로

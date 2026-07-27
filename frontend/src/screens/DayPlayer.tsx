@@ -57,6 +57,8 @@ export default function DayPlayer() {
   const icon = BRANCH_ICONS[selectedBranch];
   const scene = scenes[current];
   const isLast = current === scenes.length - 1;
+  // §4.3: 마지막 씬 월 부담 = 비교표(compare)의 선택 갈래 값(일관). 씬 fixture(monthlyCost)와의 불일치 해소.
+  const selectedBurden = comparison?.branches.find(b => b.branch === selectedBranch)?.monthlyBurden;
 
   // 1초 인트로 카드
   if (showIntro) {
@@ -168,10 +170,7 @@ export default function DayPlayer() {
               <div className="rounded-2xl overflow-hidden relative" style={{ height: 84, background: 'rgba(255,255,255,0.08)', backgroundImage: 'linear-gradient(rgba(255,255,255,0.06) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.06) 1px, transparent 1px)', backgroundSize: '18px 18px', backdropFilter: 'blur(6px)' }}>
                 <div className="absolute inset-0 flex items-center justify-center gap-2">
                   <span className="text-lg">📍</span>
-                  <div>
-                    <p className="text-white text-sm font-bold">{regionName}</p>
-                    <p className="text-white/50 text-[10px]">{selectedRegion.lat.toFixed(4)}, {selectedRegion.lng.toFixed(4)}</p>
-                  </div>
+                  <p className="text-white text-sm font-bold">{regionName}</p>
                 </div>
               </div>
             ) : null}
@@ -182,8 +181,9 @@ export default function DayPlayer() {
               </div>
             )}
             <div className="bg-black/60 rounded-2xl p-4" style={{ backdropFilter: 'blur(8px)' }}>
-              <p className="text-white/70 text-xs mb-1">이 하루의 월 부담</p>
-              <p className="text-white text-2xl font-bold">{formatAmount(monthlyCost)}/월</p>
+              <p className="text-white/70 text-xs mb-1">선택하신 {selectedBranch}의 월 부담 (비교표와 동일)</p>
+              <p className="text-white text-2xl font-bold">{formatAmount(selectedBurden ?? monthlyCost)}/월</p>
+              <p className="text-white/50 text-[11px] mt-1">규제·금리 기준 계산값 · {regionName} 시세로 산출</p>
             </div>
             {/* 지출 여력으로 연결 */}
             <button

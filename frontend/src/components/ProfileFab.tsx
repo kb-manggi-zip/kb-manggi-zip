@@ -61,18 +61,15 @@ export default function ProfileFab() {
               </div>
             </div>
 
-            {/* 성향 칩 (세그먼트·실측) */}
-            {persona && persona.consumptionSignals?.some(s => s.source !== '진술') && (
+            {/* 성향 — 실측(합성)만. 세그먼트 통계 칩은 프로필에 노출하지 않음(동네 추천 '추천 기준'으로 이동) */}
+            {persona && persona.consumptionSignals?.some(s => s.source === '실측') && (
               <div className="rounded-2xl border border-border p-4 space-y-2">
-                <p className="text-xs font-semibold" style={{ color: COLORS.SUB }}>성향</p>
+                <p className="text-xs font-semibold" style={{ color: COLORS.SUB }}>성향 (실측)</p>
                 <div className="flex flex-wrap gap-1.5">
-                  {persona.consumptionSignals!.filter(s => s.source !== '진술').map((s, i) => (
-                    <span key={i} title={s.reason}
-                      className="text-[11px] px-2 py-0.5 rounded-full"
-                      style={s.source === '실측'
-                        ? { border: `1px solid ${COLORS.KB_YELLOW}`, color: COLORS.TEXT, fontWeight: 600 }
-                        : { background: '#00000008', color: COLORS.SUB }}>
-                      {s.source === '실측' ? '실측 ' : ''}{s.label}
+                  {persona.consumptionSignals!.filter(s => s.source === '실측').map((s, i) => (
+                    <span key={i} title={s.reason} className="text-[11px] px-2 py-0.5 rounded-full"
+                      style={{ border: `1px solid ${COLORS.KB_YELLOW}`, color: COLORS.TEXT, fontWeight: 600 }}>
+                      실측 {s.label}
                     </span>
                   ))}
                 </div>

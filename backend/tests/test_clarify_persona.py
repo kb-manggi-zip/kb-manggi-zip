@@ -46,6 +46,17 @@ def test_household_conflict_detected():
     assert "자녀" in r["conflicts"][0]
 
 
+def test_prior_contradiction_reask():
+    # 재택(통근↓) 반영 후 '통근 중요'(통근↑) → 되묻기(조용한 덮어쓰기 금지)
+    r = clarify.clarify({}, {"household": "1인"}, note="통근이 제일 중요해요", prior_notes=["재택근무예요"])
+    assert any("통근" in c and ("다시" in c or "반대" in c) for c in r["conflicts"])
+
+
+def test_prior_no_contradiction_when_aligned():
+    r = clarify.clarify({}, {"household": "1인"}, note="카페 자주 가요", prior_notes=["재택근무예요"])
+    assert r["conflicts"] == []  # 다른 축이면 충돌 아님
+
+
 def test_commute_note_asks_workplace():
     r = clarify.clarify({}, {"household": "1인"}, note="회사까지 통근이 중요해요")
     assert any("근무지" in q for q in r["questions"])

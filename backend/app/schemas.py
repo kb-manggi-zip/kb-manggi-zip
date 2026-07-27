@@ -248,6 +248,12 @@ class SimulateRequest(BaseModel):
     regionId: str
 
 
+class ClarifyRequest(BaseModel):
+    contract: ContractInfo
+    finance: FinanceInfo
+    priorNotes: list[str] = []  # 이미 반영·확정한 자유입력들(모순 되묻기용)
+
+
 class ReportRequest(BaseModel):
     contract: ContractInfo
     finance: FinanceInfo

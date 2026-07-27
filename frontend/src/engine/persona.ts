@@ -70,7 +70,12 @@ function noteWeights(household: string, note: string): Record<string, number> {
   return normalize(w);
 }
 
-export function localClarify(contract: ContractInfo, finance: FinanceInfo): ClarifyResult {
+function axisDir(boost: Record<string, number>, axis: string): number {
+  const v = boost[axis] ?? 1;
+  return v > 1.05 ? 1 : v < 0.95 ? -1 : 0;
+}
+
+export function localClarify(contract: ContractInfo, finance: FinanceInfo, priorNotes: string[] = []): ClarifyResult {
   const household = finance.household ?? '1인';
   const note = contract.note ?? '';
   const sig = noteSignals(note);
@@ -80,6 +85,16 @@ export function localClarify(contract: ContractInfo, finance: FinanceInfo): Clar
   for (const [seg, keys] of Object.entries(HOUSEHOLD_HINTS)) {
     if (seg !== household && keys.some(k => note.includes(k)))
       conflicts.push(`'${seg}' 관련 언급이 있는데 가구 유형은 '${household}'로 선택하셨어요. 맞는지 확인해 주세요.`);
+  }
+  // 이전 반영과 방향 충돌 → 되묻기
+  if (priorNotes.length) {
+    const prior = noteSignals(priorNotes.join(' ')).boost;
+    const nw = noteSignals(note).boost;
+    for (const axis of Object.keys(AXIS_LABEL)) {
+      const pd = axisDir(prior, axis), nd = axisDir(nw, axis);
+      if (pd && nd && pd !== nd)
+        conflicts.push(`이전엔 '${AXIS_LABEL[axis]}' 비중을 ${pd < 0 ? '낮추기로' : '높이기로'} 하셨는데 이번엔 반대네요. ${AXIS_LABEL[axis]} 비중을 ${pd < 0 ? '다시 높일까요' : '다시 낮출까요'}?`);
+    }
   }
   const questions = [...conflicts];
   if (['통근', '출퇴근', '회사', '직장'].some(k => note.includes(k)))
