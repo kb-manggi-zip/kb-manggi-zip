@@ -26,6 +26,9 @@ const NOTE_MAP: Array<{ keys: string[]; label: string; boost: Record<string, num
   { keys: ['카페', '외식', '맛집', '배달', '먹'], label: '외식·카페 소비 성향 → 상권 매치↑', boost: { consumption: 1.3 } },
   { keys: ['조용', '한적', '정주', '오래 살'], label: '정주·생활환경 중시 → 선호지역↑', boost: { preference: 1.2 } },
   { keys: ['통근', '출퇴근', '회사', '직장', '가까운 데'], label: '통근 최소화 우선 → 통근↑', boost: { commute: 1.3 } },
+  { keys: ['반려동물', '강아지', '고양이', '반려견', '반려묘'], label: '반려동물 — 산책·생활공간 중시 → 선호지역↑·생활편의↑', boost: { preference: 1.2, consumption: 1.2 } },
+  { keys: ['학교', '학군', '등하교', '등하원'], label: '자녀 학군 근접 중시 → 선호지역↑', boost: { preference: 1.3 } },
+  { keys: ['부모님', '부모님 근처', '가족 근처'], label: '가족 근접 선호 → 선호지역↑', boost: { preference: 1.3 } },
 ];
 const HOUSEHOLD_HINTS: Record<string, string[]> = {
   '자녀': ['아이', '자녀', '학군', '육아', '등원', '등하교', '학교', '어린이집'],

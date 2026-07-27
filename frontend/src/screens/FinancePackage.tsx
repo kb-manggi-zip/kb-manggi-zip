@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useApp } from '../store';
 import { COLORS, BRANCH_COLORS, BRANCH_ICONS } from '../theme';
-import { MobileShell, FlowProgress, BackBtn, PrimaryBtn, SecondaryBtn, BasisChip, Disclaimer, Toast, DdayBadge } from '../components/ui';
+import { MobileShell, JourneyHeader, BackBtn, PrimaryBtn, SecondaryBtn, BasisChip, Disclaimer, Toast } from '../components/ui';
 import AiBriefing from '../components/AiBriefing';
 import { api, briefings } from '../api/client';
 import { formatAmount } from '../utils/format';
@@ -33,16 +33,15 @@ export default function FinancePackage() {
 
   return (
     <MobileShell>
-      <FlowProgress current={5} />
+      <JourneyHeader step={6} dday={comparison?.dday} noticeDaysLeft={comparison?.noticeDaysLeft} />
 
       {/* 갈래 헤더 */}
-      <div className="px-5 py-4 flex items-center gap-2" style={{ background: color + '22', borderBottom: `2px solid ${color}` }}>
+      <div className="px-5 py-3 flex items-center gap-2" style={{ background: color + '22', borderBottom: `2px solid ${color}` }}>
         <BackBtn onClick={() => dispatch({ type: 'NAVIGATE', screen: selectedBranch === '갱신' ? 'SC-08' : 'SC-07' })} />
         <span className="text-xl">{icon}</span>
         <h1 className="text-lg font-bold" style={{ color }}>
           {selectedBranch} · KB 금융 패키지
         </h1>
-        {comparison && <span className="ml-auto"><DdayBadge dday={comparison.dday} /></span>}
       </div>
 
       <div className="flex-1 overflow-y-auto px-5 py-5 space-y-4">

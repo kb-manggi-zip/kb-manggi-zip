@@ -1,11 +1,13 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useApp } from '../store';
 import { COLORS } from '../theme';
 import {
-  MobileShell, FlowProgress, BackBtn,
+  MobileShell, DdayBar, BackBtn,
   PrimaryBtn, GhostBtn, SelectCard, AmountInput
 } from '../components/ui';
-import type { ContractType, RenewalUsed, Household, FirstHome, HousingType } from '../api/types';
+import { api } from '../api/client';
+import { formatDday, formatNoticeDeadline } from '../utils/format';
+import type { ContractType, RenewalUsed, Household, FirstHome, HousingType, ClarifyResult } from '../api/types';
 
 // ─── 스텝 정의 ─────────────────────────────────────────────────────────────
 type StepId = 'type' | 'deposit' | 'rent' | 'expiry' | 'renewal' | 'finance';
@@ -59,11 +61,25 @@ export default function ContractInput() {
   const [housingType, setHousingType] = useState<HousingType>(state.contract?.housingType || '아파트');
   const [preferredArea, setPreferredArea] = useState<string>(state.contract?.preferredArea || '');
   const [note, setNote] = useState<string>(state.contract?.note || '');
+  const [interp, setInterp] = useState<ClarifyResult | null>(null);
+  const [noteOk, setNoteOk] = useState<boolean>(!!state.contract?.note);
   const [annualIncome, setAnnualIncome] = useState(state.finance?.annualIncome || 0);
   const [ownCapital, setOwnCapital] = useState(state.finance?.ownCapital || 0);
   const [household, setHousehold] = useState<Household>(state.finance?.household || '1인');
   const [firstHome, setFirstHome] = useState<FirstHome>(state.finance?.firstHome || '모름');
   const [under35, setUnder35] = useState<boolean>(state.finance?.under35 ?? false);
+
+  // 자유입력 → AI 해석(디바운스). 세대유형은 아직 입력 전일 수 있어 현재 household 상태로 해석.
+  useEffect(() => {
+    if (!note.trim()) { setInterp(null); return; }
+    const t = setTimeout(() => {
+      api.clarify(
+        { type: contractType, deposit: 0, monthlyRent: 0, expiryDate: '', renewalUsed, housingType, note },
+        { annualIncome: 0, ownCapital: 0, household, firstHome, under35 },
+      ).then(setInterp).catch(() => setInterp(null));
+    }, 400);
+    return () => clearTimeout(t);
+  }, [note]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // 유형 변경 시 스텝 배열 재계산, 현재 stepIdx 클램프
   const steps = buildSteps(contractType);
@@ -114,12 +130,15 @@ export default function ContractInput() {
     else dispatch({ type: 'NAVIGATE', screen: 'SC-01' });
   }
 
+  const dday = expiryDate ? formatDday(expiryDate) : undefined;
+  const noticeLeft = expiryDate ? formatDday(formatNoticeDeadline(expiryDate, 2).toISOString()) : undefined;
+
   return (
     <MobileShell>
-      <FlowProgress current={1} />
+      {expiryDate && <DdayBar dday={dday} noticeDaysLeft={noticeLeft} />}
 
       {/* 스텝 진행바 — 현재 index / steps.length (하드코딩 없음) */}
-      <div className="flex items-center px-4 pb-2">
+      <div className="flex items-center px-4 pt-2 pb-2">
         <BackBtn onClick={back} />
         <div className="flex-1 flex items-center gap-2 px-2">
           <div className="flex-1 h-1.5 bg-border rounded-full overflow-hidden">
@@ -192,13 +211,60 @@ export default function ContractInput() {
                 value={note}
                 onChange={e => setNote(e.target.value)}
                 rows={2}
-                placeholder="예: 재택근무라 집 근처에서 다 해결해요 / 카페 자주 가요 / 통근이 제일 중요해요"
+                placeholder="예: 재택근무예요"
                 className="w-full rounded-2xl border px-4 py-3 text-sm resize-none outline-none"
                 style={{ borderColor: COLORS.BORDER, background: COLORS.CARD, color: COLORS.TEXT }}
               />
-              <p className="text-xs text-muted-foreground mt-1.5">
-                입력하면 동네 추천 우선순위에 반영돼요. 서로 안 맞는 내용은 되물어봐요.
-              </p>
+              {/* 예시 칩 — 탭하면 채워지고 바로 AI 해석(타이핑 없이 체험) */}
+              <div className="flex flex-wrap gap-1.5 mt-2">
+                {['재택근무예요', '반려동물이 있어요', '아이 학교가 중요해요', '부모님 근처에 살고 싶어요'].map(ex => (
+                  <button key={ex} onClick={() => setNote(ex)}
+                    className="text-xs px-3 py-1.5 rounded-full border"
+                    style={{ borderColor: COLORS.BORDER, background: COLORS.CARD, color: COLORS.SUB }}>
+                    {ex}
+                  </button>
+                ))}
+              </div>
+
+              {/* AI 해석 카드 (인라인, 모달 아님) */}
+              {note.trim() && interp && (
+                <div className="mt-3 rounded-2xl border p-3.5 space-y-2 animate-[fadeIn_.2s_ease]"
+                  style={{ borderColor: COLORS.KB_YELLOW, background: COLORS.YELLOW_SURFACE }}>
+                  <div className="flex items-start gap-2">
+                    <span className="w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold shrink-0"
+                      style={{ background: COLORS.KB_YELLOW, color: COLORS.TEXT }}>AI</span>
+                    <p className="text-sm leading-snug" style={{ color: COLORS.TEXT }}>
+                      {(interp.noteSignals?.length ?? 0) > 0
+                        ? '이렇게 이해했어요 — 동네 추천에 반영할까요?'
+                        : '입력을 확인했어요. 이대로 반영할까요?'}
+                    </p>
+                  </div>
+                  {(interp.noteSignals ?? []).length > 0 && (
+                    <div className="flex flex-wrap gap-1.5 pl-8">
+                      {interp.noteSignals!.map((s, i) => (
+                        <span key={i} className="text-[11px] px-2 py-0.5 rounded-full"
+                          style={{ background: '#00000008', color: COLORS.SUB }}>{s}</span>
+                      ))}
+                    </div>
+                  )}
+                  {(interp.conflicts ?? []).map((c, i) => (
+                    <p key={i} className="text-xs pl-8" style={{ color: COLORS.SUB }}>💬 {c}</p>
+                  ))}
+                  <div className="flex gap-2 pl-8 pt-0.5">
+                    <button onClick={() => setNoteOk(true)}
+                      className="flex-1 text-xs font-semibold py-2 rounded-xl"
+                      style={noteOk ? { background: COLORS.KB_YELLOW, color: COLORS.TEXT }
+                        : { background: COLORS.KB_YELLOW, color: COLORS.TEXT }}>
+                      {noteOk ? '✓ 반영했어요' : '네, 맞아요'}
+                    </button>
+                    <button onClick={() => { setNote(''); setInterp(null); setNoteOk(false); }}
+                      className="flex-1 text-xs font-semibold py-2 rounded-xl border"
+                      style={{ borderColor: COLORS.BORDER, color: COLORS.SUB, background: COLORS.CARD }}>
+                      아니요, 그대로
+                    </button>
+                  </div>
+                </div>
+              )}
             </div>
           </StepView>
         )}
