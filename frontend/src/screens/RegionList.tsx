@@ -5,18 +5,27 @@ import { MobileShell, FlowProgress, BackBtn, Disclaimer, DdayBadge } from '../co
 import AiBriefing from '../components/AiBriefing';
 import { api, briefings } from '../api/client';
 import { formatAmount } from '../utils/format';
-import type { Region } from '../api/types';
+import type { Region, PersonaProfile, ClarifyResult } from '../api/types';
 
 export default function RegionList() {
   const { state, dispatch } = useApp();
   const { selectedBranch, comparison } = state;
   const [regions, setRegions] = useState<Region[]>([]);
+  const [persona, setPersona] = useState<PersonaProfile | null>(null);
+  const [clarify, setClarify] = useState<ClarifyResult | null>(null);
 
   useEffect(() => {
     if (!selectedBranch || !comparison) return;
     const budget = comparison.branches.find(b => b.branch === selectedBranch)?.depositOrPrice || 0;
-    api.regions(selectedBranch, budget, state.contract?.housingType, state.contract?.preferredArea, state.finance?.household).then(setRegions);
-  }, [selectedBranch, comparison, state.contract?.housingType, state.contract?.preferredArea, state.finance?.household]);
+    api.regions(selectedBranch, budget, state.contract?.housingType, state.contract?.preferredArea, state.finance?.household, state.contract?.note).then(setRegions);
+  }, [selectedBranch, comparison, state.contract?.housingType, state.contract?.preferredArea, state.finance?.household, state.contract?.note]);
+
+  // 개인화 조합 산출물(프로필 카드) + 명확화(모순 되묻기) — 계약·재무가 있으면 조회.
+  useEffect(() => {
+    if (!state.contract || !state.finance) return;
+    api.persona(state.contract, state.finance).then(setPersona).catch(() => setPersona(null));
+    api.clarify(state.contract, state.finance).then(setClarify).catch(() => setClarify(null));
+  }, [state.contract, state.finance]);
 
   if (!selectedBranch || !comparison) return null;
 
@@ -63,6 +72,14 @@ export default function RegionList() {
           ))}
         </div>
 
+        {/* 개인화 프로필 카드 — 완성 페르소나 → 조합된 리소스·근거 */}
+        {persona && <PersonaCardView persona={persona} color={color} />}
+
+        {/* 명확화 되묻기 — 모순/추가확인 (닫힌 루프) */}
+        {clarify && ((clarify.conflicts?.length ?? 0) > 0 || (clarify.questions?.length ?? 0) > 0) && (
+          <ClarifyBanner clarify={clarify} />
+        )}
+
         {/* AI 브리핑 */}
         {briefText && (
           <div className="mt-4">
@@ -80,6 +97,61 @@ export default function RegionList() {
         <Disclaimer />
       </div>
     </MobileShell>
+  );
+}
+
+// 개인화 조합 산출물 — 세그먼트·우선순위 가중치·조합 리소스를 근거와 함께 노출(블랙박스 아님).
+const AXIS_LABEL: Record<string, string> = { commute: '통근', consumption: '생활·소비', budget: '예산', preference: '선호지역' };
+function PersonaCardView({ persona, color }: { persona: PersonaProfile; color: string }) {
+  const weights = Object.entries(persona.weights).sort((a, b) => b[1] - a[1]);
+  return (
+    <div className="mx-5 mt-4 rounded-2xl border p-4 space-y-3" style={{ borderColor: color + '55', background: color + '0D' }}>
+      <div className="flex items-center gap-2">
+        <span className="text-base">🎯</span>
+        <span className="font-bold text-sm" style={{ color }}>{persona.headline}</span>
+      </div>
+      {/* 우선순위 가중치 막대 — "감이 아니라 통계 근거" */}
+      <div className="space-y-1">
+        {weights.map(([k, v]) => (
+          <div key={k} className="flex items-center gap-2">
+            <span className="text-xs w-14 shrink-0 text-muted-foreground">{AXIS_LABEL[k] ?? k}</span>
+            <div className="flex-1 h-2 rounded-full overflow-hidden" style={{ background: '#0000000d' }}>
+              <div className="h-full rounded-full" style={{ width: `${Math.round(v * 100)}%`, background: color }} />
+            </div>
+            <span className="text-xs w-9 text-right tabular-nums text-muted-foreground">{Math.round(v * 100)}%</span>
+          </div>
+        ))}
+      </div>
+      <p className="text-[11px] text-muted-foreground leading-snug">근거: {persona.weightBasis}</p>
+      {/* 조합된 리소스 — 이 하루에 실제 등장할 것만('빼기의 개인화') */}
+      <div className="flex flex-wrap gap-1.5 pt-1 border-t border-border/60">
+        {persona.resources.map(r => (
+          <span key={r} className="text-[11px] px-2 py-0.5 bg-muted rounded-full text-muted-foreground">{r}</span>
+        ))}
+      </div>
+      <p className="text-[11px] text-muted-foreground">{persona.budgetBand}</p>
+    </div>
+  );
+}
+
+// 명확화 되묻기 — 모순/추가확인을 그대로 노출(닫힌 루프의 '되묻기' 단계).
+function ClarifyBanner({ clarify }: { clarify: ClarifyResult }) {
+  const items = [...(clarify.conflicts ?? []), ...(clarify.questions ?? []).filter(q => !(clarify.conflicts ?? []).includes(q))];
+  return (
+    <div className="mx-5 mt-3 rounded-2xl border p-3.5 space-y-1.5" style={{ borderColor: COLORS.KB_YELLOW, background: COLORS.YELLOW_SURFACE }}>
+      <div className="flex items-center gap-1.5">
+        <span className="text-sm">💬</span>
+        <span className="text-xs font-bold" style={{ color: COLORS.TEXT }}>확인하고 싶은 게 있어요</span>
+      </div>
+      {items.map((q, i) => (
+        <p key={i} className="text-xs leading-snug" style={{ color: COLORS.SUB }}>· {q}</p>
+      ))}
+      {(clarify.noteSignals?.length ?? 0) > 0 && (
+        <p className="text-[11px] pt-1" style={{ color: COLORS.SUB }}>
+          반영된 입력: {clarify.noteSignals!.join(' · ')}
+        </p>
+      )}
+    </div>
   );
 }
 

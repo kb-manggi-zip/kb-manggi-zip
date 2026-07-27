@@ -54,6 +54,7 @@ class RegionsState(TypedDict):
     houseType: str | None
     sigungu: str | None
     household: str | None
+    note: str | None
     regions: list
 
 
@@ -63,17 +64,15 @@ def regions_node(state: RegionsState) -> dict:
     pool = molit.regions_by_branch(
         state["branch"], state["budget"], house_type=state.get("houseType"), sigungu=state.get("sigungu"), top=8
     )
-    from .agents.narrator import profile_for
-    from .tools import scoring
+    from .tools import persona, scoring
 
-    prof = profile_for(state.get("household"))
-    ctx = {
-        "household": state.get("household"),
-        "budget": state["budget"],
-        "workplace": (prof.get("workplace") or {}).get("name"),
-        "traits": prof.get("traits", []),
-        "in_preferred": True if state.get("sigungu") else None,
-    }
+    # 스코어 입력은 조합 레이어(persona.scoring_ctx) 단일 소스로 — 자유입력(note) 보정 가중치 포함.
+    ctx = persona.scoring_ctx(
+        {"note": state.get("note") or ""},
+        {"household": state.get("household")},
+        state["budget"],
+        True if state.get("sigungu") else None,
+    )
     ranked = scoring.rank([r.model_dump() for r in pool], ctx, top=3)
     return {"regions": ranked}
 
@@ -92,8 +91,10 @@ class AnalyzeState(TypedDict):
     contract: dict
     finance: dict
     situation: str
+    clarify: dict
     comparison: dict
     routing: dict
+    persona: dict
     briefing: str
 
 
@@ -105,6 +106,31 @@ def intake_node(state: AnalyzeState) -> dict:
     from .agents import briefing as briefing_agent
 
     return {"situation": briefing_agent.situation_of(state)}
+
+
+@observe(name="clarify_node")
+def clarify_node(state: AnalyzeState) -> dict:
+    """명확화(판단) — 폼값+자유입력을 제약된 축으로 해석 + 모순 감지(되묻기). 창작 금지·닫힌 루프."""
+    from .agents import clarify as clarify_agent
+
+    result = clarify_agent.clarify(state["contract"], state["finance"], note=state["contract"].get("note", ""))
+    return {"clarify": result}
+
+
+@observe(name="persona_node")
+def persona_node(state: AnalyzeState) -> dict:
+    """개인화 조합 — 확정 페르소나에 맞춰 리소스를 한 산출물(PersonaProfile)로 조합."""
+    from .tools import persona as persona_tool
+
+    # budgetBand용 예산 = 라우팅이 가리키는 갈래의 금액(없으면 0)
+    budget = 0
+    rec = (state.get("routing") or {}).get("branch")
+    for b in (state.get("comparison") or {}).get("branches", []):
+        if b.get("branch") == rec:
+            budget = b.get("depositOrPrice", 0)
+            break
+    prof = persona_tool.build_persona(state["contract"], state["finance"], budget, state.get("clarify"))
+    return {"persona": prof}
 
 
 @observe(name="route_node")
@@ -145,12 +171,16 @@ def narrate_node(state: AnalyzeState) -> dict:
 def build_analyze_graph():
     graph = StateGraph(AnalyzeState)
     graph.add_node("intake", intake_node)
+    graph.add_node("clarify", clarify_node)
     graph.add_node("compare", compare_node)
     graph.add_node("route", route_node)
+    graph.add_node("persona", persona_node)
     graph.add_node("narrate", narrate_node)
     graph.set_entry_point("intake")
-    graph.add_edge("intake", "compare")
+    graph.add_edge("intake", "clarify")
+    graph.add_edge("clarify", "compare")
     graph.add_edge("compare", "route")
-    graph.add_edge("route", "narrate")
+    graph.add_edge("route", "persona")
+    graph.add_edge("persona", "narrate")
     graph.add_edge("narrate", END)
     return graph.compile()

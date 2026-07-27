@@ -47,6 +47,7 @@ class ContractInfo(BaseModel):
     renewalUsed: RenewalUsed
     housingType: HousingType = "아파트"  # HUG 보증료 요율만 좌우(세금·대출은 둘 다 주택 동일)
     preferredArea: str = ""  # 선호지역 구명(예 "마포구") — 동네 후보를 그 구에서 우선. 빈값=6구 전체
+    note: str = ""  # 문진 말미 자유입력(선택) — 명확화 노드가 세그먼트·우선순위 항목으로 제약 해석
 
 
 class FinanceInfo(BaseModel):
@@ -97,6 +98,38 @@ class Region(BaseModel):
     branch: Branch
     score: Optional[float] = None  # 개인화 스코어(통계근거 가중합)
     scoreReasons: list[str] = []  # 왜 이 순위 (근거 노출)
+
+
+# ── 명확화(판단 노드) + 개인화 조합 레이어 ─────────────────────────
+class ClarifyResult(BaseModel):
+    """문진 명확화 노드 산출 — 자연어/폼값을 '제약된 항목'으로 해석 + 모순 감지.
+
+    판단 노드지만 창작 금지: persona/priorities는 정해진 세그먼트·축에서만 나온다.
+    conflicts/questions는 되묻기(닫힌 루프)용 — 실제 재질의는 프론트가 처리.
+    """
+
+    persona: str  # 확정 세그먼트 라벨 (예 "1인 청년 임차")
+    priorities: list[str]  # 우선순위 축 라벨 순서 (스코어 가중치 상위)
+    conflicts: list[str] = []  # 감지된 모순(예 예산↔선호지역 시세) — 실데이터 근거
+    questions: list[str] = []  # 되물을 질문(닫힌 루프)
+    noteSignals: list[str] = []  # 자유입력에서 뽑아낸 제약된 신호(반영 내역)
+
+
+class PersonaProfile(BaseModel):
+    """개인화 '조합' 레이어 산출물 — 완성된 페르소나에 맞춰 리소스를 한 번에 조합.
+
+    scoring(weights_for)·narrator(profile_for)가 각자 집던 것을 여기서 합쳐 한 산출물로.
+    화면 '개인화 프로필 카드'로 노출(왜 이렇게 추천하는지의 근거 요약).
+    """
+
+    segment: str  # 세그먼트 라벨
+    headline: str  # 한 줄 요약 ("통근을 가장 중시하는 1인 가구")
+    workplace: Optional[str] = None  # 대표 직장(통근 발품 기준, 가정)
+    weights: dict  # 스코어 가중치 (근거 노출)
+    weightBasis: str  # 가중치 출처 한 줄
+    consumption: list[str]  # 소비 성향(카드통계 근거)
+    resources: list[str]  # 조합된 리소스(발품에 등장할 것들)
+    budgetBand: str  # 예산 밴드 설명
 
 
 # ── 하루 시뮬레이션 ─────────────────────────────────────────────────
@@ -181,7 +214,13 @@ class ProductsRequest(BaseModel):
 
 
 class AnalyzeResponse(BaseModel):
-    """분석 에이전트(intake→compare→narrate) 결과 — 계산 + 개인화 통역을 한 번에."""
+    """분석 에이전트(intake→clarify→compare→route→persona→narrate) 결과.
+
+    계산(comparison) + 명확화(clarify) + 개인화 조합(persona) + 통역(briefing)을 한 번에.
+    clarify/persona는 하위호환 위해 Optional.
+    """
 
     comparison: CompareResponse
     briefing: str
+    clarify: Optional[ClarifyResult] = None
+    persona: Optional[PersonaProfile] = None

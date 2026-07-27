@@ -1,4 +1,5 @@
 import { compare } from '../engine/compare';
+import { localClarify, localPersona } from '../engine/persona';
 import { REGIONS_BUY, REGIONS_MOVE, REGIONS_MONTHLY } from '../data/regions';
 import { SCENES_MOVE, SCENES_BUY, SCENES_STAY, SCENES_BY_REGION, SAVED_MONEY_CARDS } from '../data/scenes';
 import { PRODUCTS_RENEWAL, PRODUCTS_MOVE, PRODUCTS_BUY } from '../data/products';
@@ -12,7 +13,7 @@ import type {
   ReservationRequest, Branch, HousingType,
   BriefingRequest, BriefingResponse,
   DraftNoticeRequest, DraftNoticeResponse,
-  AnalyzeResponse,
+  AnalyzeResponse, ClarifyResult, PersonaProfile,
 } from './types';
 
 // Static exports for screens (screens must not import engine/ or data/ directly)
@@ -51,10 +52,29 @@ export const api = {
     );
   },
 
-  async regions(branch: Branch, _budget: number, housingType?: HousingType, preferredArea?: string, household?: string): Promise<Region[]> {
+  // 명확화(판단) — 자연어/폼값 → 제약 해석 + 모순 되묻기. 원격이면 백엔드 노드, 로컬이면 TS 포트.
+  async clarify(contract: ContractInfo, finance: FinanceInfo): Promise<ClarifyResult> {
+    return localOrRemote(
+      () => localClarify(contract, finance),
+      '/api/clarify',
+      { method: 'POST', body: JSON.stringify({ contract, finance }) }
+    );
+  },
+
+  // 개인화 조합 레이어 — 완성 페르소나 → 리소스 조합 산출물(프로필 카드).
+  async persona(contract: ContractInfo, finance: FinanceInfo): Promise<PersonaProfile> {
+    return localOrRemote(
+      () => localPersona(contract, finance),
+      '/api/persona',
+      { method: 'POST', body: JSON.stringify({ contract, finance }) }
+    );
+  },
+
+  async regions(branch: Branch, _budget: number, housingType?: HousingType, preferredArea?: string, household?: string, note?: string): Promise<Region[]> {
     const q = (housingType ? `&housingType=${housingType}` : '')
       + (preferredArea ? `&preferredArea=${encodeURIComponent(preferredArea)}` : '')
-      + (household ? `&household=${encodeURIComponent(household)}` : '');
+      + (household ? `&household=${encodeURIComponent(household)}` : '')
+      + (note ? `&note=${encodeURIComponent(note)}` : '');
     return localOrRemote(
       () => branch === '매매' ? REGIONS_BUY : branch === '이사' ? REGIONS_MOVE : REGIONS_MONTHLY,
       `/api/regions?branch=${branch}&budget=${_budget}${q}`

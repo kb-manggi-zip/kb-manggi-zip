@@ -98,7 +98,8 @@ def score_region(region: dict, ctx: dict) -> dict:
     """
     household = ctx.get("household")
     budget = ctx.get("budget") or 0
-    w = weights_for(household)
+    # ctx에 보정 가중치(persona.scoring_ctx가 자유입력 반영해 실어줌)가 있으면 그걸, 없으면 가구 기본.
+    w = ctx.get("weights") or weights_for(household)
     rid = region.get("id") or ""
 
     # commute: region_transit 캐시(실측) 조회
