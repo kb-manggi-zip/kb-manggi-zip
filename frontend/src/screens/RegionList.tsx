@@ -95,12 +95,14 @@ function RegionCard({ region, color, onSelect }: { region: Region; color: string
           <p className="font-bold">{region.name}</p>
           <p className="text-sm text-muted-foreground">중위가 {formatAmount(region.midPrice)}</p>
         </div>
-        <span
-          className="text-xs font-semibold px-2.5 py-1 rounded-full"
-          style={{ background: COLORS.MINT + '33', color: COLORS.MINT }}
-        >
-          +{formatAmount(region.surplus)} 여유
-        </span>
+        {region.surplus > 0 && (
+          <span
+            className="text-xs font-semibold px-2.5 py-1 rounded-full"
+            style={{ background: COLORS.MINT + '33', color: COLORS.MINT }}
+          >
+            +{formatAmount(region.surplus)} 여유
+          </span>
+        )}
       </div>
       <div className="flex items-center gap-2 flex-wrap">
         <span className="text-xs text-muted-foreground">최근 실거래 {region.tradeCount}건</span>

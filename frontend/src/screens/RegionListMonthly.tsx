@@ -99,7 +99,7 @@ export default function RegionListMonthly() {
                 className="text-xs font-semibold px-2.5 py-1 rounded-full"
                 style={{ background: COLORS.MINT + '33', color: COLORS.MINT }}
               >
-                {tab === 'similar' ? `±${Math.round(r.surplus / 10_000)}만` : `+${formatAmount(r.surplus * 3)}`}
+                최근 거래 {r.tradeCount}건
               </span>
             </div>
             <div className="flex gap-2 flex-wrap">

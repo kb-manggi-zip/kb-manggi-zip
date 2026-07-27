@@ -25,8 +25,10 @@ export const briefings = {
     `어느 쪽이 맞는지는 ${name}님의 계획에 달려 있어요.`,
 
   regions: (top: Region): string =>
-    `예산 안에서 최근 거래가 활발한 순서로 골랐어요. ` +
-    `${top.name}은 예산 대비 ${formatAmount(top.surplus)} 여유가 있어요.`,
+    `최근 실거래를 기준으로 예산에 맞는 동네를 추렸어요. ` +
+    (top.surplus > 0
+      ? `${top.name}은 예산 대비 ${formatAmount(top.surplus)} 여유가 있어요.`
+      : `${top.name}부터 둘러보시겠어요?`),
 
   renewal: (noticeDate: string): string =>
     `눌러앉기를 고르셨네요. 통보 기한(${noticeDate})까지 챙길 것 네 가지를 정리했어요.`,
