@@ -1,15 +1,16 @@
 # 프로젝트 현황 & 로드맵 (한눈에)
 
-> KB 만기상담소 — 전월세 만기 D-90, 3갈래(갱신·이사·매매) 비교 에이전트. (갱신: 2026-07-25)
-> 상세: 코드 gap=`backend/STUBS.md` · 규정값 검증=`RESEARCH.md` + `ref/rules_확정값_실데이터반영용.md` · API=`docs/API.md`
+> KB 만기상담소 — 전월세 만기 D-90, 3갈래(갱신·이사·매매) 비교 에이전트. (갱신: 2026-07-27)
+> 상세: 코드 gap=`backend/STUBS.md` · 규정값 검증=`RESEARCH.md` · API=`docs/API.md` · 발표=`docs/발표_골든패스_시나리오.md`
 
 ## 지금 이 서비스가 도는 방식 (한 줄씩)
-- **계산(심장)**: `tools/compare.py` — 3갈래 결정론 계산(rules YAML × 공식). 프론트 `engine/compare.ts`와 **오차 0 동치**(테스트 강제). LLM 무개입.
-- **실거래**: 국토부 6개구 **43,531건 → SQLite(`trades.demo.db`)**. 런타임은 DB만 읽음(외부 API 미접촉).
-- **에이전트**: `/api/analyze` = LangGraph `intake(상황파악) → compare(계산 tool) → narrate(개인화 LLM)`. Langfuse에 **한 trace로 묶여** 찍힘.
-- **개인화 통역**: LLM이 사용자 상황(월세/신혼/청년/생애최초)에 맞춰 설명. 프레임은 `persona_frames.yaml`. **숫자는 계산 결과만 인용**(할루시네이션 0, verify 루프).
-- **상품 매칭**: `matcher.py` — `kb_products/*.md`(출처·검증) 규칙 매칭 + LLM 사유.
-- **Trust Layer**: 숫자=코드 · 가드레일(권유 차단) · 불확실성 명시 · Langfuse.
+- **계산(심장)**: `tools/compare.py` — 3갈래 결정론 계산(rules YAML × 공식, 규제3겹·디딤돌·HUG·취득세구간). 프론트 `engine/compare.ts`와 **오차 0 동치**. LLM 무개입.
+- **실거래**: 국토부 6개구 **64,431건(아파트+연립다세대) → SQLite**. 런타임 DB만.
+- **동네 추천**: 예산 필터 + **선호지역**(구) + **개인화 스코어**(통계근거 가중합, `tools/scoring.py`) → top3 + "왜 추천?" 근거.
+- **발품(차별점)**: `narrator` — 소비 프로필 + **상권 실집계(소상공인API)** + **통근 실측(ODsay)** + **국토부 실거래 사례** → 개인화 하루 서사(LLM).
+- **에이전트**: `/api/analyze` = LangGraph `intake → compare → route(supervisor) → narrate`. Langfuse 한 trace(세션 그룹핑).
+- **개인화**: 스코어 가중치·발품 프레임 전부 **통계/실데이터 근거 + 화면 노출**(블랙박스 아님).
+- **Trust Layer**: 숫자=코드 · verify 가드레일(권유·환각 차단) · 근거·출처 노출 · Langfuse.
 
 ## ✅ 완료
 | 영역 | 상태 |
