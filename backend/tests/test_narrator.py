@@ -52,7 +52,7 @@ from app.schemas import BriefingRequest  # noqa: E402
 
 def test_profile_selection_differs():
     """가구 유형별 소비 프로필이 다르게 선택된다."""
-    assert narrator.profile_for("신혼")["traits"] != narrator.profile_for("청년")["traits"]
+    assert narrator.profile_for("신혼")["traits"] != narrator.profile_for("1인")["traits"]
     assert narrator.profile_for(None) == narrator.profile_for("존재안함")  # 둘 다 default
 
 
@@ -60,12 +60,12 @@ def test_lifestyle_prompt_grounds_on_region_and_profile():
     """프롬프트에 동네 실데이터(이름·태그) + 소비 성향이 그라운딩된다."""
     ctx = {
         "region": {"name": "마포구 망원동", "tags": ["한강공원", "힙한거리"]},
-        "finance": {"household": "청년"},
+        "finance": {"household": "1인"},
         "branch": "이사",
     }
     system, user = narrator.build_lifestyle_prompt(ctx)
     assert "망원동" in user and "한강공원" in user
-    assert "카페" in user or "배달" in user  # 청년 성향 반영
+    assert "카페" in user or "배달" in user  # 1인가구 성향 반영
     assert "금액" in user and "단정" in user  # 가드레일 지시 포함
 
 
@@ -94,7 +94,7 @@ def test_lifestyle_prompt_uses_region_facts():
     """region.id가 facts에 있으면 프롬프트에 대표 정보가 들어간다."""
     ctx = {
         "region": {"id": "mapo-m", "name": "마포구 망원동", "tags": []},
-        "finance": {"household": "청년"},
+        "finance": {"household": "1인"},
         "branch": "이사",
     }
     _, user = narrator.build_lifestyle_prompt(ctx)
