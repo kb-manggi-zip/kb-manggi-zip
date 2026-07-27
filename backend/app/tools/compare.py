@@ -39,7 +39,7 @@ def compute_compare(
     monthly_rent = contract.monthlyRent
     ctype = contract.type
     renewal_used = contract.renewalUsed
-    # 주택유형 → HUG 요율 유형. 아파트/빌라(연립다세대) 둘 다 '주택'이라 세금·대출은 동일.
+    # 주택유형 → HUG 요율 유형. 아파트/연립다세대 둘 다 '주택'이라 세금·대출은 동일.
     hug_type = "apartment" if contract.housingType == "아파트" else "other"
     hug_label = "아파트" if contract.housingType == "아파트" else "연립·다세대"
     own_capital = finance.ownCapital
