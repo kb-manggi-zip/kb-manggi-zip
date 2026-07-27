@@ -167,17 +167,14 @@ def clarify(contract: dict, finance: dict, note: str = "") -> dict:
     # 1) 모순 감지 = 항상 결정론
     conflicts = _household_conflict(household, note)
 
-    # 2) 신호/가중치 = LLM(제약) 우선, 실패/비활성 시 키워드
+    # 2) 신호 라벨 = LLM(제약) 우선, 실패/비활성 시 키워드. (LLM은 '해석'만)
     llm = _llm_interpret(note, household, conflicts) if (note and settings.llm_active) else None
-    if llm is not None:
-        labels, boost = llm["labels"], llm["boost"]
-        llm_question = llm["question"]
-    else:
-        sig = note_signals(note)
-        labels, boost = sig["labels"], sig["boost"]
-        llm_question = ""
+    labels = llm["labels"] if llm is not None else note_signals(note)["labels"]
+    llm_question = llm["question"] if llm is not None else ""
 
-    w = _apply_boost(scoring.weights_for(household), boost)
+    # priorities는 **항상 결정론 keyword 가중치**로 → 화면 우선순위 = 실제 동네 랭킹(persona/scoring과 동일 소스).
+    # LLM weight_adjustments는 _llm_interpret의 '축 제약·창작금지' 게이트로만 쓴다(랭킹은 재현가능해야 하므로 미반영).
+    w = note_weights(household, note)
     priorities = [AXIS_LABEL[k] for k, _ in sorted(w.items(), key=lambda kv: -kv[1])]
 
     # 3) 되묻기: 감지는 결정론, 문구만 LLM(감지된 모순이 있을 때만 자연 문장으로 대체)
