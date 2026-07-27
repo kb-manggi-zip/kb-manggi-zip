@@ -15,11 +15,14 @@ export default function ProfileConfirm() {
   const { state, dispatch } = useApp();
   const { contract, finance, comparison } = state;
   const [persona, setPersona] = useState<PersonaProfile | null>(null);
+  const [conflicts, setConflicts] = useState<string[]>([]);
   const [tooltip, setTooltip] = useState<string | null>(null);
 
   useEffect(() => {
     if (!contract || !finance) { dispatch({ type: 'NAVIGATE', screen: 'SC-03' }); return; }
     api.persona(contract, finance).then(setPersona).catch(() => setPersona(null));
+    // 최종 확인: 합쳐진 자유입력에 상충이 남아있으면 되묻는다(조용한 반영 금지).
+    api.clarify(contract, finance).then(r => setConflicts(r.conflicts ?? [])).catch(() => setConflicts([]));
   }, [contract, finance]);
 
   if (!contract || !finance) return null;
@@ -39,6 +42,18 @@ export default function ProfileConfirm() {
 
       <div className="flex-1 overflow-y-auto px-5 pb-8 space-y-5">
         <h1 className="text-2xl font-bold" style={{ color: COLORS.KB_GRAY }}>당신의 프로필</h1>
+
+        {/* 상충 재확인 — 합쳐진 자유입력에 모순이 남아있으면 정정 유도 */}
+        {conflicts.length > 0 && (
+          <div className="rounded-2xl p-4 space-y-2" style={{ background: COLORS.YELLOW_SURFACE, border: `1px solid ${COLORS.KB_YELLOW}` }}>
+            <p className="text-sm font-bold" style={{ color: COLORS.KB_GRAY }}>⚠️ 입력에 상충이 남아있어요</p>
+            {conflicts.map((c, i) => <p key={i} className="text-xs" style={{ color: COLORS.SUB }}>· {c}</p>)}
+            <button onClick={() => dispatch({ type: 'NAVIGATE', screen: 'SC-02' })}
+              className="w-full mt-1 py-2 rounded-xl text-xs font-semibold" style={{ background: COLORS.KB_YELLOW, color: COLORS.TEXT }}>
+              문진에서 정정하기
+            </button>
+          </div>
+        )}
 
         {/* 사실 섹션 */}
         <div className="bg-card rounded-3xl border border-border overflow-hidden" style={{ boxShadow: '0 2px 12px rgba(0,0,0,0.07)' }}>
