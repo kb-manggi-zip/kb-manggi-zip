@@ -117,7 +117,7 @@ FastAPI. 기본 `http://localhost:8000`. 모든 요청/응답 `application/json`
 
 ```jsonc
 { "branches": [
-    { "branch": "갱신", "headline": "보증금 3억 3,600만으로 그대로",
+    { "branch": "갱신", "headline": "보증금 3억 2,000만 → 3억 3,600만 (합의 인상 시)",
       "depositOrPrice": 336000000, "loanAmount": 16000000, "oneTimeCost": 0,
       "guaranteeMonthly": 40400, "monthlyBurden": 84400,
       "risks": ["보증금 반환 위험 지속", "임대인 사정에 따라 거절 가능"],

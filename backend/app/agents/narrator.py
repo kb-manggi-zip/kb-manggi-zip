@@ -112,10 +112,11 @@ def _region_of(ctx: dict) -> dict:
 _BRANCH_TRADE = {"매매": "sale", "이사": "jeonse", "갱신": "jeonse"}
 
 
-def _transit_fact(reg: dict, household: str | None) -> str:
+def _transit_fact(reg: dict, household: str | None, wfh: bool = False) -> str:
     """동네 center → 가구별 대표 직장까지 통근시간 발품(ODsay 실측 or 직선거리 예상치).
 
     좌표·직장 없으면 ''. 폴백(예상치)은 순수계산이라 런타임/오프라인 안전.
+    wfh(재택 확정)면 통근을 '참고'로 격하(값은 유지, 앞세우지 않음, G3).
     """
     lat, lng = reg.get("lat"), reg.get("lng")
     wp = profile_for(household).get("workplace")
@@ -127,21 +128,43 @@ def _transit_fact(reg: dict, household: str | None) -> str:
     )
     tr = f", 환승 {c['transfers']}회" if c.get("transfers") else ""
     tag = "(예상)" if c.get("estimated") else ""
+    if wfh:
+        # 재택 확정 → 통근은 참고. 프롬프트가 앞세우지 않도록 라벨.
+        return f"통근(참고·재택 반영): {wp['name']} 근무 시 대중교통 약 {c['minutes']}분{tr}{tag}"
     # 직장은 '가정'(모를 수 있음) → 조건부로. 프롬프트가 '~라면'으로 서술.
     return f"통근(가정): {wp['name']} 근무 시 대중교통 약 {c['minutes']}분{tr}{tag}"
 
 
-def _trade_fact(region_name: str, branch: str) -> str:
-    """동네 실거래 사례 1건 → '최근 실거래' 근거(국토부 실데이터). 없으면 ''."""
+def _budget_cap(ctx: dict, reg: dict) -> int | None:
+    """발품 실거래 캡(예산 상한). ctx.budget(프론트가 고른 갈래 예산) 우선, 없으면 region에서 유추.
+
+    region.surplus = budget - midPrice 이므로 midPrice+surplus로 복원(있을 때만). 둘 다 없으면 None(캡 없음).
+    """
+    b = ctx.get("budget")
+    if isinstance(b, (int, float)) and b > 0:
+        return int(b)
+    mid, surplus = reg.get("midPrice"), reg.get("surplus")
+    if isinstance(mid, (int, float)) and mid > 0 and isinstance(surplus, (int, float)):
+        return int(mid + surplus)
+    return None
+
+
+def _trade_fact(region_name: str, branch: str, max_price: int | None = None) -> str:
+    """동네 실거래 사례 1건 → '최근 실거래' 근거(국토부 실데이터). 없으면 ''.
+
+    max_price(예산 상한)를 주면 그 이하 거래에서 선정(발품이 예산 초과 매물을 앞세우지 않게, G2).
+    상한 이하 표본이 없어 초과 사례를 쓰면 '예산 상위 평형 기준'을 명시한다.
+    """
     dong = (region_name or "").split()[-1]  # "마포구 망원동" → "망원동"
     trade_type = _BRANCH_TRADE.get(branch or "", "sale")
-    t = trades_store.sample_trade(dong, trade_type)
+    t = trades_store.sample_trade(dong, trade_type, max_price=max_price)
     if not t or not t.get("price"):
         return ""
     eok = round(t["price"] / 100_000_000, 1)
     area = f"전용 {round(t['area_m2'])}㎡ " if t.get("area_m2") else ""
     kind = "매매" if trade_type == "sale" else "전세"
-    return f"최근 실거래(국토부): {area}{kind} {eok}억 ({t['deal_ym']})"
+    over = " · 예산 상위 평형 기준" if t.get("overBudget") else ""
+    return f"최근 실거래(국토부): {area}{kind} {eok}억 ({t['deal_ym']}){over}"
 
 
 def build_lifestyle_prompt(ctx: dict) -> tuple[str, str]:
@@ -153,9 +176,10 @@ def build_lifestyle_prompt(ctx: dict) -> tuple[str, str]:
     tags = ", ".join(reg.get("tags") or []) or "정보 제한"
     branch = ctx.get("branch") or ""
     facts = _facts_block(reg.get("id"))  # 자동 상권(DB) + 수기(YAML) 병합
-    trade = _trade_fact(name, branch)  # 실거래 사례(국토부) — 있으면 근거로 인용 허용
+    trade = _trade_fact(name, branch, _budget_cap(ctx, reg))  # 실거래 사례(예산 이하 우선, G2)
     trade_line = f"{trade}\n" if trade else ""
-    commute = _transit_fact(reg, fin.get("household"))  # 직장까지 통근시간
+    wfh = bool(ctx.get("wfh"))  # 재택 확정 → 통근 격하(G3)
+    commute = _transit_fact(reg, fin.get("household"), wfh)  # 직장까지 통근시간
     commute_line = f"{commute}\n" if commute else ""
     jr = reg.get("jeonseRatio")
     jeonse_line = (
@@ -174,7 +198,9 @@ def build_lifestyle_prompt(ctx: dict) -> tuple[str, str]:
         f"관심 키워드: {', '.join(prof.get('keywords', []))}\n"
         "→ 위 정보로 '이 동네에서의 하루'를 2~3문장으로 그려라. **facts(통근·상권·실거래)를 먼저 앞세운다.** "
         "'통근(가정)' 정보가 있으면 '만약 …로 통근한다면 약 N분' 식 조건부로 녹여라. "
-        "**유보·확인필요 표현은 전체에서 한 번 이내** — 없는 정보는 언급 말고 있는 facts로만 말해라. "
+        + ("**단 통근이 '참고·재택 반영'이면 앞세우지 말고 맨 뒤에 가볍게만 언급하라.** " if wfh else "")
+        + "**유보·확인필요 표현은 전체에서 한 번 이내** — 없는 정보는 언급 말고 있는 facts로만 말해라. "
+        "**주차·혼잡·무료·영업시간·반려동물 허용 같은 시설·운영 속성은 facts에 없으면 절대 지어내지 마라(단정 금지).** "
         "'최근 실거래'는 국토부 실데이터이니 그대로 한 번 언급해도 좋다(그 외 금액·개수 단정 금지)."
     )
     return system, user
@@ -210,7 +236,7 @@ def _facts_used(ctx: dict) -> list[dict]:
     commute = _transit_fact(reg, fin.get("household"))
     if commute:
         out.append({"type": "통근(ODsay)", "value": commute})
-    trade = _trade_fact(reg.get("name") or "", ctx.get("branch") or "")
+    trade = _trade_fact(reg.get("name") or "", ctx.get("branch") or "", _budget_cap(ctx, reg))
     if trade:
         out.append({"type": "실거래(국토부)", "value": trade})
     jr = reg.get("jeonseRatio")  # 전세 후보면 Region에 부착됨(표본<5면 없음)

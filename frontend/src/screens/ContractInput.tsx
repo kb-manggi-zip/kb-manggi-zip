@@ -61,9 +61,9 @@ export default function ContractInput() {
   const [preferredArea, setPreferredArea] = useState<string>(state.contract?.preferredArea || '');
   const [note, setNote] = useState<string>('');
   const [interp, setInterp] = useState<ClarifyResult | null>(null);
-  // 확정된 자유입력 누적(반영한 내용). 각 항목: {말한 것, 해석 신호들}
-  const [reflected, setReflected] = useState<{ text: string; signals: string[] }[]>(
-    state.contract?.note ? [{ text: state.contract.note, signals: [] }] : []
+  // 확정된 자유입력 누적(반영한 내용). 각 항목: {말한 것, 해석 신호, 적용 boost}
+  const [reflected, setReflected] = useState<{ text: string; signals: string[]; adjust: Record<string, number> }[]>(
+    state.contract?.note ? [{ text: state.contract.note, signals: [], adjust: state.contract.noteAdjust ?? {} }] : []
   );
   const [annualIncome, setAnnualIncome] = useState(state.finance?.annualIncome || 0);
   const [ownCapital, setOwnCapital] = useState(state.finance?.ownCapital || 0);
@@ -108,6 +108,11 @@ export default function ContractInput() {
 
   function next() {
     if (stepIdx < steps.length - 1) { setStepIdx(i => i + 1); return; }
+    // 확정된(HITL) 조정들만 축별로 합성 → 랭킹에 실릴 boost. 미확정 입력은 미반영.
+    const noteAdjust = reflected.reduce((acc, r) => {
+      for (const [k, v] of Object.entries(r.adjust)) acc[k] = (acc[k] ?? 1) * v;
+      return acc;
+    }, {} as Record<string, number>);
     dispatch({
       type: 'SET_CONTRACT',
       contract: {
@@ -119,6 +124,7 @@ export default function ContractInput() {
         housingType,
         preferredArea,
         note: [...reflected.map(r => r.text), note.trim()].filter(Boolean).join(' '),
+        noteAdjust,
       },
     });
     dispatch({
@@ -232,13 +238,21 @@ export default function ContractInput() {
                   <div className="flex items-start gap-2">
                     <span className="w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold shrink-0"
                       style={{ background: COLORS.KB_YELLOW, color: COLORS.TEXT }}>AI</span>
-                    <p className="text-sm leading-snug" style={{ color: COLORS.TEXT }}>
-                      {(interp.conflicts?.length ?? 0) > 0
-                        ? '입력이 서로 상충돼요 — 어느 쪽인지 정해 주세요.'
-                        : (interp.noteSignals?.length ?? 0) > 0
-                          ? '이렇게 이해했어요 — 동네 추천에 반영할까요?'
-                          : '입력을 확인했어요. 이대로 반영할까요?'}
-                    </p>
+                    <div className="space-y-1">
+                      <p className="text-sm leading-snug" style={{ color: COLORS.TEXT }}>
+                        {(interp.conflicts?.length ?? 0) > 0
+                          ? '입력이 서로 상충돼요 — 어느 쪽인지 정해 주세요.'
+                          : (interp.noteSignals?.length ?? 0) > 0
+                            ? '이렇게 이해했어요 — 동네 추천에 반영할까요?'
+                            : '입력을 확인했어요. 이대로 반영할까요?'}
+                      </p>
+                      {interp.held && (
+                        <span className="inline-block text-[11px] px-2 py-0.5 rounded-full"
+                          style={{ background: '#00000010', color: COLORS.SUB }}>
+                          확인 대기 · 정할 때까지 동네 추천에 반영하지 않아요
+                        </span>
+                      )}
+                    </div>
                   </div>
                   {/* 충돌 없을 때만 조정 칩 표시(상충 입력은 상쇄값 노출 금지) */}
                   {(interp.conflicts?.length ?? 0) === 0 && (interp.noteSignals ?? []).length > 0 && (
@@ -262,7 +276,7 @@ export default function ContractInput() {
                       </button>
                       <button onClick={() => {
                         api.hitl('applied', interp?.noteSignals ?? [], note.trim());
-                        setReflected(r => [...r, { text: note.trim(), signals: interp?.noteSignals ?? [] }]);
+                        setReflected(r => [...r, { text: note.trim(), signals: interp?.noteSignals ?? [], adjust: interp?.weightAdjust ?? {} }]);
                         setNote(''); setInterp(null);
                       }}
                         className="flex-1 text-xs font-semibold py-2 rounded-xl border"
@@ -274,7 +288,7 @@ export default function ContractInput() {
                     <div className="flex gap-2 pl-8 pt-0.5">
                       <button onClick={() => {
                         api.hitl('applied', interp?.noteSignals ?? [], note.trim());
-                        setReflected(r => [...r, { text: note.trim(), signals: interp?.noteSignals ?? [] }]);
+                        setReflected(r => [...r, { text: note.trim(), signals: interp?.noteSignals ?? [], adjust: interp?.weightAdjust ?? {} }]);
                         setNote(''); setInterp(null);
                       }}
                         className="flex-1 text-xs font-semibold py-2 rounded-xl"

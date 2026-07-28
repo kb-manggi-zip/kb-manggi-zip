@@ -15,6 +15,7 @@ export interface ContractInfo {
   housingType?: HousingType; // HUG 보증료 요율만 좌우(세금·대출은 둘 다 주택 동일). 기본 아파트
   preferredArea?: string; // 선호지역 구명(예 '마포구') — 동네 후보를 그 구에서 우선. 빈값=전체
   note?: string; // 문진 말미 자유입력(선택) — 명확화 노드가 세그먼트·우선순위 축으로 제약 해석
+  noteAdjust?: Record<string, number>; // HITL 확정된 축별 배수(자연어 해석 확정분) — 있으면 랭킹이 이걸 씀
 }
 
 export interface FinanceInfo {
@@ -73,6 +74,7 @@ export interface Region {
   score?: number;        // 개인화 스코어(통계근거 가중합)
   scoreReasons?: string[]; // 왜 이 순위
   jeonseRatio?: JeonseRatio; // 전세 후보일 때 전세가율 리스크 지표(표본<5면 없음)
+  sigunguCode?: string;  // 구 단위 상권/통근 폴백용(내부)
 }
 
 export interface Scene {
@@ -133,6 +135,8 @@ export interface DraftNoticeResponse {
 // 명확화(판단 노드) 결과 — 자연어/폼값을 제약된 축으로 해석 + 모순 되묻기(닫힌 루프)
 export interface ClarifyResult {
   persona: string;         // 확정 세그먼트 라벨
+  weightAdjust?: Record<string, number>; // 이 입력의 적용 boost(HITL 확정 시 랭킹에 실림)
+  held?: boolean;          // 상충 미해결 → 자동 반영 보류('확인 대기'). 확정 전 랭킹 미반영
   priorities: string[];    // 우선순위 축 라벨 순서
   conflicts?: string[];    // 감지된 모순(되묻기)
   questions?: string[];    // 되물을 질문
@@ -144,7 +148,8 @@ export interface PersonaProfile {
   segment: string;
   headline: string;
   workplace?: string;
-  weights: Record<string, number>;
+  weights: Record<string, number>;         // 반영 후(after)
+  baseWeights?: Record<string, number>;     // 가구 기본(before) — before→after 대비(B4)
   weightBasis: string;
   consumption: string[];
   consumptionSignals?: { label: string; source: '세그먼트' | '실측' | '진술'; reason?: string }[];
@@ -163,6 +168,14 @@ export interface SpendAnalysis {
   synthetic: boolean;
 }
 
+// ⑥ 다음 액션 — 자격 기반 정책대출 차액(버팀목/디딤돌)
+export interface NextAction {
+  headline: string;
+  detail: string;
+  annualSaving: number;  // 연 이자 절감액(원). 0=자격 미해당(요건 확인 안내)
+  eligible: boolean;
+}
+
 // 만기 결정 리포트 — 최종 산출물(①상황 ②채점 ③동네 ④하루 ⑤지출 ⑥액션)
 export interface DecisionReport {
   persona: PersonaProfile;
@@ -173,6 +186,7 @@ export interface DecisionReport {
   dayBrief: string;
   spend?: SpendAnalysis;
   feasibility: string;
+  nextAction?: NextAction;  // ⑥ 자격 기반 차액
   dday: number;
   noticeDeadline: string;
 }

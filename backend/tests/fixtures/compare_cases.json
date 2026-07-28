@@ -22,7 +22,7 @@
         "branches": [
           {
             "branch": "갱신",
-            "headline": "보증금 2억 1,000만으로 그대로",
+            "headline": "보증금 2억 → 2억 1,000만 (합의 인상 시)",
             "depositOrPrice": 210000000,
             "loanAmount": 10000000,
             "oneTimeCost": 0,
@@ -127,7 +127,7 @@
         "branches": [
           {
             "branch": "갱신",
-            "headline": "보증금 3억 3,600만으로 그대로",
+            "headline": "보증금 3억 2,000만 → 3억 3,600만 (합의 인상 시)",
             "depositOrPrice": 336000000,
             "loanAmount": 16000000,
             "oneTimeCost": 0,
@@ -336,7 +336,7 @@
         "branches": [
           {
             "branch": "갱신",
-            "headline": "보증금 2억 6,250만으로 그대로",
+            "headline": "보증금 2억 5,000만 → 2억 6,250만 (합의 인상 시)",
             "depositOrPrice": 262500000,
             "loanAmount": 12500000,
             "oneTimeCost": 0,
@@ -457,9 +457,11 @@
               "계약서 특약 확인"
             ],
             "basis": [
+              "통보기한 경과 → 동일 조건 갱신 원칙(주임법 §6)",
               "법정 상한 5%",
               "HUG 공시 요율"
             ],
+            "uncertainty": "통보기한이 지나 임대인이 통보하지 않았다면 동일 조건 묵시적 갱신(인상 0%)이 원칙이에요. 아래 금액은 합의 인상 시 5% 상한 기준입니다.",
             "feature": "가장 가볍고 익숙함"
           },
           {
@@ -547,7 +549,7 @@
         "branches": [
           {
             "branch": "갱신",
-            "headline": "보증금 2억 1,000만으로 그대로",
+            "headline": "보증금 2억 → 2억 1,000만 (합의 인상 시)",
             "depositOrPrice": 210000000,
             "loanAmount": 10000000,
             "oneTimeCost": 0,

@@ -5,6 +5,7 @@ import { MobileShell, JourneyHeader, BackBtn, Disclaimer, Accordion } from '../c
 import AiBriefing from '../components/AiBriefing';
 import { api, briefings, personaIdFor } from '../api/client';
 import { formatAmount } from '../utils/format';
+import { kbLandUrl } from '../utils/external';
 import type { Region, PersonaProfile, ClarifyResult } from '../api/types';
 
 export default function RegionList() {
@@ -21,7 +22,7 @@ export default function RegionList() {
   useEffect(() => {
     if (!selectedBranch || !comparison) return;
     const budget = comparison.branches.find(b => b.branch === selectedBranch)?.depositOrPrice || 0;
-    api.regions(selectedBranch, budget, state.contract?.housingType, state.contract?.preferredArea, state.finance?.household, applyNote ? note : '', personaIdFor(state.contract, state.finance)).then(setRegions);
+    api.regions(selectedBranch, budget, state.contract?.housingType, state.contract?.preferredArea, state.finance?.household, applyNote ? note : '', personaIdFor(state.contract, state.finance), applyNote ? state.contract?.noteAdjust : undefined).then(setRegions);
   }, [selectedBranch, comparison, state.contract?.housingType, state.contract?.preferredArea, state.finance?.household, note, applyNote]);
 
   // 개인화 프로필 카드 — 확정 여부에 따라 note를 넣거나 뺀 계약으로 조합(가중치가 확정에 반응).
@@ -45,6 +46,8 @@ export default function RegionList() {
   const color = BRANCH_COLORS[selectedBranch];
   const icon = BRANCH_ICONS[selectedBranch];
   const briefText = regions.length > 0 ? briefings.regions(regions[0]) : null;
+  // 재택 등 통근 비중을 낮추기로 '확정'(noteAdjust)한 사용자면 통근을 '참고'로 격하(삭제 아님, G3)
+  const deemphasizeCommute = applyNote && (state.contract?.noteAdjust?.commute ?? 1) < 0.95;
 
   function selectRegion(r: Region) {
     dispatch({ type: 'SELECT_REGION', regionId: r.id, region: r });
@@ -111,7 +114,7 @@ export default function RegionList() {
             </p>
           )}
           {regions.map(r => (
-            <RegionCard key={r.id} region={r} color={color} onSelect={() => selectRegion(r)} />
+            <RegionCard key={r.id} region={r} color={color} onSelect={() => selectRegion(r)} deemphasizeCommute={deemphasizeCommute} />
           ))}
         </div>
 
@@ -132,6 +135,8 @@ function bandStyle(band: string): React.CSSProperties {
 const AXIS_LABEL: Record<string, string> = { commute: '통근', consumption: '생활·소비', budget: '예산', preference: '선호지역' };
 function PersonaCardView({ persona, color }: { persona: PersonaProfile; color: string }) {
   const weights = Object.entries(persona.weights).sort((a, b) => b[1] - a[1]);
+  const base = persona.baseWeights ?? {};
+  const adjusted = weights.some(([k, v]) => Math.abs(v - (base[k] ?? v)) > 0.005);  // 자유입력이 가중치를 바꿨나
   const personal = (persona.consumptionSignals ?? []).filter(s => s.source !== '세그먼트');  // 실측·진술
   const segment = (persona.consumptionSignals ?? []).filter(s => s.source === '세그먼트');
   return (
@@ -155,18 +160,35 @@ function PersonaCardView({ persona, color }: { persona: PersonaProfile; color: s
 
       {/* 추천 기준 보기 — 세그먼트 가중치·근거는 접어둔다('당신은'이 아니라 '이 세그먼트는') */}
       <Accordion title="추천 기준 보기">
-        <p className="text-[11px] pb-1">이 세그먼트는 동네를 볼 때 아래 순서로 봐요. 자유입력을 반영하면 여기 가중치가 함께 조정돼요.</p>
+        <p className="text-[11px] pb-1">
+          이 세그먼트는 동네를 볼 때 아래 순서로 봐요. 자유입력을 반영하면 여기 가중치가 함께 조정돼요.
+          {adjusted && <span style={{ color }}> 회색 눈금 = 기본, 막대 = 반영 후.</span>}
+        </p>
         <div className="space-y-1 py-1">
-          {weights.map(([k, v]) => (
-            <div key={k} className="flex items-center gap-2">
-              <span className="text-xs w-14 shrink-0 text-muted-foreground">{AXIS_LABEL[k] ?? k}</span>
-              <div className="flex-1 h-2 rounded-full overflow-hidden" style={{ background: '#0000000d' }}>
-                <div className="h-full rounded-full" style={{ width: `${Math.round(v * 100)}%`, background: color }} />
+          {weights.map(([k, v]) => {
+            const b = base[k] ?? v;
+            const changed = Math.abs(v - b) > 0.005;
+            return (
+              <div key={k} className="flex items-center gap-2">
+                <span className="text-xs w-14 shrink-0 text-muted-foreground">{AXIS_LABEL[k] ?? k}</span>
+                <div className="relative flex-1 h-2 rounded-full overflow-hidden" style={{ background: '#0000000d' }}>
+                  <div className="h-full rounded-full" style={{ width: `${Math.round(v * 100)}%`, background: color }} />
+                  {/* 기본(before) 위치 눈금 — 반영으로 바뀐 축만 표시 */}
+                  {adjusted && changed && (
+                    <div className="absolute top-0 h-full" style={{ left: `${Math.round(b * 100)}%`, width: 2, background: COLORS.SUB, opacity: 0.55 }} />
+                  )}
+                </div>
+                <span className="text-xs w-16 text-right tabular-nums text-muted-foreground">
+                  {changed ? <span style={{ color }}>{Math.round(b * 100)}→{Math.round(v * 100)}%</span> : `${Math.round(v * 100)}%`}
+                </span>
               </div>
-              <span className="text-xs w-9 text-right tabular-nums text-muted-foreground">{Math.round(v * 100)}%</span>
-            </div>
-          ))}
+            );
+          })}
         </div>
+        {/* 소비축 적합도 프레임 — '취향 추론'이 아니라 '자주 가는 곳이 가까운 동네'(G4) */}
+        <p className="text-[11px] leading-snug pt-1" style={{ color: COLORS.SUB }}>
+          · 생활·소비: 지출 내역은 자주 가는 곳의 기록이라, 그곳이 가까운 동네를 우선해요
+        </p>
         <p className="text-[11px] leading-snug">근거: {persona.weightBasis}</p>
         {segment.length > 0 && (
           <p className="text-[11px] pt-1">이 세그먼트 소비 성향: {segment.map(s => s.label).join(' · ')}</p>
@@ -237,12 +259,15 @@ function ClarifyBanner({
   );
 }
 
-function RegionCard({ region, color, onSelect }: { region: Region; color: string; onSelect: () => void }) {
+function RegionCard({ region, color, onSelect, deemphasizeCommute = false }: { region: Region; color: string; onSelect: () => void; deemphasizeCommute?: boolean }) {
   return (
+    <div
+      className="bg-card rounded-2xl border border-border p-4 transition-all"
+      style={{ boxShadow: '0 2px 8px rgba(0,0,0,0.06)' }}
+    >
     <button
       onClick={onSelect}
-      className="w-full text-left bg-card rounded-2xl border border-border p-4 space-y-3 transition-all active:scale-[0.98]"
-      style={{ boxShadow: '0 2px 8px rgba(0,0,0,0.06)' }}
+      className="w-full text-left space-y-3 active:scale-[0.98] transition-transform"
     >
       <div className="flex items-start justify-between">
         <div>
@@ -260,7 +285,8 @@ function RegionCard({ region, color, onSelect }: { region: Region; color: string
       </div>
       {/* 특징 한 줄 — 스코어 근거(통근) + region_facts(태그). 전부 실측/facts 값 */}
       {(() => {
-        const commute = (region.scoreReasons ?? []).map(r => (r.match(/통근 \d+분/) || [])[0]).find(Boolean);
+        let commute = (region.scoreReasons ?? []).map(r => (r.match(/통근 \d+분/) || [])[0]).find(Boolean);
+        if (commute && deemphasizeCommute) commute = `${commute} (참고)`;  // 재택 확정 → 통근 격하(G3)
         const feature = [...region.tags, commute].filter(Boolean).slice(0, 3).join(' · ');
         return feature ? <p className="text-xs" style={{ color: COLORS.SUB }}>{feature}</p> : null;
       })()}
@@ -280,7 +306,7 @@ function RegionCard({ region, color, onSelect }: { region: Region; color: string
         <div className="text-xs space-y-0.5 pt-1" style={{ color: COLORS.SUB }}>
           <span className="font-semibold" style={{ color }}>왜 추천?</span>
           {region.scoreReasons.map((r, i) => (
-            <div key={i}>· {r}</div>
+            <div key={i}>· {deemphasizeCommute && r.startsWith('통근') ? `${r} — 재택 반영, 참고용` : r}</div>
           ))}
         </div>
       )}
@@ -289,5 +315,17 @@ function RegionCard({ region, color, onSelect }: { region: Region; color: string
         <span className="text-xs font-semibold" style={{ color }}>이 동네 하루 보기 →</span>
       </div>
     </button>
+      {/* 실매물 이어보기 — 발품을 대체하지 않고 좁혀서 잇는다(외부 링크, AI 큐레이션 아님) */}
+      <a
+        href={kbLandUrl(region.name)}
+        target="_blank"
+        rel="noopener noreferrer"
+        onClick={e => e.stopPropagation()}
+        className="mt-3 flex items-center justify-center gap-1 text-xs font-medium py-2 rounded-xl border"
+        style={{ borderColor: color + '55', color }}
+      >
+        실매물은 KB부동산에서 이어보세요 →
+      </a>
+    </div>
   );
 }

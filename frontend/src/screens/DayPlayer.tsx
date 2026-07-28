@@ -36,7 +36,11 @@ export default function DayPlayer() {
       setMonthlyCost(r.monthlyCost);
     });
     // '이 동네에서의 하루' 개인화 발품 내레이션(소비 프로필 그라운딩)
-    api.dayLifestyle(selectedRegion, selectedBranch, finance).then(setLifestyle);
+    // budget = 고른 갈래 예산 → 발품 실거래를 예산 이하에서 선정(G2)
+    // wfh = 통근 비중을 낮추기로 확정(재택 등)한 사용자 → 발품에서 통근 격하(G3)
+    const branchBudget = comparison?.branches.find(b => b.branch === selectedBranch)?.depositOrPrice;
+    const wfh = (state.contract?.noteAdjust?.commute ?? 1) < 0.95;
+    api.dayLifestyle(selectedRegion, selectedBranch, finance, branchBudget, wfh).then(setLifestyle);
     // 1초 전환 카드
     const t = setTimeout(() => setShowIntro(false), 1500);
     return () => clearTimeout(t);
@@ -178,6 +182,10 @@ export default function DayPlayer() {
               <div className="bg-black/60 rounded-2xl p-4" style={{ backdropFilter: 'blur(8px)' }}>
                 <p className="text-white/70 text-xs mb-1">💬 이 동네에서의 당신</p>
                 <p className="text-white text-sm leading-relaxed">{lifestyle}</p>
+                {/* 소비 계보 — narrator에 실제 주입되는 건 '연령대 세그먼트 소비 성향'(카드소비 근사). 실측/진술 아님 */}
+                <p className="text-white/40 text-[11px] mt-2 pt-2 border-t border-white/10">
+                  이 하루의 톤: 연령대 세그먼트 소비 성향 + 동네 실데이터(통근·상권·실거래) 반영
+                </p>
               </div>
             )}
             <div className="bg-black/60 rounded-2xl p-4" style={{ backdropFilter: 'blur(8px)' }}>

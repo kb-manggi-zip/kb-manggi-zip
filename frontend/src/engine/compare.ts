@@ -117,9 +117,14 @@ export function compare(contract: ContractInfo, finance: FinanceInfo): CompareRe
     : newMonthly + renewalGuarMonthly;
   const monthlyToDeposit = type === '월세' ? Math.round(monthlyRent * 12 / renewal.conversionRate) : 0;
 
+  // 통보기한 경과 → 동일 조건 묵시적 갱신(인상 0%) 원칙(주임법 §6). compare.py와 오차 0 유지.
+  const noticePassed = noticeDaysLeft < 0;
+  const renewalHeadline = type === '전세'
+    ? (newDeposit !== deposit ? `보증금 ${formatAmt(deposit)} → ${formatAmt(newDeposit)} (합의 인상 시)` : `보증금 ${formatAmt(deposit)} 그대로`)
+    : `월세 ${Math.round(newMonthly / 10000)}만으로 연장`;
   const renewalBranch: BranchResult = {
     branch: '갱신',
-    headline: type === '전세' ? `보증금 ${formatAmt(newDeposit)}으로 그대로` : `월세 ${Math.round(newMonthly / 10000)}만으로 연장`,
+    headline: renewalHeadline,
     depositOrPrice: newDeposit,
     loanAmount: depositGap,
     oneTimeCost: 0,
@@ -127,10 +132,12 @@ export function compare(contract: ContractInfo, finance: FinanceInfo): CompareRe
     monthlyBurden: renewalMonthlyBurden,
     risks: ['보증금 반환 위험 지속', renewalUsed === '사용' ? '법정 갱신권 이미 사용' : '임대인 사정에 따라 거절 가능'],
     cares: [`반환보증 점검 (+${formatAmt(renewalGuarMonthly)}/월)`, '계약서 특약 확인'],
-    basis: ['법정 상한 5%', 'HUG 공시 요율'],
-    uncertainty: renewalUsed === '모름'
-      ? '갱신권 미사용 시 5% 상한 적용 / 이미 사용 시 협의 필요'
-      : renewalUsed === '사용' ? '이미 사용해 법정 갱신은 어려울 수 있어요' : undefined,
+    basis: noticePassed ? ['통보기한 경과 → 동일 조건 갱신 원칙(주임법 §6)', '법정 상한 5%', 'HUG 공시 요율'] : ['법정 상한 5%', 'HUG 공시 요율'],
+    uncertainty: noticePassed
+      ? '통보기한이 지나 임대인이 통보하지 않았다면 동일 조건 묵시적 갱신(인상 0%)이 원칙이에요. 아래 금액은 합의 인상 시 5% 상한 기준입니다.'
+      : renewalUsed === '모름'
+        ? '갱신권 미사용 시 5% 상한 적용 / 이미 사용 시 협의 필요'
+        : renewalUsed === '사용' ? '이미 사용해 법정 갱신은 어려울 수 있어요' : undefined,
     feature: '가장 가볍고 익숙함',
   };
 

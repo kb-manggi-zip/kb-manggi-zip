@@ -104,6 +104,7 @@ def aggregate_to_regions(
         monthly_mid = int(median(sorted(x["monthly"] for x in items))) if monthly else None
         e = enrich.get(umd, {})
         jr = jeonse_ratio_tool.jeonse_ratio(mid, umd) if want_ratio else None  # 표본<5면 None
+        sigungu = items[0].get("sigungu_code") if items else None
         regions.append(
             Region(
                 id=e.get("id", umd),
@@ -117,6 +118,7 @@ def aggregate_to_regions(
                 lng=e.get("lng", 0.0),
                 branch=branch,
                 jeonseRatio=JeonseRatio(**jr) if jr else None,
+                sigunguCode=sigungu,
             )
         )
 

@@ -165,12 +165,19 @@ def _llm_sql(question: str) -> Optional[str]:
 
 
 # ── 최종 분석 ────────────────────────────────────────────────────────
+_SPEND_CACHE: dict = {}
+
+
 def analyze_spending(
     persona_id: str, *, persona_ctx: Optional[str] = None, branch: str = "", db_path: Optional[str] = None
 ) -> Optional[dict]:
     """지출 집계(표준 5종) + (llm_active 시) 동적 질문/SQL. mydata 없으면 None(리포트는 ①~④+⑥로 완성)."""
     if not (db_path or MYDATA_DB.exists()):
         return None
+    # 같은 입력 재계산(특히 동적 T2SQL LLM 호출) 방지 — 리포트 재조회 시 즉시.
+    ckey = (persona_id, persona_ctx, branch, settings.llm_active, db_path)
+    if ckey in _SPEND_CACHE:
+        return dict(_SPEND_CACHE[ckey])
     std = standard_aggregates(persona_id, db_path=db_path)
     dynamic: list[dict] = []
     if settings.llm_active and persona_ctx:
@@ -200,4 +207,8 @@ def analyze_spending(
                 },
             )
             dynamic.append(entry)
-    return {**std, "dynamicQueries": dynamic, "synthetic": True}
+    out = {**std, "dynamicQueries": dynamic, "synthetic": True}
+    if len(_SPEND_CACHE) >= 256:
+        _SPEND_CACHE.clear()
+    _SPEND_CACHE[ckey] = out
+    return dict(out)

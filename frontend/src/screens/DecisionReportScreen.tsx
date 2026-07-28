@@ -3,6 +3,7 @@ import { useApp } from '../store';
 import { COLORS, BRANCH_COLORS, BRANCH_ICONS } from '../theme';
 import { MobileShell, BackBtn, JourneyHeader } from '../components/ui';
 import { formatAmount, ddayText } from '../utils/format';
+import { kbLandUrl } from '../utils/external';
 import { api } from '../api/client';
 import type { DecisionReport } from '../api/types';
 
@@ -99,7 +100,7 @@ export default function DecisionReportScreen() {
               </div>
             </Section>
 
-            {rep.topRegion && (
+            {rep.topRegion ? (
               <Section n="③" title="왜 이 동네" open={!!open['③']} onToggle={() => toggle('③')}>
                 <p className="text-sm font-semibold">{rep.topRegion.name} · 중위 {formatAmount(rep.topRegion.midPrice)}</p>
                 {(rep.topRegion.scoreReasons ?? []).map((r, i) => <p key={i} className="text-xs text-muted-foreground">· {r}</p>)}
@@ -107,10 +108,17 @@ export default function DecisionReportScreen() {
                   <p className="text-xs" style={{ color: COLORS.SUB }}>전세가율 {Math.round(rep.topRegion.jeonseRatio.ratio * 100)}% — {rep.topRegion.jeonseRatio.label}</p>
                 )}
               </Section>
+            ) : selectedBranch === '갱신' && (
+              // 갱신은 새 동네 추천이 없음 → 현재 동네 유지를 명시(빈 구간 방지, B7)
+              <Section n="③" title="현재 동네 유지" open={!!open['③']} onToggle={() => toggle('③')}>
+                <p className="text-sm leading-relaxed text-muted-foreground">
+                  갱신은 지금 동네를 그대로 이어가는 선택이에요. 새로 추천할 동네도, 발품도 없어요.
+                </p>
+              </Section>
             )}
 
             {rep.dayBrief && (
-              <Section n="④" title="그 동네의 하루" open={!!open['④']} onToggle={() => toggle('④')}>
+              <Section n="④" title={selectedBranch === '갱신' ? '유지하는 하루' : '그 동네의 하루'} open={!!open['④']} onToggle={() => toggle('④')}>
                 <p className="text-sm leading-relaxed text-muted-foreground">{rep.dayBrief}</p>
               </Section>
             )}
@@ -134,7 +142,30 @@ export default function DecisionReportScreen() {
             )}
 
             <Section n="⑥" title="다음 액션" open={!!open['⑥']} onToggle={() => toggle('⑥')}>
+              {rep.nextAction && (
+                <div className="mb-2 rounded-xl p-3" style={{ background: COLORS.YELLOW_SURFACE }}>
+                  <p className="text-sm font-semibold" style={{ color: COLORS.TEXT }}>
+                    {rep.nextAction.eligible ? '💡 ' : '🔎 '}{rep.nextAction.headline}
+                  </p>
+                  <p className="text-xs mt-0.5 text-muted-foreground">{rep.nextAction.detail}</p>
+                  {rep.nextAction.eligible && rep.nextAction.annualSaving > 0 && (
+                    <p className="text-sm font-bold mt-1" style={{ color: color }}>연 약 {man(rep.nextAction.annualSaving)} 절감</p>
+                  )}
+                </div>
+              )}
               <p className="text-sm">갱신 통보 기한 <b>{ddayText(rep.dday)}</b> · 기한일 {rep.noticeDeadline}</p>
+              {/* 이사·매매면 그 동네 실매물을 KB부동산에서 이어보기(외부 링크·AI 큐레이션 아님) */}
+              {rep.topRegion && (
+                <a
+                  href={kbLandUrl(rep.topRegion.name)}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="mt-2 flex items-center justify-center gap-1 text-xs font-medium py-2 rounded-xl border"
+                  style={{ borderColor: color + '55', color }}
+                >
+                  {rep.topRegion.name} 실매물은 KB부동산에서 이어보세요 →
+                </a>
+              )}
             </Section>
           </>
         )}

@@ -91,20 +91,37 @@ def compute_compare(
     )
     monthly_to_deposit = js_round(monthly_rent * 12 / renewal.conversionRate) if ctype == "월세" else 0
 
-    if renewal_used == "모름":
+    # 통보기한 경과(days_left<0) → 임대인 미통보 시 '동일 조건 묵시적 갱신'(인상 0%)이 원칙(주임법 §6).
+    notice_passed = days_left < 0
+    if notice_passed:
+        uncertainty = (
+            "통보기한이 지나 임대인이 통보하지 않았다면 동일 조건 묵시적 갱신(인상 0%)이 원칙이에요. "
+            "아래 금액은 합의 인상 시 5% 상한 기준입니다."
+        )
+    elif renewal_used == "모름":
         uncertainty = "갱신권 미사용 시 5% 상한 적용 / 이미 사용 시 협의 필요"
     elif renewal_used == "사용":
         uncertainty = "이미 사용해 법정 갱신은 어려울 수 있어요"
     else:
         uncertainty = None
 
+    # 헤드라인: 인상 반영 시 금액이 오르는데 '그대로'라고 하지 않도록 분기(B5).
+    if ctype == "전세":
+        renewal_headline = (
+            f"보증금 {format_amt(deposit)} → {format_amt(new_deposit)} (합의 인상 시)"
+            if new_deposit != deposit
+            else f"보증금 {format_amt(deposit)} 그대로"
+        )
+    else:
+        renewal_headline = f"월세 {js_round(new_monthly / 10000)}만으로 연장"
+
+    renewal_basis = ["법정 상한 5%", "HUG 공시 요율"]
+    if notice_passed:
+        renewal_basis = ["통보기한 경과 → 동일 조건 갱신 원칙(주임법 §6)"] + renewal_basis
+
     renewal_branch = BranchResult(
         branch="갱신",
-        headline=(
-            f"보증금 {format_amt(new_deposit)}으로 그대로"
-            if ctype == "전세"
-            else f"월세 {js_round(new_monthly / 10000)}만으로 연장"
-        ),
+        headline=renewal_headline,
         depositOrPrice=new_deposit,
         loanAmount=deposit_gap,
         oneTimeCost=0,
@@ -115,7 +132,7 @@ def compute_compare(
             "법정 갱신권 이미 사용" if renewal_used == "사용" else "임대인 사정에 따라 거절 가능",
         ],
         cares=[f"반환보증 점검 (+{format_amt(renewal_guar_monthly)}/월)", "계약서 특약 확인"],
-        basis=["법정 상한 5%", "HUG 공시 요율"],
+        basis=renewal_basis,
         uncertainty=uncertainty,
         feature="가장 가볍고 익숙함",
     )

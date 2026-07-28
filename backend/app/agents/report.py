@@ -12,6 +12,7 @@ from ..schemas import (
     ContractInfo,
     DecisionReport,
     FinanceInfo,
+    NextAction,
     Region,
     SpendAnalysis,
 )
@@ -20,6 +21,76 @@ from ..schemas import (
 def _man(won: int) -> str:
     """원 → '만원' 반올림 표기."""
     return f"{round(won / 10_000):,}만원"
+
+
+def _next_action(branch: Branch, contract: dict, finance: dict, selected) -> NextAction:
+    """⑥ 자격 기반 차액 — compute_compare와 같은 정책대출 자격 판정으로 이자 절감액을 계산.
+
+    전세(갱신/이사): 버팀목 청년 vs KB 전세대출 금리 차 × 대출액.
+    매매: 디딤돌 vs KB 주담대 금리 차 × 정책대출 인정액(혼합분).
+    자격 미해당이면 annualSaving=0 + 요건 확인 안내. (모두 rules 값, 창작 없음)
+    """
+    from ..core.rules import read_yaml
+    from ..tools.policy_loans import buttimok_youth_eligibility, didimdol_eligibility
+
+    lend = read_yaml("lending_regulated.yaml")
+    loan = selected.loanAmount or 0
+
+    if branch in ("갱신", "이사"):
+        kb_rate = lend["rates"]["jeonse_kb"]
+        bt = buttimok_youth_eligibility(
+            age=30 if finance.get("under35") else 99,
+            annual_income=finance.get("annualIncome", 0),
+            deposit=contract.get("deposit", 0),
+            net_asset=finance.get("ownCapital", 0),
+        )
+        if bt.eligible and loan > 0 and bt.rate < kb_rate:
+            saving = round(loan * (kb_rate - bt.rate))
+            return NextAction(
+                headline="버팀목 청년 전세대출 자격이면 이자를 아껴요",
+                detail=(
+                    f"KB 전세대출 {kb_rate:.2%} 대신 버팀목 {bt.rate:.2%} 적용 시 "
+                    f"대출 {_man(loan)} 기준 연 약 {_man(saving)} 절감"
+                ),
+                annualSaving=saving,
+                eligible=True,
+            )
+        return NextAction(
+            headline="버팀목 청년 전세대출 자격을 먼저 확인해요",
+            detail="만34세 이하·소득·보증금 요건을 충족하면 KB 대비 낮은 금리가 적용될 수 있어요. 상담에서 확인해요.",
+            annualSaving=0,
+            eligible=False,
+        )
+
+    # 매매 — 디딤돌 혼합분 이자 경감
+    kb_base = lend["rates"]["kb_mortgage_default"]
+    policy = didimdol_eligibility(
+        annual_income=finance.get("annualIncome", 0),
+        household=finance.get("household"),
+        is_no_house=True,
+        net_asset=finance.get("ownCapital", 0),
+        first_home=(finance.get("firstHome") == "예"),
+        is_metro_regulated=True,
+    )
+    gov_cap = lend["mortgage_cap"]["gov_metro"]
+    policy_amt = min(policy.limit, gov_cap, loan) if policy.eligible else 0
+    if policy.eligible and policy_amt > 0 and policy.rate < kb_base:
+        saving = round(policy_amt * (kb_base - policy.rate))
+        return NextAction(
+            headline="디딤돌 정책대출을 섞으면 이자를 아껴요",
+            detail=(
+                f"KB 주담대 {kb_base:.2%} 대신 디딤돌 {policy.rate:.2%}(최저) 혼합 시 "
+                f"{_man(policy_amt)} 기준 연 약 {_man(saving)} 경감"
+            ),
+            annualSaving=saving,
+            eligible=True,
+        )
+    return NextAction(
+        headline="디딤돌 정책대출 자격을 먼저 확인해요",
+        detail="무주택·소득·자산 요건을 충족하면 낮은 고정금리를 섞을 수 있어요. 상담에서 확인해요.",
+        annualSaving=0,
+        eligible=False,
+    )
 
 
 def persona_id_for(finance: dict, contract: dict) -> str:
@@ -85,6 +156,14 @@ def build_report(
             if ranked:
                 top_region = Region(**ranked[0])
                 day_brief = narrator.lifestyle_fallback({"region": ranked[0], "branch": branch, "finance": finance})
+    else:
+        # 갱신: 새 발품 대신 '현재 동네 유지' 연속성 요약 — 여정에 빈 구간이 안 생기게(B7).
+        area = contract.get("preferredArea") or "지금 사는 동네"
+        move_cost = next((b.oneTimeCost for b in comparison.branches if b.branch == "이사"), 0)
+        day_brief = (
+            f"{area}에서의 익숙한 동선을 그대로 이어가요. 새로 적응할 동네도, 발품도 필요 없어요. "
+            f"이사였다면 들었을 일회성 비용 약 {_man(move_cost)}을(를) 아끼는 셈이에요."
+        )
 
     # ⑤ 지출 실현가능성 — 합성 마이데이터 집계(가드레일 T2SQL/표준). compare와 단방향.
     from . import spend_query
@@ -102,6 +181,7 @@ def build_report(
         dayBrief=day_brief,
         spend=SpendAnalysis(**spend) if spend else None,
         feasibility=feasibility,
+        nextAction=_next_action(branch, contract, finance, selected),
         dday=comparison.dday,
         noticeDeadline=comparison.noticeDeadline,
     )

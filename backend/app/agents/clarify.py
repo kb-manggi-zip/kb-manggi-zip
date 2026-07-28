@@ -61,6 +61,10 @@ _NOTE_MAP: list[tuple[tuple[str, ...], str, dict]] = [
     ),
     (("학교", "학군", "등하교", "등하원"), "자녀 학군 근접 중시 → 선호지역↑", {"preference": 1.3}),
     (("부모님", "부모님 근처", "가족 근처"), "가족 근접 선호 → 선호지역↑", {"preference": 1.3}),
+    # LLM-off 폴백 품질용 확장(방향 명확한 것만)
+    (("지하철", "전철", "역 가까", "역세권"), "대중교통 접근 중시 → 통근 편의↑", {"commute": 1.2}),
+    (("번화가", "시내", "상권 좋", "핫플"), "번화가·상권 선호 → 상권 매치↑", {"consumption": 1.3}),
+    (("한적한 동네", "공원", "산책로", "자연"), "쾌적·정주 환경 선호 → 선호지역↑", {"preference": 1.2}),
 ]
 
 # 자유입력이 특정 가구를 시사하는데 폼 선택과 다르면 모순(되묻기). 창작 아닌 사실 대조.
@@ -137,9 +141,22 @@ def _apply_boost(w: dict, boost: dict) -> dict:
     return {k: round(v / total, 3) for k, v in w.items()}
 
 
-def note_weights(household: Optional[str], note: str) -> dict:
-    """가구 가중치(scoring.weights_for) × 키워드 보정 → 재정규화. **persona/랭킹이 쓰는 결정론 경로.**"""
-    return _apply_boost(scoring.weights_for(household), note_signals(note)["boost"])
+def note_weights(household: Optional[str], note: str, adjust: Optional[dict] = None) -> dict:
+    """가구 가중치 × 보정 → 재정규화. **persona/랭킹이 쓰는 결정론 경로.**
+
+    adjust(=HITL로 확정된 축별 배수)가 있으면 그걸 쓰고(자연어→LLM 해석 확정분까지 반영),
+    없으면 note 키워드로 보정(LLM-off 폴백). 둘 다 결정론.
+
+    단, **미확정 입력에 축 내부 상충(예: 재택+통근)이 있으면 반영 보류**(B1) — 자기상쇄된
+    boost가 조용히 랭킹을 흔드는 걸 막는다. 사용자가 HITL로 확정(adjust 전달)하면 그때 반영.
+    """
+    if adjust:
+        boost = adjust
+    elif note and (_intra_note_contradiction(note) or _household_conflict(household, note)):
+        boost = {}  # 미해결 상충 → 반영 보류(조용한 상쇄 금지). base 가중치 그대로.
+    else:
+        boost = note_signals(note)["boost"]
+    return _apply_boost(scoring.weights_for(household), boost)
 
 
 # ── LLM 경로 (제약된 해석) ────────────────────────────────────────────
@@ -206,6 +223,11 @@ def _household_conflict(household: Optional[str], note: str) -> list[str]:
     return out
 
 
+# 같은 입력 재계산(특히 LLM 재호출) 방지 — /api/persona가 화면마다 clarify를 부르므로 캐시 효과 큼.
+_CLARIFY_CACHE: dict = {}
+_CLARIFY_CACHE_MAX = 512
+
+
 def clarify(contract: dict, finance: dict, note: str = "", prior_notes: Optional[list] = None) -> dict:
     """폼값+자유입력 → ClarifyResult(dict).
 
@@ -215,6 +237,12 @@ def clarify(contract: dict, finance: dict, note: str = "", prior_notes: Optional
     household = finance.get("household") or "1인"
     note = note or contract.get("note") or ""
 
+    # 캐시 조회 (같은 입력 → 같은 결과. LLM 호출도 여기서 스킵)
+    ckey = (note, household, tuple(prior_notes or ()), settings.llm_active)
+    hit = _CLARIFY_CACHE.get(ckey)
+    if hit is not None:
+        return dict(hit)
+
     # 1) 모순 감지 = 항상 결정론 (가구유형 불일치 + 한 입력 내 상충 + 이전 반영과 방향 충돌)
     conflicts = (
         _household_conflict(household, note)
@@ -222,14 +250,17 @@ def clarify(contract: dict, finance: dict, note: str = "", prior_notes: Optional
         + _contradictions(prior_notes or [], note)
     )
 
-    # 2) 신호 라벨 = LLM(제약) 우선, 실패/비활성 시 키워드. (LLM은 '해석'만)
+    # 2) 신호 라벨 + 적용 boost = LLM(축 제약) 우선, 실패/비활성 시 키워드.
     llm = _llm_interpret(note, household, conflicts) if (note and settings.llm_active) else None
-    labels = llm["labels"] if llm is not None else note_signals(note)["labels"]
-    llm_question = llm["question"] if llm is not None else ""
+    if llm is not None:
+        labels, boost, llm_question = llm["labels"], llm["boost"], llm["question"]
+    else:
+        sig = note_signals(note)
+        labels, boost, llm_question = sig["labels"], sig["boost"], ""
 
-    # priorities는 **항상 결정론 keyword 가중치**로 → 화면 우선순위 = 실제 동네 랭킹(persona/scoring과 동일 소스).
-    # LLM weight_adjustments는 _llm_interpret의 '축 제약·창작금지' 게이트로만 쓴다(랭킹은 재현가능해야 하므로 미반영).
-    w = note_weights(household, note)
+    # weightAdjust = 이 입력의 '적용 boost'(축 제약). 사용자가 HITL로 확정하면 이게 랭킹에 실린다(결정론·재현가능).
+    # priorities도 같은 boost로 → 화면 우선순위 = 실제 동네 랭킹.
+    w = _apply_boost(scoring.weights_for(household), boost)
     priorities = [AXIS_LABEL[k] for k, _ in sorted(w.items(), key=lambda kv: -kv[1])]
 
     # 3) 되묻기: 감지는 결정론, 문구만 LLM(감지된 모순이 있을 때만 자연 문장으로 대체)
@@ -239,10 +270,16 @@ def clarify(contract: dict, finance: dict, note: str = "", prior_notes: Optional
             "통근 발품 정확도를 높이려면 주 근무지를 알려주세요 (지금은 가구 유형 기준 대표 직장으로 가정)."
         )
 
-    return {
+    result = {
         "persona": segment_label(household),
+        "weightAdjust": boost,  # 확정 시 랭킹에 실릴 축별 배수(HITL 확정분만 반영)
+        "held": bool(conflicts),  # 상충 미해결 → 자동 반영 보류(UI '확인 대기'). 확정 전엔 랭킹 미반영.
         "priorities": priorities,
         "conflicts": conflicts,
         "questions": questions,
         "noteSignals": labels,
     }
+    if len(_CLARIFY_CACHE) >= _CLARIFY_CACHE_MAX:
+        _CLARIFY_CACHE.clear()
+    _CLARIFY_CACHE[ckey] = result
+    return dict(result)

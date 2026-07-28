@@ -7,6 +7,7 @@ import { PERSONAS } from '../data/personas';
 import { briefings } from '../data/briefings';
 import { RULES } from '../engine/rules';
 import { getSessionId } from './session';
+import { formatAmount } from '../utils/format';
 import type {
   ContractInfo, FinanceInfo, CompareResponse,
   Region, SimulateResponse, ProductsResponse,
@@ -92,26 +93,34 @@ export const api = {
   // 만기 결정 리포트 — 원격이면 백엔드 조립(⑤ 지출=합성 마이데이터 T2SQL), 로컬이면 compare+persona만(⑤ 생략).
   async report(contract: ContractInfo, finance: FinanceInfo, branch: Branch, personaId?: string): Promise<DecisionReport> {
     return localOrRemote(
-      () => ({
-        persona: localPersona(contract, finance),
-        clarify: localClarify(contract, finance),
-        comparison: compare(contract, finance),
-        selectedBranch: branch,
-        dayBrief: '',
-        feasibility: '지출로 본 실현 가능성은 백엔드 연결(합성 마이데이터) 시 제공됩니다.',
-        dday: compare(contract, finance).dday,
-        noticeDeadline: compare(contract, finance).noticeDeadline,
-      }),
+      () => {
+        const cmp = compare(contract, finance);
+        // 갱신: 새 발품 대신 '현재 동네 유지' 연속성 요약(백엔드 report.py와 동일 취지, B7)
+        const moveCost = cmp.branches.find(b => b.branch === '이사')?.oneTimeCost ?? 0;
+        const stayBrief = `${contract.preferredArea || '지금 사는 동네'}에서의 익숙한 동선을 그대로 이어가요. 새로 적응할 동네도, 발품도 필요 없어요. 이사였다면 들었을 일회성 비용 약 ${formatAmount(moveCost)}을(를) 아끼는 셈이에요.`;
+        return {
+          persona: localPersona(contract, finance),
+          clarify: localClarify(contract, finance),
+          comparison: cmp,
+          selectedBranch: branch,
+          dayBrief: branch === '갱신' ? stayBrief : '',
+          feasibility: '지출로 본 실현 가능성은 백엔드 연결(합성 마이데이터) 시 제공됩니다.',
+          dday: cmp.dday,
+          noticeDeadline: cmp.noticeDeadline,
+        };
+      },
       '/api/report',
       { method: 'POST', body: JSON.stringify({ contract, finance, branch, personaId }) }
     );
   },
 
-  async regions(branch: Branch, _budget: number, housingType?: HousingType, preferredArea?: string, household?: string, note?: string, personaId?: string): Promise<Region[]> {
+  async regions(branch: Branch, _budget: number, housingType?: HousingType, preferredArea?: string, household?: string, note?: string, personaId?: string, noteAdjust?: Record<string, number>): Promise<Region[]> {
+    const hasAdjust = noteAdjust && Object.keys(noteAdjust).length > 0;
     const q = (housingType ? `&housingType=${housingType}` : '')
       + (preferredArea ? `&preferredArea=${encodeURIComponent(preferredArea)}` : '')
       + (household ? `&household=${encodeURIComponent(household)}` : '')
       + (note ? `&note=${encodeURIComponent(note)}` : '')
+      + (hasAdjust ? `&adjust=${encodeURIComponent(JSON.stringify(noteAdjust))}` : '')
       + (personaId ? `&personaId=${personaId}` : '');
     return localOrRemote(
       () => branch === '매매' ? REGIONS_BUY : branch === '이사' ? REGIONS_MOVE : REGIONS_MONTHLY,
@@ -141,7 +150,7 @@ export const api = {
   },
 
   // '이 동네에서의 하루' 개인화 발품 내레이션 (agent 모드: 백엔드 LLM+소비프로필 / 로컬: 템플릿)
-  async dayLifestyle(region: Region | null, branch: Branch, finance: FinanceInfo | null): Promise<string> {
+  async dayLifestyle(region: Region | null, branch: Branch, finance: FinanceInfo | null, budget?: number, wfh?: boolean): Promise<string> {
     const regionName = region?.name ?? '이 동네';
     const local = () => briefings.dayPlayer(regionName);
     if (!API_URL) return local();
@@ -149,7 +158,8 @@ export const api = {
       const res = await fetch(`${API_URL}/api/briefing`, {
         method: 'POST',
         headers: apiHeaders(),
-        body: JSON.stringify({ kind: 'dayPlayer', context: { region, regionName, branch, finance } }),
+        // budget = 고른 갈래 예산(발품 실거래를 예산 이하에서 뽑는 캡, G2) / wfh = 재택 확정 시 통근 격하(G3)
+        body: JSON.stringify({ kind: 'dayPlayer', context: { region, regionName, branch, finance, budget, wfh } }),
       });
       if (!res.ok) return local();
       const j = await res.json();
