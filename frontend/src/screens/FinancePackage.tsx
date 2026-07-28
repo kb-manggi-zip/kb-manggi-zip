@@ -9,7 +9,7 @@ import type { ProductsResponse } from '../api/types';
 
 export default function FinancePackage() {
   const { state, dispatch } = useApp();
-  const { selectedBranch, comparison } = state;
+  const { selectedBranch, comparison, prevScreen } = state;
   const [products, setProducts] = useState<ProductsResponse | null>(null);
   const [toastVisible, setToastVisible] = useState(false);
   const [toastMsg, setToastMsg] = useState('');
@@ -37,7 +37,9 @@ export default function FinancePackage() {
 
       {/* 갈래 헤더 */}
       <div className="px-5 py-3 flex items-center gap-2" style={{ background: color + '22', borderBottom: `2px solid ${color}` }}>
-        <BackBtn onClick={() => dispatch({ type: 'NAVIGATE', screen: selectedBranch === '갱신' ? 'SC-08' : 'SC-07' })} />
+        {/* 동네 선택에서 바로 오는 경로(SC-04/05)가 생겨 "항상 SC-07/SC-08에서 왔다"는 가정이 깨짐 —
+            실제 직전 화면(prevScreen)으로 돌아가고, 못 잡을 때만 기존 가정으로 폴백 */}
+        <BackBtn onClick={() => dispatch({ type: 'NAVIGATE', screen: prevScreen ?? (selectedBranch === '갱신' ? 'SC-08' : 'SC-07') })} />
         <span className="text-xl">{icon}</span>
         <h1 className="text-lg font-bold" style={{ color }}>
           {selectedBranch} · KB 금융 패키지

@@ -1,5 +1,6 @@
 import React, { useEffect, useState, useMemo } from 'react';
 import { useApp } from '../store';
+import type { Screen } from '../store';
 import { COLORS, BRANCH_COLORS, BRANCH_ICONS } from '../theme';
 import { MobileShell, DdayBar, BackBtn, Disclaimer, Accordion } from '../components/ui';
 import AiBriefing from '../components/AiBriefing';
@@ -66,9 +67,9 @@ export default function RegionList() {
   const guNames = Array.from(new Set(regions.map(r => (r.name || '').split(' ')[0]).filter(Boolean)));
   const commonGu = guNames.length === 1 ? guNames[0] : null;
 
-  function selectRegion(r: Region) {
+  function selectRegion(r: Region, screen: Screen) {
     dispatch({ type: 'SELECT_REGION', regionId: r.id, region: r });
-    dispatch({ type: 'NAVIGATE', screen: 'SC-07' });
+    dispatch({ type: 'NAVIGATE', screen });
   }
 
   return (
@@ -143,7 +144,9 @@ export default function RegionList() {
             </div>
           )}
           {regions.map(r => (
-            <RegionCard key={r.id} region={r} color={color} onSelect={() => selectRegion(r)}
+            <RegionCard key={r.id} region={r} color={color}
+              onSelect={() => selectRegion(r, 'SC-09')}
+              onExperience={() => selectRegion(r, 'SC-07')}
               deemphasizeCommute={deemphasizeCommute} hiddenReasons={commonReasons} leadSignal={leadSignal} />
           ))}
         </div>
@@ -300,7 +303,7 @@ export function commonGuName(regions: Region[]): string | null {
   return gus.length === 1 ? gus[0] : null;
 }
 
-export function RegionCard({ region, color, onSelect, deemphasizeCommute = false, hiddenReasons = [], subtitle, leadSignal }: { region: Region; color: string; onSelect: () => void; deemphasizeCommute?: boolean; hiddenReasons?: string[]; subtitle?: string; leadSignal?: string }) {
+export function RegionCard({ region, color, onSelect, onExperience, deemphasizeCommute = false, hiddenReasons = [], subtitle, leadSignal }: { region: Region; color: string; onSelect: () => void; onExperience: () => void; deemphasizeCommute?: boolean; hiddenReasons?: string[]; subtitle?: string; leadSignal?: string }) {
   // J4: 상단 공통 안내로 접힌 '구 기준' 이유는 카드에서 제외 → 동별로 다른 값만 남긴다
   const cardReasons = (region.scoreReasons ?? []).filter(r => !hiddenReasons.includes(r));
   // L3: 미니 리포트 요약 1줄 — {소비 신호} 당신에게 — {동네 차별 팩트}. 구 폴백 공통값은 차별 팩트 아님 → 제외.
@@ -320,10 +323,7 @@ export function RegionCard({ region, color, onSelect, deemphasizeCommute = false
       className="bg-card rounded-2xl border border-border p-4 transition-all"
       style={{ boxShadow: '0 2px 8px rgba(0,0,0,0.06)' }}
     >
-    <button
-      onClick={onSelect}
-      className="w-full text-left space-y-3 active:scale-[0.98] transition-transform"
-    >
+    <div className="w-full text-left space-y-3">
       <div className="flex items-start justify-between">
         <div>
           <p className="font-bold">{region.name}</p>
@@ -377,11 +377,22 @@ export function RegionCard({ region, color, onSelect, deemphasizeCommute = false
           ))}
         </div>
       )}
-      <div className="flex items-center justify-between pt-1 border-t border-border">
-        <p className="text-xs text-muted-foreground">하루 살아보기 →</p>
-        <span className="text-xs font-semibold" style={{ color }}>이 동네 하루 보기 →</span>
-      </div>
-    </button>
+      <button
+        onClick={onSelect}
+        className="mt-2 w-full flex items-center justify-center gap-1 text-xs font-semibold py-2 rounded-xl active:scale-[0.98] transition-transform"
+        style={{ background: color, color: '#fff' }}
+      >
+        이 동네로 금융 알아보기 →
+      </button>
+    </div>
+      {/* 하루 체험(elective) — 필수 관문에서 뺀 보조 액션. 형제 요소(버튼 안에 버튼 중첩 불가). */}
+      <button
+        onClick={e => { e.stopPropagation(); onExperience(); }}
+        className="mt-2 w-full flex items-center justify-center gap-1 text-xs font-medium py-2 rounded-xl border"
+        style={{ borderColor: COLORS.BORDER, color: COLORS.SUB, background: COLORS.CARD }}
+      >
+        🕐 이 동네 하루 체험해보기 →
+      </button>
       {/* 실매물 이어보기 — 발품을 대체하지 않고 좁혀서 잇는다(외부 링크, AI 큐레이션 아님) */}
       <a
         href={kbLandUrl(region.name)}

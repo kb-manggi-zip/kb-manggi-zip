@@ -9,6 +9,7 @@ export type Screen =
 
 export interface AppState {
   screen: Screen;
+  prevScreen: Screen | null;   // 직전 화면 — 화면별 "뒤로가기" 하드코딩 대신 실제 이동 경로 기준으로
   contract: ContractInfo | null;
   finance: FinanceInfo | null;
   comparison: CompareResponse | null;
@@ -34,6 +35,7 @@ type Action =
 
 const INITIAL: AppState = {
   screen: 'SC-01',
+  prevScreen: null,
   contract: null,
   finance: null,
   comparison: null,
@@ -47,7 +49,7 @@ const INITIAL: AppState = {
 
 function reducer(state: AppState, action: Action): AppState {
   switch (action.type) {
-    case 'NAVIGATE': return { ...state, screen: action.screen };
+    case 'NAVIGATE': return { ...state, prevScreen: state.screen, screen: action.screen };
     case 'SET_CONTRACT': return { ...state, contract: action.contract };
     case 'SET_FINANCE': return { ...state, finance: action.finance };
     case 'SET_COMPARISON': return { ...state, comparison: action.comparison, briefing: action.briefing ?? null };
