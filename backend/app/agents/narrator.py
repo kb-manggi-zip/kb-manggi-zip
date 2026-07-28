@@ -272,6 +272,11 @@ def narrate_lifestyle(ctx: dict) -> str:
             "traits": profile_for(fin.get("household")).get("traits", []),
         }
     )
-    text = generate(system=system, user=user, fallback=lambda: lifestyle_fallback(ctx))
+    # O2-1: 숫자 verify 활성화 — 생성문의 모든 숫자는 facts 프롬프트(user)에 등장한 값의 부분집합이어야 한다.
+    # (numbers_grounded 실패 시 core.llm.generate가 재생성 2회 → 폴백. 그동안 미전달로 잠들어 있던 검증을 켬)
+    from ..core.verify import _numbers
+
+    allowed_numbers = _numbers(user)
+    text = generate(system=system, user=user, fallback=lambda: lifestyle_fallback(ctx), allowed_numbers=allowed_numbers)
     span_update(output={"narration": text})
     return text
