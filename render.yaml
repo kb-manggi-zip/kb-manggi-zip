@@ -1,0 +1,23 @@
+# Render Blueprint — 백엔드(FastAPI) 무료 배포. 대시보드에서 "New +" → "Blueprint" → 이 레포 선택.
+# ⚠️ 무료 web service는 15분 미사용 시 잠들었다가 다음 요청에 ~30-60초 깨어남(콜드스타트).
+#    심사/시연 중엔 UptimeRobot 등으로 /health 를 5분마다 핑해 깨어있게 유지 권장.
+services:
+  - type: web
+    name: kb-manggi-api
+    runtime: python
+    plan: free
+    rootDir: backend
+    buildCommand: "pip install -r requirements-runtime.txt"
+    startCommand: "uvicorn app.main:app --host 0.0.0.0 --port $PORT"
+    healthCheckPath: /health
+    envVars:
+      - key: PYTHON_VERSION
+        value: "3.12.7"
+      - key: LLM_ENABLED
+        value: "true"                # AI 기능 라이브 (아래 ANTHROPIC_API_KEY 있어야 실제 호출)
+      - key: ANTHROPIC_API_KEY
+        sync: false                  # 대시보드에서 secret으로 입력 (레포에 노출 금지)
+      - key: CORS_ORIGINS
+        sync: false                  # 프론트 Vercel 주소로 설정 (예: https://kb-manggi.vercel.app)
+      # DATABASE_URL 미설정 → 기본 SQLite(임시 파일). 예약 등 쓰기는 재배포 시 유실(데모 OK).
+      # 영속이 필요하면 Render Postgres(무료) 붙이고 DATABASE_URL 추가.
