@@ -26,6 +26,8 @@ export default function CompareTable() {
   }
 
   const { branches, dday, noticeDaysLeft, noticeDeadline, assumptions } = comparison;
+  // 공통 가정은 갈래(branch)와 무관하게 같은 텍스트라 카드 3장에 반복하지 않고 여기서 한 번만 계산.
+  const commonAssumptions = assumptions.filter(a => assumptionForBranch(a, '갱신') === 'common');
   const name = finance?.household === '신혼' ? '신혼 가구' : '나';
   // 분석 에이전트(narrate 노드)가 만든 통역을 재사용(중복 LLM 호출 없음). 없으면 로컬 템플릿.
   const briefText = state.briefing?.trim() ? state.briefing : briefings.compare(comparison, name);
@@ -122,6 +124,17 @@ export default function CompareTable() {
           </button>
         ))}
       </div>
+
+      {/* 모든 갈래에 공통되는 가정 — 카드마다 반복하지 않고 한 번만 */}
+      {commonAssumptions.length > 0 && (
+        <div className="px-5 mb-3">
+          <Accordion title="공통 가정">
+            {commonAssumptions.map(a => (
+              <p key={a} className="text-xs py-0.5">• {a}</p>
+            ))}
+          </Accordion>
+        </div>
+      )}
 
       {/* 카드 스와이프 영역 */}
       <div
@@ -319,20 +332,13 @@ function BranchCardView({
               </div>
             </div>
           )}
-          {branchAssumptions.length > 0 && (
+          {/* 모든 갈래 공통 가정은 카드마다 반복하지 않고 카드 스와이프 위에 한 번만 보여줌 */}
+          {branchAssumptions.some(([, k]) => k === 'branch') && (
             <div>
               <p className="text-muted-foreground font-medium mb-1">📝 이런 가정으로 계산했어요</p>
               {branchAssumptions.filter(([, k]) => k === 'branch').map(([a]) => (
                 <p key={a} className="text-xs py-0.5">• {a}</p>
               ))}
-              {branchAssumptions.some(([, k]) => k === 'common') && (
-                <>
-                  <p className="text-[11px] font-semibold mt-1.5" style={{ color: COLORS.SUB }}>공통</p>
-                  {branchAssumptions.filter(([, k]) => k === 'common').map(([a]) => (
-                    <p key={a} className="text-xs py-0.5">• {a}</p>
-                  ))}
-                </>
-              )}
             </div>
           )}
         </Accordion>
