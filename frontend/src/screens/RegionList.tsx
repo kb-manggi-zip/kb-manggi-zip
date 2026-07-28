@@ -49,6 +49,13 @@ export default function RegionList() {
   // 재택 등 통근 비중을 낮추기로 '확정'(noteAdjust)한 사용자면 통근을 '참고'로 격하(삭제 아님, G3)
   const deemphasizeCommute = applyNote && (state.contract?.noteAdjust?.commute ?? 1) < 0.95;
 
+  // L3 미니 리포트 리드 신호 — 확정 신호만(실측>진술>세그먼트), 출처 규칙 유지. 보류 신호는 persona에 없음.
+  const leadSignal = (() => {
+    const sig = persona?.consumptionSignals ?? [];
+    const pick = sig.find(s => s.source === '실측') ?? sig.find(s => s.source === '진술') ?? sig.find(s => s.source === '세그먼트');
+    return pick?.label;
+  })();
+
   // J4: 여러 후보가 공유하는 '구 기준' 동일 이유(구 폴백 유래)는 카드마다 반복하지 않고 상단 공통 안내로 접는다.
   const commonReasons = useMemo(() => {
     if (regions.length < 2) return [] as string[];
@@ -137,7 +144,7 @@ export default function RegionList() {
           )}
           {regions.map(r => (
             <RegionCard key={r.id} region={r} color={color} onSelect={() => selectRegion(r)}
-              deemphasizeCommute={deemphasizeCommute} hiddenReasons={commonReasons} />
+              deemphasizeCommute={deemphasizeCommute} hiddenReasons={commonReasons} leadSignal={leadSignal} />
           ))}
         </div>
 
@@ -282,9 +289,30 @@ function ClarifyBanner({
   );
 }
 
-function RegionCard({ region, color, onSelect, deemphasizeCommute = false, hiddenReasons = [] }: { region: Region; color: string; onSelect: () => void; deemphasizeCommute?: boolean; hiddenReasons?: string[] }) {
+// 공용 접기 헬퍼(L2 월세 카드 패리티에서 재사용) — 구 폴백 동일 이유 + 단일 구명
+export function foldedCommonReasons(regions: Region[]): string[] {
+  if (regions.length < 2) return [];
+  const first = regions[0].scoreReasons ?? [];
+  return first.filter(r => r.includes('구 기준') && regions.every(rg => (rg.scoreReasons ?? []).includes(r)));
+}
+export function commonGuName(regions: Region[]): string | null {
+  const gus = Array.from(new Set(regions.map(r => (r.name || '').split(' ')[0]).filter(Boolean)));
+  return gus.length === 1 ? gus[0] : null;
+}
+
+export function RegionCard({ region, color, onSelect, deemphasizeCommute = false, hiddenReasons = [], subtitle, leadSignal }: { region: Region; color: string; onSelect: () => void; deemphasizeCommute?: boolean; hiddenReasons?: string[]; subtitle?: string; leadSignal?: string }) {
   // J4: 상단 공통 안내로 접힌 '구 기준' 이유는 카드에서 제외 → 동별로 다른 값만 남긴다
   const cardReasons = (region.scoreReasons ?? []).filter(r => !hiddenReasons.includes(r));
+  // L3: 미니 리포트 요약 1줄 — {소비 신호} 당신에게 — {동네 차별 팩트}. 구 폴백 공통값은 차별 팩트 아님 → 제외.
+  const summaryFacts = (() => {
+    const distinct = cardReasons.filter(r => !r.includes('구 기준'));
+    const bits: string[] = [];
+    const dc = distinct.map(r => (r.match(/음식점·카페 \d+곳/) || [])[0]).find(Boolean);
+    if (dc) bits.push(dc);
+    if (region.surplus > 0) bits.push(`예산 여유 +${formatAmount(region.surplus)}`);
+    if (bits.length === 0) bits.push(`중위 ${formatAmount(region.midPrice)}`, `실거래 ${region.tradeCount}건`);
+    return bits.slice(0, 2).join(', ');
+  })();
   // 통근이 접히지 않았을 때만(동별 실측) 칩 레벨에 표시 + 대표 직장 기준 각주
   const commuteFolded = hiddenReasons.some(r => r.includes('통근'));
   return (
@@ -299,7 +327,7 @@ function RegionCard({ region, color, onSelect, deemphasizeCommute = false, hidde
       <div className="flex items-start justify-between">
         <div>
           <p className="font-bold">{region.name}</p>
-          <p className="text-sm text-muted-foreground">중위가 {formatAmount(region.midPrice)}</p>
+          <p className="text-sm text-muted-foreground">{subtitle ?? `중위가 ${formatAmount(region.midPrice)}`}</p>
         </div>
         {region.surplus > 0 && (
           <span
@@ -337,6 +365,10 @@ function RegionCard({ region, color, onSelect, deemphasizeCommute = false, hidde
           <span className="text-xs text-muted-foreground">{region.jeonseRatio.label}</span>
         </div>
       )}
+      {/* L3 미니 리포트 요약 — 소비 신호 × 동네 차별 팩트(구 폴백 공통값 제외). 순수 템플릿(LLM 없음) */}
+      <p className="text-xs font-medium pt-1" style={{ color }}>
+        {leadSignal ? `${leadSignal} 당신에게 — ${summaryFacts}` : `이 동네 — ${summaryFacts}`}
+      </p>
       {cardReasons.length > 0 && (
         <div className="text-xs space-y-0.5 pt-1" style={{ color: COLORS.SUB }}>
           <span className="font-semibold" style={{ color }}>왜 추천?</span>

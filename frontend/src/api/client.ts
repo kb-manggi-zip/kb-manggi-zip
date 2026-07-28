@@ -102,7 +102,7 @@ export const api = {
   },
 
   // 만기 결정 리포트 — 원격이면 백엔드 조립(⑤ 지출=합성 마이데이터 T2SQL), 로컬이면 compare+persona만(⑤ 생략).
-  async report(contract: ContractInfo, finance: FinanceInfo, branch: Branch, personaId?: string): Promise<DecisionReport> {
+  async report(contract: ContractInfo, finance: FinanceInfo, branch: Branch, personaId?: string, regionId?: string): Promise<DecisionReport> {
     return localOrRemote(
       () => {
         const cmp = compare(contract, finance);
@@ -121,7 +121,8 @@ export const api = {
         };
       },
       '/api/report',
-      { method: 'POST', body: JSON.stringify({ contract, finance, branch, personaId }) }
+      // regionId = 사용자가 실제로 본 '선택한 동네'(L5) → 리포트가 그 동네 기준으로 나오게
+      { method: 'POST', body: JSON.stringify({ contract, finance, branch, personaId, regionId }) }
     );
   },
 

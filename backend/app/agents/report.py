@@ -152,10 +152,26 @@ def build_report(
         pool = molit.regions_by_branch(branch, budget, house_type=contract.get("housingType"), top=8)
         if pool:
             ctx = persona_tool.scoring_ctx(contract, finance, budget, None, persona_id=pid)
-            ranked = scoring.rank([r.model_dump() for r in pool], ctx, top=1)
-            if ranked:
-                top_region = Region(**ranked[0])
-                day_brief = narrator.lifestyle_fallback({"region": ranked[0], "branch": branch, "finance": finance})
+            ranked = scoring.rank([r.model_dump() for r in pool], ctx, top=len(pool))
+            # L5: 사용자가 실제로 본 '선택한 동네'(region_id)를 우선 채택, 없으면 추천 1위. (일관성)
+            chosen = next((r for r in ranked if r.get("id") == region_id), None) or (ranked[0] if ranked else None)
+            if chosen:
+                top_region = Region(**chosen)
+                # L5.2: 발품 소비 문구를 프로필 칩과 같은 신호(실측>진술>세그먼트)로 — 불일치 해소.
+                sigs = prof.get("consumptionSignals", [])
+                lead = (
+                    next((s for s in sigs if s.get("source") == "실측"), None)
+                    or next((s for s in sigs if s.get("source") == "진술"), None)
+                    or next((s for s in sigs if s.get("source") == "세그먼트"), None)
+                )
+                day_brief = narrator.lifestyle_fallback(
+                    {
+                        "region": chosen,
+                        "branch": branch,
+                        "finance": finance,
+                        "trait": lead.get("label") if lead else None,
+                    }
+                )
     else:
         # 갱신: 새 발품 대신 '현재 동네 유지' 연속성 요약 — 여정에 빈 구간이 안 생기게(B7).
         area = contract.get("preferredArea") or "지금 사는 동네"
