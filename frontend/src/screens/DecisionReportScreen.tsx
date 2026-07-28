@@ -55,6 +55,21 @@ export default function DecisionReportScreen() {
   const color = BRANCH_COLORS[selectedBranch];
   const selBurden = rep?.comparison.branches.find(b => b.branch === selectedBranch)?.monthlyBurden;
 
+  // P4: 이 사람 고유의 한 줄 결론 — 전부 '이미 계산된 값'만 결정론 조립(LLM 없음). 없는 요소는 생략.
+  const oneLine = (() => {
+    if (!rep) return '';
+    const region1 = rep.topRegion?.name?.split(' ').pop();
+    const withinBudget = /여력 안|안에 있어요/.test(rep.feasibility || '');
+    const na = rep.nextAction;
+    const bits = [
+      `${selectedBranch}${region1 ? ` · ${region1}` : ''}`,
+      selBurden != null ? `월 ${man(selBurden)}` : null,
+      rep.spend ? (withinBudget ? '변동지출 여력 안' : '여력 초과 주의') : null,
+      na?.eligible && na.annualSaving > 0 ? `${na.headline.split(' ')[0]} 자격 시 연 약 ${man(na.annualSaving)} 절감 가능` : null,
+    ].filter(Boolean);
+    return bits.join(' · ');
+  })();
+
   return (
     <MobileShell>
       <DdayBar dday={rep?.dday} noticeDaysLeft={rep?.comparison.noticeDaysLeft} />
@@ -68,12 +83,19 @@ export default function DecisionReportScreen() {
 
         {rep && (
           <>
-            {/* 1층 — 상단 요약 카드(헤드라인 하나) */}
+            {/* 1층 — 상단 요약 카드(월부담) + P4 한 줄 결론 */}
             <div className="rounded-2xl p-4 text-center" style={{ background: color + '14', border: `1px solid ${color}44` }}>
               <p className="text-xs text-muted-foreground">{BRANCH_ICONS[selectedBranch]} {selectedBranch} · 월 부담</p>
               <p className="text-3xl font-bold my-1" style={{ color: COLORS.TEXT }}>{selBurden != null ? man(selBurden) : '—'}</p>
               <p className="text-xs" style={{ color: COLORS.SUB }}>{rep.feasibility}</p>
             </div>
+            {/* P4: 이 사람 고유 한 줄 결론(결정론 조립) */}
+            {oneLine && (
+              <div className="rounded-2xl px-4 py-3" style={{ background: color + '0A', borderLeft: `3px solid ${color}` }}>
+                <p className="text-sm font-semibold leading-snug" style={{ color: COLORS.TEXT }}>📌 {oneLine}</p>
+                <p className="text-[11px] mt-0.5" style={{ color: COLORS.SUB }}>* 자격·금리는 정보 제공이며 실제 조건은 심사에 따라요(권유 아님).</p>
+              </div>
+            )}
 
             {/* ①~⑥ 접힘 카드 */}
             <Section n="①" title="당신의 상황" open={!!open['①']} onToggle={() => toggle('①')}>
@@ -108,6 +130,10 @@ export default function DecisionReportScreen() {
                 {rep.topRegion.jeonseRatio && (
                   <p className="text-xs" style={{ color: COLORS.SUB }}>전세가율 {Math.round(rep.topRegion.jeonseRatio.ratio * 100)}% — {rep.topRegion.jeonseRatio.label}</p>
                 )}
+                {/* P5: 발품 넘김 — 시세 기준임을 명시하고 실매물 확인은 KB부동산으로 잇는다(발품 대체 안 함) */}
+                <p className="text-[11px] mt-1 pt-1 border-t border-border/50" style={{ color: COLORS.SUB }}>
+                  여기 숫자는 이 동네 <b>실거래 시세 기준</b>이에요. 실제 매물·집주인 의사는 확인이 필요해요 — 아래 KB부동산에서 이어보세요.
+                </p>
               </Section>
             ) : selectedBranch === '갱신' && (
               // 갱신은 새 동네 추천이 없음 → 현재 동네 유지를 명시(빈 구간 방지, B7)
@@ -142,16 +168,27 @@ export default function DecisionReportScreen() {
               </Section>
             )}
 
-            <Section n="⑥" title="다음 액션" open={!!open['⑥']} onToggle={() => toggle('⑥')}>
+            <Section n="⑥" title="다음 액션 · KB 연결" open={!!open['⑥']} onToggle={() => toggle('⑥')}>
+              {/* P3: 갈래 → 필요 여신 매핑(정보 병치, 권유 아님) */}
+              <p className="text-xs" style={{ color: COLORS.SUB }}>
+                고르신 <b style={{ color }}>{selectedBranch}</b>에 필요한 여신: <b>{selectedBranch === '매매' ? '주택담보대출' : selectedBranch === '이사' ? '신규 전세자금대출' : '증액분 전세자금대출'}</b>
+              </p>
               {rep.nextAction && (
-                <div className="mb-2 rounded-xl p-3" style={{ background: COLORS.YELLOW_SURFACE }}>
+                <div className="mt-1.5 mb-2 rounded-xl p-3" style={{ background: COLORS.YELLOW_SURFACE }}>
                   <p className="text-sm font-semibold" style={{ color: COLORS.TEXT }}>
                     {rep.nextAction.eligible ? '💡 ' : '🔎 '}{rep.nextAction.headline}
                   </p>
                   <p className="text-xs mt-0.5 text-muted-foreground">{rep.nextAction.detail}</p>
                   {rep.nextAction.eligible && rep.nextAction.annualSaving > 0 && (
-                    <p className="text-sm font-bold mt-1" style={{ color: color }}>연 약 {man(rep.nextAction.annualSaving)} 절감</p>
+                    <p className="text-sm font-bold mt-1" style={{ color: color }}>일반 기준 대비 연 약 {man(rep.nextAction.annualSaving)} 절감(자격 충족 시)</p>
                   )}
+                  {/* P3: 지출 여력과 연결(⑤ 값 재사용) */}
+                  {rep.spend && selBurden != null && (
+                    <p className="text-[11px] mt-1" style={{ color: COLORS.SUB }}>
+                      이 월 부담 {man(selBurden)}은 변동지출 여력 {man(rep.spend.variableMonthly)} {selBurden <= rep.spend.variableMonthly ? '안이에요' : '을 넘어요'}.
+                    </p>
+                  )}
+                  <p className="text-[11px] mt-1" style={{ color: COLORS.SUB }}>* 정보 제공이며 권유가 아니에요. 실제 한도·금리·자격은 KB 심사에 따라요.</p>
                 </div>
               )}
               <p className="text-sm">갱신 통보 기한 <b>{ddayText(rep.dday)}</b> · 기한일 {rep.noticeDeadline}</p>

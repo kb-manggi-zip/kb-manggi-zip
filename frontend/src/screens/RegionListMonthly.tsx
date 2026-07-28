@@ -58,8 +58,10 @@ export default function RegionListMonthly() {
       </div>
 
       {tab === 'upgrade' && (
-        <div className="mx-5 mt-3 px-4 py-2.5 bg-muted rounded-xl text-xs text-muted-foreground">
-          🛡 전세 전환 시 반환보증 가입을 함께 확인하세요.
+        <div className="mx-5 mt-3 px-4 py-2.5 bg-muted rounded-xl text-xs text-muted-foreground space-y-1">
+          <p>🛡 전세 전환 시 반환보증 가입을 함께 확인하세요.</p>
+          {/* P5: 발품 넘김 — 시세 기준임을 명시(실매물·집주인 확인은 발품 영역) */}
+          <p>📍 여기 숫자는 <b>실거래 시세 기준</b>이에요. 실제 매물·집주인 의사는 확인이 필요해요 — 카드의 KB부동산에서 이어보세요.</p>
         </div>
       )}
 

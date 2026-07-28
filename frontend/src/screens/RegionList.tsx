@@ -50,6 +50,9 @@ export default function RegionList() {
   // 재택 등 통근 비중을 낮추기로 '확정'(noteAdjust)한 사용자면 통근을 '참고'로 격하(삭제 아님, G3)
   const deemphasizeCommute = applyNote && (state.contract?.noteAdjust?.commute ?? 1) < 0.95;
 
+  // P2·P6: 개인 확정 신호(진술 noteAdjust)가 순위에 실렸나 → '대략(또래 평균)' vs '정확(당신 반영)' 표기
+  const hasPersonalSignal = applyNote && Object.keys(state.contract?.noteAdjust ?? {}).length > 0;
+
   // L3 미니 리포트 리드 신호 — 확정 신호만(실측>진술>세그먼트), 출처 규칙 유지. 보류 신호는 persona에 없음.
   const leadSignal = (() => {
     const sig = persona?.consumptionSignals ?? [];
@@ -126,6 +129,12 @@ export default function RegionList() {
 
         <div className="px-5 py-3 space-y-3">
           <h2 className="text-base font-bold text-foreground">동네 후보</h2>
+          {/* P2·P6: 대략(세그먼트 평균) → 정확(개인 확정 반영) 상태를 화면 언어로 */}
+          <div className="rounded-xl px-3 py-2 text-xs" style={{ background: hasPersonalSignal ? COLORS.MINT + '1f' : '#00000008' }}>
+            {hasPersonalSignal
+              ? <span style={{ color: COLORS.KB_GRAY }}>✓ <b>당신이 말한 것</b>을 반영해 순위를 좁혔어요{deemphasizeCommute ? ' (재택 → 통근 비중↓)' : ''}.</span>
+              : <span style={{ color: COLORS.SUB }}>지금은 <b>또래 평균(세그먼트) 기준</b>이에요 — 문진에서 더 알려주면 당신 기준으로 좁혀져요.</span>}
+          </div>
           {regions.some(r => r.jeonseRatio) && (
             <p className="text-xs text-muted-foreground -mt-1">
               실거래 중위가 대비 참고 지표예요. 실제 보증 가입은 선순위 채권과 기관 산정 주택가격 기준(HUG 90%)으로 심사돼요.
