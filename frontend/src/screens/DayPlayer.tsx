@@ -178,6 +178,10 @@ export default function DayPlayer() {
               <div className="bg-black/60 rounded-2xl p-4" style={{ backdropFilter: 'blur(8px)' }}>
                 <p className="text-white/70 text-xs mb-1">💬 이 동네에서의 당신</p>
                 <p className="text-white text-sm leading-relaxed">{lifestyle}</p>
+                {/* 소비 계보 — narrator에 실제 주입되는 건 '연령대 세그먼트 소비 성향'(카드소비 근사). 실측/진술 아님 */}
+                <p className="text-white/40 text-[11px] mt-2 pt-2 border-t border-white/10">
+                  이 하루의 톤: 연령대 세그먼트 소비 성향 + 동네 실데이터(통근·상권·실거래) 반영
+                </p>
               </div>
             )}
             <div className="bg-black/60 rounded-2xl p-4" style={{ backdropFilter: 'blur(8px)' }}>

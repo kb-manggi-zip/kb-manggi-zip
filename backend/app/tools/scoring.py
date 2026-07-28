@@ -146,7 +146,9 @@ def score_region(region: dict, ctx: dict) -> dict:
     gu_tag = " (구 기준)" if gu_used else ""
     reasons = []
     if minutes is not None:
-        reasons.append(f"통근 {minutes}분{gu_tag} (가중치 {int(w['commute'] * 100)}%·조사상 최우선)")
+        # 직장은 문진 입력이 아니라 '가구 세그먼트 대표 직장 가정' → 통근값 옆에 명시(아는 척 금지).
+        cw = int(w["commute"] * 100)
+        reasons.append(f"통근 {minutes}분{gu_tag} (가중치 {cw}%·조사상 최우선·세그먼트 대표 직장 기준)")
     if dc:
         reasons.append(f"음식점·카페 {dc}곳{gu_tag}{'·소비 성향과 매칭' if values_food else ''}")
     if budget > 0 and region.get("surplus", 0) > 0:

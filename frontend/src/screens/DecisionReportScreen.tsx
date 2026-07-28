@@ -3,6 +3,7 @@ import { useApp } from '../store';
 import { COLORS, BRANCH_COLORS, BRANCH_ICONS } from '../theme';
 import { MobileShell, BackBtn, JourneyHeader } from '../components/ui';
 import { formatAmount, ddayText } from '../utils/format';
+import { kbLandUrl } from '../utils/external';
 import { api } from '../api/client';
 import type { DecisionReport } from '../api/types';
 
@@ -153,6 +154,18 @@ export default function DecisionReportScreen() {
                 </div>
               )}
               <p className="text-sm">갱신 통보 기한 <b>{ddayText(rep.dday)}</b> · 기한일 {rep.noticeDeadline}</p>
+              {/* 이사·매매면 그 동네 실매물을 KB부동산에서 이어보기(외부 링크·AI 큐레이션 아님) */}
+              {rep.topRegion && (
+                <a
+                  href={kbLandUrl(rep.topRegion.name)}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="mt-2 flex items-center justify-center gap-1 text-xs font-medium py-2 rounded-xl border"
+                  style={{ borderColor: color + '55', color }}
+                >
+                  {rep.topRegion.name} 실매물은 KB부동산에서 이어보세요 →
+                </a>
+              )}
             </Section>
           </>
         )}

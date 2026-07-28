@@ -5,6 +5,7 @@ import { MobileShell, JourneyHeader, BackBtn, Disclaimer, Accordion } from '../c
 import AiBriefing from '../components/AiBriefing';
 import { api, briefings, personaIdFor } from '../api/client';
 import { formatAmount } from '../utils/format';
+import { kbLandUrl } from '../utils/external';
 import type { Region, PersonaProfile, ClarifyResult } from '../api/types';
 
 export default function RegionList() {
@@ -254,10 +255,13 @@ function ClarifyBanner({
 
 function RegionCard({ region, color, onSelect }: { region: Region; color: string; onSelect: () => void }) {
   return (
+    <div
+      className="bg-card rounded-2xl border border-border p-4 transition-all"
+      style={{ boxShadow: '0 2px 8px rgba(0,0,0,0.06)' }}
+    >
     <button
       onClick={onSelect}
-      className="w-full text-left bg-card rounded-2xl border border-border p-4 space-y-3 transition-all active:scale-[0.98]"
-      style={{ boxShadow: '0 2px 8px rgba(0,0,0,0.06)' }}
+      className="w-full text-left space-y-3 active:scale-[0.98] transition-transform"
     >
       <div className="flex items-start justify-between">
         <div>
@@ -304,5 +308,17 @@ function RegionCard({ region, color, onSelect }: { region: Region; color: string
         <span className="text-xs font-semibold" style={{ color }}>이 동네 하루 보기 →</span>
       </div>
     </button>
+      {/* 실매물 이어보기 — 발품을 대체하지 않고 좁혀서 잇는다(외부 링크, AI 큐레이션 아님) */}
+      <a
+        href={kbLandUrl(region.name)}
+        target="_blank"
+        rel="noopener noreferrer"
+        onClick={e => e.stopPropagation()}
+        className="mt-3 flex items-center justify-center gap-1 text-xs font-medium py-2 rounded-xl border"
+        style={{ borderColor: color + '55', color }}
+      >
+        실매물은 KB부동산에서 이어보세요 →
+      </a>
+    </div>
   );
 }
