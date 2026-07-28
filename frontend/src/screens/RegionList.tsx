@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useMemo } from 'react';
 import { useApp } from '../store';
 import { COLORS, BRANCH_COLORS, BRANCH_ICONS } from '../theme';
 import { MobileShell, JourneyHeader, BackBtn, Disclaimer, Accordion } from '../components/ui';
@@ -48,6 +48,23 @@ export default function RegionList() {
   const briefText = regions.length > 0 ? briefings.regions(regions[0]) : null;
   // 재택 등 통근 비중을 낮추기로 '확정'(noteAdjust)한 사용자면 통근을 '참고'로 격하(삭제 아님, G3)
   const deemphasizeCommute = applyNote && (state.contract?.noteAdjust?.commute ?? 1) < 0.95;
+
+  // L3 미니 리포트 리드 신호 — 확정 신호만(실측>진술>세그먼트), 출처 규칙 유지. 보류 신호는 persona에 없음.
+  const leadSignal = (() => {
+    const sig = persona?.consumptionSignals ?? [];
+    const pick = sig.find(s => s.source === '실측') ?? sig.find(s => s.source === '진술') ?? sig.find(s => s.source === '세그먼트');
+    return pick?.label;
+  })();
+
+  // J4: 여러 후보가 공유하는 '구 기준' 동일 이유(구 폴백 유래)는 카드마다 반복하지 않고 상단 공통 안내로 접는다.
+  const commonReasons = useMemo(() => {
+    if (regions.length < 2) return [] as string[];
+    const first = regions[0].scoreReasons ?? [];
+    return first.filter(r => r.includes('구 기준') && regions.every(rg => (rg.scoreReasons ?? []).includes(r)));
+  }, [regions]);
+  // 모든 후보가 같은 구일 때만 '세 동네 모두 ○○구' 안내(구가 섞이면 접기 안 함)
+  const guNames = Array.from(new Set(regions.map(r => (r.name || '').split(' ')[0]).filter(Boolean)));
+  const commonGu = guNames.length === 1 ? guNames[0] : null;
 
   function selectRegion(r: Region) {
     dispatch({ type: 'SELECT_REGION', regionId: r.id, region: r });
@@ -113,8 +130,21 @@ export default function RegionList() {
               실거래 중위가 대비 참고 지표예요. 실제 보증 가입은 선순위 채권과 기관 산정 주택가격 기준(HUG 90%)으로 심사돼요.
             </p>
           )}
+          {/* J4: 구 폴백으로 모든 후보가 동일한 값(통근·상권)은 카드 반복 대신 공통 안내 1줄로 접기 */}
+          {commonReasons.length > 0 && (
+            <div className="rounded-2xl border p-3 text-xs" style={{ borderColor: color + '44', background: color + '0A' }}>
+              <p className="font-semibold mb-1" style={{ color }}>
+                {commonGu ? `${regions.length}개 동네 모두 ${commonGu} — 아래는 구 기준 공통값이에요` : '아래는 구 기준 공통값이에요'}
+              </p>
+              {commonReasons.map((r, i) => (
+                <p key={i} style={{ color: COLORS.SUB }}>· {r}</p>
+              ))}
+              <p className="mt-1 text-[11px]" style={{ color: COLORS.SUB }}>동 단위 데이터는 순차 수집 예정 · 아래 카드엔 동별로 다른 값만 표시해요</p>
+            </div>
+          )}
           {regions.map(r => (
-            <RegionCard key={r.id} region={r} color={color} onSelect={() => selectRegion(r)} deemphasizeCommute={deemphasizeCommute} />
+            <RegionCard key={r.id} region={r} color={color} onSelect={() => selectRegion(r)}
+              deemphasizeCommute={deemphasizeCommute} hiddenReasons={commonReasons} leadSignal={leadSignal} />
           ))}
         </div>
 
@@ -259,7 +289,32 @@ function ClarifyBanner({
   );
 }
 
-function RegionCard({ region, color, onSelect, deemphasizeCommute = false }: { region: Region; color: string; onSelect: () => void; deemphasizeCommute?: boolean }) {
+// 공용 접기 헬퍼(L2 월세 카드 패리티에서 재사용) — 구 폴백 동일 이유 + 단일 구명
+export function foldedCommonReasons(regions: Region[]): string[] {
+  if (regions.length < 2) return [];
+  const first = regions[0].scoreReasons ?? [];
+  return first.filter(r => r.includes('구 기준') && regions.every(rg => (rg.scoreReasons ?? []).includes(r)));
+}
+export function commonGuName(regions: Region[]): string | null {
+  const gus = Array.from(new Set(regions.map(r => (r.name || '').split(' ')[0]).filter(Boolean)));
+  return gus.length === 1 ? gus[0] : null;
+}
+
+export function RegionCard({ region, color, onSelect, deemphasizeCommute = false, hiddenReasons = [], subtitle, leadSignal }: { region: Region; color: string; onSelect: () => void; deemphasizeCommute?: boolean; hiddenReasons?: string[]; subtitle?: string; leadSignal?: string }) {
+  // J4: 상단 공통 안내로 접힌 '구 기준' 이유는 카드에서 제외 → 동별로 다른 값만 남긴다
+  const cardReasons = (region.scoreReasons ?? []).filter(r => !hiddenReasons.includes(r));
+  // L3: 미니 리포트 요약 1줄 — {소비 신호} 당신에게 — {동네 차별 팩트}. 구 폴백 공통값은 차별 팩트 아님 → 제외.
+  const summaryFacts = (() => {
+    const distinct = cardReasons.filter(r => !r.includes('구 기준'));
+    const bits: string[] = [];
+    const dc = distinct.map(r => (r.match(/음식점·카페 \d+곳/) || [])[0]).find(Boolean);
+    if (dc) bits.push(dc);
+    if (region.surplus > 0) bits.push(`예산 여유 +${formatAmount(region.surplus)}`);
+    if (bits.length === 0) bits.push(`중위 ${formatAmount(region.midPrice)}`, `실거래 ${region.tradeCount}건`);
+    return bits.slice(0, 2).join(', ');
+  })();
+  // 통근이 접히지 않았을 때만(동별 실측) 칩 레벨에 표시 + 대표 직장 기준 각주
+  const commuteFolded = hiddenReasons.some(r => r.includes('통근'));
   return (
     <div
       className="bg-card rounded-2xl border border-border p-4 transition-all"
@@ -272,7 +327,7 @@ function RegionCard({ region, color, onSelect, deemphasizeCommute = false }: { r
       <div className="flex items-start justify-between">
         <div>
           <p className="font-bold">{region.name}</p>
-          <p className="text-sm text-muted-foreground">중위가 {formatAmount(region.midPrice)}</p>
+          <p className="text-sm text-muted-foreground">{subtitle ?? `중위가 ${formatAmount(region.midPrice)}`}</p>
         </div>
         {region.surplus > 0 && (
           <span
@@ -285,10 +340,18 @@ function RegionCard({ region, color, onSelect, deemphasizeCommute = false }: { r
       </div>
       {/* 특징 한 줄 — 스코어 근거(통근) + region_facts(태그). 전부 실측/facts 값 */}
       {(() => {
-        let commute = (region.scoreReasons ?? []).map(r => (r.match(/통근 \d+분/) || [])[0]).find(Boolean);
-        if (commute && deemphasizeCommute) commute = `${commute} (참고)`;  // 재택 확정 → 통근 격하(G3)
+        // 접힌(구 공통) 통근은 카드에서 빼고, 동별 통근만 칩으로. 대표 직장 기준은 '*' 각주로.
+        let commute = commuteFolded ? undefined : cardReasons.map(r => (r.match(/통근 \d+분/) || [])[0]).find(Boolean);
+        if (commute) commute = deemphasizeCommute ? `${commute} (참고)` : `${commute}*`;  // G3 참고 / J4 대표직장 각주
         const feature = [...region.tags, commute].filter(Boolean).slice(0, 3).join(' · ');
-        return feature ? <p className="text-xs" style={{ color: COLORS.SUB }}>{feature}</p> : null;
+        return feature ? (
+          <>
+            <p className="text-xs" style={{ color: COLORS.SUB }}>{feature}</p>
+            {commute && !deemphasizeCommute && (
+              <p className="text-[10px]" style={{ color: COLORS.SUB }}>* 통근은 세그먼트 대표 직장 기준(문진에 직장 입력 없음)</p>
+            )}
+          </>
+        ) : null;
       })()}
       <span className="text-xs text-muted-foreground">최근 실거래 {region.tradeCount}건</span>
       {region.jeonseRatio && (
@@ -302,10 +365,14 @@ function RegionCard({ region, color, onSelect, deemphasizeCommute = false }: { r
           <span className="text-xs text-muted-foreground">{region.jeonseRatio.label}</span>
         </div>
       )}
-      {region.scoreReasons && region.scoreReasons.length > 0 && (
+      {/* L3 미니 리포트 요약 — 소비 신호 × 동네 차별 팩트(구 폴백 공통값 제외). 순수 템플릿(LLM 없음) */}
+      <p className="text-xs font-medium pt-1" style={{ color }}>
+        {leadSignal ? `${leadSignal} 당신에게 — ${summaryFacts}` : `이 동네 — ${summaryFacts}`}
+      </p>
+      {cardReasons.length > 0 && (
         <div className="text-xs space-y-0.5 pt-1" style={{ color: COLORS.SUB }}>
           <span className="font-semibold" style={{ color }}>왜 추천?</span>
-          {region.scoreReasons.map((r, i) => (
+          {cardReasons.map((r, i) => (
             <div key={i}>· {deemphasizeCommute && r.startsWith('통근') ? `${r} — 재택 반영, 참고용` : r}</div>
           ))}
         </div>

@@ -47,6 +47,7 @@ from ..schemas import (
     ReservationResponse,
     SimulateRequest,
     SimulateResponse,
+    ValidateProfileRequest,
 )
 
 router = APIRouter(prefix="/api")
@@ -107,9 +108,42 @@ def clarify_endpoint(req: ClarifyRequest, session_id: str | None = Depends(get_s
 
     with session_scope(session_id):
         result = clarify_agent.clarify(
-            req.contract.model_dump(), req.finance.model_dump(), note=req.contract.note, prior_notes=req.priorNotes
+            req.contract.model_dump(),
+            req.finance.model_dump(),
+            note=req.contract.note,
+            prior_notes=req.priorNotes,
+            household_selected=req.householdSelected,
         )
     return ClarifyResult(**result)
+
+
+@observe(name="profile_validation")
+def _run_validate_profile(req: ValidateProfileRequest) -> ClarifyResult:
+    """SC-14 최종 프로필 종합검증 — '무엇을 봤고 어떻게 검증했나'가 이 span에 남는다(관측·발표 물증)."""
+    from ..agents import clarify as clarify_agent
+
+    result = clarify_agent.validate_profile(
+        req.contract.model_dump(),
+        req.finance.model_dump(),
+        budget=req.budget,
+        household_selected=req.householdSelected,
+        accepted_pairs=req.acceptedPairs,
+    )
+    tracing.span_update(
+        input={"notes": req.contract.note, "household": req.finance.household, "budget": req.budget},
+        output=result,
+        metadata={"mode": result["mode"], "conflict_count": len(result["conflicts"])},
+    )
+    return ClarifyResult(**result)
+
+
+@router.post("/validate-profile", response_model=ClarifyResult)
+def validate_profile_endpoint(
+    req: ValidateProfileRequest, session_id: str | None = Depends(get_session_id)
+) -> ClarifyResult:
+    """최종 프로필 종합검증 — 누적 자유입력+가구+예산을 한 번에 의미 검증(LLM) / 간이 검증(키워드 폴백)."""
+    with session_scope(session_id):
+        return _run_validate_profile(req)
 
 
 @observe(name="decision_report")

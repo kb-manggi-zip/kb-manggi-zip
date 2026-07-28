@@ -1,5 +1,5 @@
 import { compare } from '../engine/compare';
-import { localClarify, localPersona } from '../engine/persona';
+import { localClarify, localPersona, localValidateProfile } from '../engine/persona';
 import { REGIONS_BUY, REGIONS_MOVE, REGIONS_MONTHLY } from '../data/regions';
 import { SCENES_MOVE, SCENES_BUY, SCENES_STAY, SCENES_BY_REGION, SAVED_MONEY_CARDS } from '../data/scenes';
 import { PRODUCTS_RENEWAL, PRODUCTS_MOVE, PRODUCTS_BUY } from '../data/products';
@@ -61,11 +61,22 @@ export const api = {
   },
 
   // 명확화(판단) — 자연어/폼값 → 제약 해석 + 모순 되묻기(가구불일치·이전 반영 충돌). priorNotes=확정된 조정들.
-  async clarify(contract: ContractInfo, finance: FinanceInfo, priorNotes: string[] = []): Promise<ClarifyResult> {
+  async clarify(contract: ContractInfo, finance: FinanceInfo, priorNotes: string[] = [], householdKnown = true): Promise<ClarifyResult> {
     return localOrRemote(
-      () => localClarify(contract, finance, priorNotes),
+      () => localClarify(contract, finance, priorNotes, householdKnown),
       '/api/clarify',
-      { method: 'POST', body: JSON.stringify({ contract, finance, priorNotes }) }
+      // householdSelected=false면 가구 유형 미선택 → 상충 감지에서 제외(J1). 기본 true(하위호환).
+      { method: 'POST', body: JSON.stringify({ contract, finance, priorNotes, householdSelected: householdKnown }) }
+    );
+  },
+
+  // SC-14 최종 프로필 종합검증 — 누적 자유입력+가구+예산을 한 번에 의미 검증(원격 LLM) / 간이 검증(로컬 키워드).
+  // acceptedPairs: '둘 다 맞아요'로 확인한 신호 쌍 — 재검증 시 상충에서 제외(K1).
+  async validateProfile(contract: ContractInfo, finance: FinanceInfo, budget = 0, householdKnown = true, acceptedPairs: string[][] = []): Promise<ClarifyResult> {
+    return localOrRemote(
+      () => localValidateProfile(contract, finance, householdKnown, acceptedPairs),
+      '/api/validate-profile',
+      { method: 'POST', body: JSON.stringify({ contract, finance, budget, householdSelected: householdKnown, acceptedPairs }) }
     );
   },
 
@@ -91,7 +102,7 @@ export const api = {
   },
 
   // 만기 결정 리포트 — 원격이면 백엔드 조립(⑤ 지출=합성 마이데이터 T2SQL), 로컬이면 compare+persona만(⑤ 생략).
-  async report(contract: ContractInfo, finance: FinanceInfo, branch: Branch, personaId?: string): Promise<DecisionReport> {
+  async report(contract: ContractInfo, finance: FinanceInfo, branch: Branch, personaId?: string, regionId?: string): Promise<DecisionReport> {
     return localOrRemote(
       () => {
         const cmp = compare(contract, finance);
@@ -110,7 +121,8 @@ export const api = {
         };
       },
       '/api/report',
-      { method: 'POST', body: JSON.stringify({ contract, finance, branch, personaId }) }
+      // regionId = 사용자가 실제로 본 '선택한 동네'(L5) → 리포트가 그 동네 기준으로 나오게
+      { method: 'POST', body: JSON.stringify({ contract, finance, branch, personaId, regionId }) }
     );
   },
 

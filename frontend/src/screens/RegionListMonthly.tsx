@@ -1,10 +1,11 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useMemo } from 'react';
 import { useApp } from '../store';
 import { COLORS } from '../theme';
 import { MobileShell, JourneyHeader, BackBtn, Disclaimer } from '../components/ui';
 import AiBriefing from '../components/AiBriefing';
 import { api, briefings } from '../api/client';
 import { formatAmount } from '../utils/format';
+import { RegionCard, foldedCommonReasons, commonGuName } from './RegionList';
 import type { Region } from '../api/types';
 
 type Tab = 'similar' | 'upgrade';
@@ -22,6 +23,11 @@ export default function RegionListMonthly() {
     dispatch({ type: 'SELECT_REGION', regionId: r.id, region: r });
     dispatch({ type: 'NAVIGATE', screen: 'SC-07' });
   }
+
+  // 전세 카드와 동일한 구성 적용(L2): 구 폴백 동일값 접기 + 재택 확정 시 통근 격하
+  const commonReasons = useMemo(() => foldedCommonReasons(regions), [regions]);
+  const commonGu = commonGuName(regions);
+  const deemphasizeCommute = (state.contract?.noteAdjust?.commute ?? 1) < 0.95;
 
   return (
     <MobileShell>
@@ -76,37 +82,28 @@ export default function RegionListMonthly() {
       </div>
 
       <div className="flex-1 overflow-y-auto px-5 py-4 space-y-3">
+        {/* 구 폴백 동일값 접기(J4 패리티) */}
+        {commonReasons.length > 0 && (
+          <div className="rounded-2xl border p-3 text-xs" style={{ borderColor: COLORS.BLUE + '44', background: COLORS.BLUE + '0A' }}>
+            <p className="font-semibold mb-1" style={{ color: COLORS.BLUE }}>
+              {commonGu ? `${regions.length}개 동네 모두 ${commonGu} — 아래는 구 기준 공통값이에요` : '아래는 구 기준 공통값이에요'}
+            </p>
+            {commonReasons.map((r, i) => <p key={i} style={{ color: COLORS.SUB }}>· {r}</p>)}
+            <p className="mt-1 text-[11px]" style={{ color: COLORS.SUB }}>동 단위 데이터는 순차 수집 예정 · 아래 카드엔 동별로 다른 값만</p>
+          </div>
+        )}
         {regions.map(r => (
-          <button
+          <RegionCard
             key={r.id}
-            onClick={() => selectRegion(r)}
-            className="w-full text-left bg-card rounded-2xl border border-border p-4 space-y-2 transition-all active:scale-[0.98]"
-            style={{ boxShadow: '0 2px 8px rgba(0,0,0,0.06)' }}
-          >
-            <div className="flex items-start justify-between">
-              <div>
-                <p className="font-bold">{r.name}</p>
-                {tab === 'similar' ? (
-                  <p className="text-sm text-muted-foreground">
-                    보증금 {formatAmount(r.midPrice)} / 월세 {r.monthlyMidPrice ? Math.round(r.monthlyMidPrice / 10_000) : '-'}만원
-                  </p>
-                ) : (
-                  <p className="text-sm text-muted-foreground">전세 중위가 {formatAmount(r.midPrice * 1.3)}</p>
-                )}
-              </div>
-              <span
-                className="text-xs font-semibold px-2.5 py-1 rounded-full"
-                style={{ background: COLORS.MINT + '33', color: COLORS.MINT }}
-              >
-                최근 거래 {r.tradeCount}건
-              </span>
-            </div>
-            <div className="flex gap-2 flex-wrap">
-              {r.tags.map(t => (
-                <span key={t} className="text-xs px-2 py-0.5 bg-muted rounded-full text-muted-foreground">{t}</span>
-              ))}
-            </div>
-          </button>
+            region={r}
+            color={COLORS.BLUE}
+            onSelect={() => selectRegion(r)}
+            deemphasizeCommute={deemphasizeCommute}
+            hiddenReasons={commonReasons}
+            subtitle={tab === 'similar'
+              ? `보증금 ${formatAmount(r.midPrice)} / 월세 ${r.monthlyMidPrice ? Math.round(r.monthlyMidPrice / 10_000) : '-'}만원`
+              : `전세 중위가 ${formatAmount(r.midPrice * 1.3)}`}
+          />
         ))}
       </div>
       <Disclaimer />

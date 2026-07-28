@@ -28,7 +28,7 @@ function Section({ n, title, open, onToggle, children }: {
 
 export default function DecisionReportScreen() {
   const { state, dispatch } = useApp();
-  const { contract, finance, selectedBranch } = state;
+  const { contract, finance, selectedBranch, selectedRegionId } = state;
   const [rep, setRep] = useState<DecisionReport | null>(null);
   const [loading, setLoading] = useState(true);
   const [open, setOpen] = useState<Record<string, boolean>>({ '⑤': true }); // ⑤ 지출만 기본 펼침(핵심 신규)
@@ -36,8 +36,9 @@ export default function DecisionReportScreen() {
 
   useEffect(() => {
     if (!contract || !finance || !selectedBranch) { setLoading(false); return; }
-    api.report(contract, finance, selectedBranch).then(setRep).catch(() => setRep(null)).finally(() => setLoading(false));
-  }, [contract, finance, selectedBranch]);
+    api.report(contract, finance, selectedBranch, undefined, selectedRegionId ?? undefined)
+      .then(setRep).catch(() => setRep(null)).finally(() => setLoading(false));
+  }, [contract, finance, selectedBranch, selectedRegionId]);
 
   if (!contract || !finance || !selectedBranch) {
     return (
@@ -101,7 +102,7 @@ export default function DecisionReportScreen() {
             </Section>
 
             {rep.topRegion ? (
-              <Section n="③" title="왜 이 동네" open={!!open['③']} onToggle={() => toggle('③')}>
+              <Section n="③" title={`왜 이 동네${rep.topRegion ? ` (${rep.topRegion.name.split(' ').pop()} 기준)` : ''}`} open={!!open['③']} onToggle={() => toggle('③')}>
                 <p className="text-sm font-semibold">{rep.topRegion.name} · 중위 {formatAmount(rep.topRegion.midPrice)}</p>
                 {(rep.topRegion.scoreReasons ?? []).map((r, i) => <p key={i} className="text-xs text-muted-foreground">· {r}</p>)}
                 {rep.topRegion.jeonseRatio && (
@@ -118,7 +119,7 @@ export default function DecisionReportScreen() {
             )}
 
             {rep.dayBrief && (
-              <Section n="④" title={selectedBranch === '갱신' ? '유지하는 하루' : '그 동네의 하루'} open={!!open['④']} onToggle={() => toggle('④')}>
+              <Section n="④" title={selectedBranch === '갱신' ? '유지하는 하루' : `그 동네의 하루${rep.topRegion ? ` (${rep.topRegion.name.split(' ').pop()} 기준)` : ''}`} open={!!open['④']} onToggle={() => toggle('④')}>
                 <p className="text-sm leading-relaxed text-muted-foreground">{rep.dayBrief}</p>
               </Section>
             )}

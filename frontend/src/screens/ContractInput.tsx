@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { useApp } from '../store';
 import { COLORS } from '../theme';
 import {
@@ -6,7 +6,7 @@ import {
   PrimaryBtn, GhostBtn, SelectCard, AmountInput
 } from '../components/ui';
 import { api } from '../api/client';
-import type { ContractType, RenewalUsed, Household, FirstHome, HousingType, ClarifyResult } from '../api/types';
+import type { ContractType, RenewalUsed, Household, FirstHome, HousingType } from '../api/types';
 
 // ─── 스텝 정의 ─────────────────────────────────────────────────────────────
 type StepId = 'type' | 'deposit' | 'rent' | 'expiry' | 'renewal' | 'finance';
@@ -43,6 +43,14 @@ const CAPITAL_RANGES = [
   { label: '2억 이상', value: 250_000_000 },
 ];
 
+// 프리셋 칩 목록 + 상호배타쌍(K2). **우리가 만든 칩끼리의 관계**라 키워드 추론이 아님(오탐 없음).
+// 자유 텍스트 입력에는 이 판정을 적용하지 않는다 — 의미 충돌은 최종 AI 검증에 맡긴다.
+const PRESET_CHIPS = ['재택근무예요', '매일 통근해요', '조용한 동네가 좋아요', '번화가가 가까웠으면', '반려동물이 있어요', '아이 학교가 중요해요'];
+const EXCLUSIVE_PAIRS: [string, string][] = [
+  ['재택근무예요', '매일 통근해요'],
+  ['조용한 동네가 좋아요', '번화가가 가까웠으면'],
+];
+
 export default function ContractInput() {
   const { state, dispatch } = useApp();
 
@@ -60,10 +68,9 @@ export default function ContractInput() {
   const [housingType, setHousingType] = useState<HousingType>(state.contract?.housingType || '아파트');
   const [preferredArea, setPreferredArea] = useState<string>(state.contract?.preferredArea || '');
   const [note, setNote] = useState<string>('');
-  const [interp, setInterp] = useState<ClarifyResult | null>(null);
-  // 확정된 자유입력 누적(반영한 내용). 각 항목: {말한 것, 해석 신호, 적용 boost}
-  const [reflected, setReflected] = useState<{ text: string; signals: string[]; adjust: Record<string, number> }[]>(
-    state.contract?.note ? [{ text: state.contract.note, signals: [], adjust: state.contract.noteAdjust ?? {} }] : []
+  // 누적한 자유입력(반영한 내용). 문진 중엔 '판단' 없이 텍스트만 쌓는다 — 상충 검증은 최종 프로필(SC-14) 1회.
+  const [reflected, setReflected] = useState<{ text: string }[]>(
+    state.contract?.note ? state.contract.note.split(' · ').filter(Boolean).map(t => ({ text: t })) : []
   );
   const [annualIncome, setAnnualIncome] = useState(state.finance?.annualIncome || 0);
   const [ownCapital, setOwnCapital] = useState(state.finance?.ownCapital || 0);
@@ -71,18 +78,23 @@ export default function ContractInput() {
   const [firstHome, setFirstHome] = useState<FirstHome>(state.finance?.firstHome || '모름');
   const [under35, setUnder35] = useState<boolean>(state.finance?.under35 ?? false);
 
-  // 자유입력 → AI 해석(디바운스). 세대유형은 아직 입력 전일 수 있어 현재 household 상태로 해석.
-  useEffect(() => {
-    if (!note.trim()) { setInterp(null); return; }
-    const t = setTimeout(() => {
-      api.clarify(
-        { type: contractType, deposit: 0, monthlyRent: 0, expiryDate: '', renewalUsed, housingType, note },
-        { annualIncome: 0, ownCapital: 0, household, firstHome, under35 },
-        reflected.map(r => r.text),  // 이전 반영 → 모순 되묻기
-      ).then(setInterp).catch(() => setInterp(null));
-    }, 400);
-    return () => clearTimeout(t);
-  }, [note]); // eslint-disable-line react-hooks/exhaustive-deps
+  const [swap, setSwap] = useState<{ chip: string; partner: string } | null>(null);
+
+  // 자유입력 등록 — [추가]/엔터로 명시 등록(문진 중엔 판단 안 함, 누적만). 검증은 SC-14 최종 프로필에서 1회.
+  function addNote(text: string) {
+    const t = text.trim();
+    if (!t) return;
+    setReflected(r => (r.some(x => x.text === t) ? r : [...r, { text: t }]));
+    api.hitl('applied', [t], t);  // 관측: 사용자가 무엇을 등록했는지(확정 반영은 SC-14)
+    setNote('');
+  }
+
+  // 프리셋 칩 등록 — 이미 담긴 칩과 배타 관계면 교체 제안(K2). 자유 텍스트에는 미적용.
+  function addPreset(chip: string) {
+    const pair = EXCLUSIVE_PAIRS.find(([a, b]) => (chip === a || chip === b) && reflected.some(r => r.text === (chip === a ? b : a)));
+    if (pair) { setSwap({ chip, partner: chip === pair[0] ? pair[1] : pair[0] }); return; }
+    addNote(chip);
+  }
 
   // 유형 변경 시 스텝 배열 재계산, 현재 stepIdx 클램프
   const steps = buildSteps(contractType);
@@ -108,11 +120,9 @@ export default function ContractInput() {
 
   function next() {
     if (stepIdx < steps.length - 1) { setStepIdx(i => i + 1); return; }
-    // 확정된(HITL) 조정들만 축별로 합성 → 랭킹에 실릴 boost. 미확정 입력은 미반영.
-    const noteAdjust = reflected.reduce((acc, r) => {
-      for (const [k, v] of Object.entries(r.adjust)) acc[k] = (acc[k] ?? 1) * v;
-      return acc;
-    }, {} as Record<string, number>);
+    // 자유입력은 누적만(텍스트). 해석·상충 검증·반영(noteAdjust)은 SC-14 최종 프로필에서 1회.
+    // 미입력 상태로 남은 textarea 내용도 함께 담는다(등록 안 눌렀어도 유실 방지).
+    const notes = [...reflected.map(r => r.text), note.trim()].filter(Boolean);
     dispatch({
       type: 'SET_CONTRACT',
       contract: {
@@ -123,8 +133,8 @@ export default function ContractInput() {
         renewalUsed,
         housingType,
         preferredArea,
-        note: [...reflected.map(r => r.text), note.trim()].filter(Boolean).join(' '),
-        noteAdjust,
+        note: notes.join(' · '),
+        noteAdjust: {},  // 확정 전엔 비움 — SC-14에서 검증 후 HITL 확정 시 채워짐(B1·J2)
       },
     });
     dispatch({
@@ -210,119 +220,68 @@ export default function ContractInput() {
             </div>
             <div className="mt-5">
               <div className="text-sm font-medium mb-2">
-                더 알려주고 싶은 것 <span className="text-xs text-muted-foreground">(선택 — 없어도 됩니다)</span>
+                더 알려주고 싶은 것 <span className="text-xs text-muted-foreground">(선택 · 여러 개 추가 가능)</span>
               </div>
-              <textarea
-                value={note}
-                onChange={e => setNote(e.target.value)}
-                rows={2}
-                placeholder="예: 재택근무예요"
-                className="w-full rounded-2xl border px-4 py-3 text-sm resize-none outline-none"
-                style={{ borderColor: COLORS.BORDER, background: COLORS.CARD, color: COLORS.TEXT }}
-              />
-              {/* 예시 칩 — 탭하면 채워지고 바로 AI 해석(타이핑 없이 체험) */}
+              <div className="flex gap-2">
+                <input
+                  value={note}
+                  onChange={e => setNote(e.target.value)}
+                  onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); addNote(note); } }}
+                  placeholder="예: 재택근무예요 (엔터 또는 추가)"
+                  className="flex-1 rounded-2xl border px-4 py-3 text-sm outline-none"
+                  style={{ borderColor: COLORS.BORDER, background: COLORS.CARD, color: COLORS.TEXT }}
+                />
+                <button onClick={() => addNote(note)} disabled={!note.trim()}
+                  className="px-4 rounded-2xl text-sm font-semibold shrink-0 disabled:opacity-40"
+                  style={{ background: COLORS.KB_YELLOW, color: COLORS.TEXT }}>
+                  추가
+                </button>
+              </div>
+              {/* 예시 칩 — 탭하면 바로 담김(누적). 배타 칩이 이미 있으면 교체 제안(K2) */}
               <div className="flex flex-wrap gap-1.5 mt-2">
-                {['재택근무예요', '반려동물이 있어요', '아이 학교가 중요해요', '부모님 근처에 살고 싶어요'].map(ex => (
-                  <button key={ex} onClick={() => setNote(ex)}
-                    className="text-xs px-3 py-1.5 rounded-full border"
+                {PRESET_CHIPS.map(ex => (
+                  <button key={ex} onClick={() => addPreset(ex)} disabled={reflected.some(r => r.text === ex)}
+                    className="text-xs px-3 py-1.5 rounded-full border disabled:opacity-40"
                     style={{ borderColor: COLORS.BORDER, background: COLORS.CARD, color: COLORS.SUB }}>
-                    {ex}
+                    + {ex}
                   </button>
                 ))}
               </div>
 
-              {/* AI 해석 카드 (인라인, 모달 아님) */}
-              {note.trim() && interp && (
-                <div className="mt-3 rounded-2xl border p-3.5 space-y-2 animate-[fadeIn_.2s_ease]"
-                  style={{ borderColor: COLORS.KB_YELLOW, background: COLORS.YELLOW_SURFACE }}>
-                  <div className="flex items-start gap-2">
-                    <span className="w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold shrink-0"
-                      style={{ background: COLORS.KB_YELLOW, color: COLORS.TEXT }}>AI</span>
-                    <div className="space-y-1">
-                      <p className="text-sm leading-snug" style={{ color: COLORS.TEXT }}>
-                        {(interp.conflicts?.length ?? 0) > 0
-                          ? '입력이 서로 상충돼요 — 어느 쪽인지 정해 주세요.'
-                          : (interp.noteSignals?.length ?? 0) > 0
-                            ? '이렇게 이해했어요 — 동네 추천에 반영할까요?'
-                            : '입력을 확인했어요. 이대로 반영할까요?'}
-                      </p>
-                      {interp.held && (
-                        <span className="inline-block text-[11px] px-2 py-0.5 rounded-full"
-                          style={{ background: '#00000010', color: COLORS.SUB }}>
-                          확인 대기 · 정할 때까지 동네 추천에 반영하지 않아요
-                        </span>
-                      )}
-                    </div>
+              {/* 배타 칩 교체 제안 — 자유 텍스트가 아니라 우리가 정의한 칩 관계라 오탐 없음 */}
+              {swap && (
+                <div className="mt-2 rounded-2xl border p-3 space-y-2" style={{ borderColor: COLORS.KB_YELLOW, background: COLORS.YELLOW_SURFACE }}>
+                  <p className="text-xs" style={{ color: COLORS.TEXT }}>
+                    '{swap.partner}'와 반대되는 내용이에요. 바꿀까요?
+                  </p>
+                  <div className="flex gap-2">
+                    <button onClick={() => { setReflected(r => r.filter(x => x.text !== swap.partner)); addNote(swap.chip); setSwap(null); }}
+                      className="flex-1 text-xs font-semibold py-2 rounded-xl" style={{ background: COLORS.KB_YELLOW, color: COLORS.TEXT }}>
+                      바꾸기
+                    </button>
+                    <button onClick={() => { addNote(swap.chip); setSwap(null); }}
+                      className="flex-1 text-xs font-semibold py-2 rounded-xl border" style={{ borderColor: COLORS.BORDER, color: COLORS.SUB, background: COLORS.CARD }}>
+                      둘 다 담기
+                    </button>
                   </div>
-                  {/* 충돌 없을 때만 조정 칩 표시(상충 입력은 상쇄값 노출 금지) */}
-                  {(interp.conflicts?.length ?? 0) === 0 && (interp.noteSignals ?? []).length > 0 && (
-                    <div className="flex flex-wrap gap-1.5 pl-8">
-                      {interp.noteSignals!.map((s, i) => (
-                        <span key={i} className="text-[11px] px-2 py-0.5 rounded-full"
-                          style={{ background: '#00000008', color: COLORS.SUB }}>{s}</span>
-                      ))}
-                    </div>
-                  )}
-                  {(interp.conflicts ?? []).map((c, i) => (
-                    <p key={i} className="text-xs pl-8 font-medium" style={{ color: '#9A5B00' }}>⚠️ {c}</p>
-                  ))}
-                  {(interp.conflicts?.length ?? 0) > 0 ? (
-                    // 충돌 → 정정 우선(조용한 덮어쓰기 금지)
-                    <div className="flex gap-2 pl-8 pt-0.5">
-                      <button onClick={() => { setNote(''); setInterp(null); }}
-                        className="flex-1 text-xs font-semibold py-2 rounded-xl"
-                        style={{ background: COLORS.KB_YELLOW, color: COLORS.TEXT }}>
-                        다시 입력할게요
-                      </button>
-                      <button onClick={() => {
-                        api.hitl('applied', interp?.noteSignals ?? [], note.trim());
-                        setReflected(r => [...r, { text: note.trim(), signals: interp?.noteSignals ?? [], adjust: interp?.weightAdjust ?? {} }]);
-                        setNote(''); setInterp(null);
-                      }}
-                        className="flex-1 text-xs font-semibold py-2 rounded-xl border"
-                        style={{ borderColor: COLORS.BORDER, color: COLORS.SUB, background: COLORS.CARD }}>
-                        그래도 이대로 반영
-                      </button>
-                    </div>
-                  ) : (
-                    <div className="flex gap-2 pl-8 pt-0.5">
-                      <button onClick={() => {
-                        api.hitl('applied', interp?.noteSignals ?? [], note.trim());
-                        setReflected(r => [...r, { text: note.trim(), signals: interp?.noteSignals ?? [], adjust: interp?.weightAdjust ?? {} }]);
-                        setNote(''); setInterp(null);
-                      }}
-                        className="flex-1 text-xs font-semibold py-2 rounded-xl"
-                        style={{ background: COLORS.KB_YELLOW, color: COLORS.TEXT }}>
-                        네, 맞아요
-                      </button>
-                      <button onClick={() => {
-                        api.hitl('skipped', interp?.noteSignals ?? [], note.trim());
-                        setNote(''); setInterp(null);
-                      }}
-                        className="flex-1 text-xs font-semibold py-2 rounded-xl border"
-                        style={{ borderColor: COLORS.BORDER, color: COLORS.SUB, background: COLORS.CARD }}>
-                        아니요, 그대로
-                      </button>
-                    </div>
-                  )}
                 </div>
               )}
 
-              {/* 반영한 내용 — 확정 누적, X로 해제 */}
+              {/* 반영한 내용 — 누적, X로 해제. 상충 검증·해석은 다음 '당신의 프로필'(SC-14)에서 한 번에. */}
               {reflected.length > 0 && (
                 <div className="mt-3">
-                  <p className="text-xs font-medium mb-1.5" style={{ color: COLORS.SUB }}>반영한 내용</p>
+                  <p className="text-xs font-medium mb-1.5" style={{ color: COLORS.SUB }}>
+                    담아둔 내용 <span className="font-normal">— 프로필 단계에서 AI가 한 번에 확인해요</span>
+                  </p>
                   <div className="flex flex-wrap gap-1.5">
-                    {reflected.flatMap((r, ri) =>
-                      (r.signals.length ? r.signals : [r.text]).map((s, si) => (
-                        <span key={`${ri}-${si}`} className="inline-flex items-center gap-1 text-[11px] px-2 py-1 rounded-full"
-                          style={{ background: COLORS.YELLOW_SURFACE, color: COLORS.TEXT }}>
-                          ✓ {s}
-                          <button onClick={() => setReflected(list => list.filter((_, i) => i !== ri))}
-                            className="opacity-60 hover:opacity-100" aria-label="해제">✕</button>
-                        </span>
-                      ))
-                    )}
+                    {reflected.map((r, ri) => (
+                      <span key={ri} className="inline-flex items-center gap-1 text-[11px] px-2 py-1 rounded-full"
+                        style={{ background: COLORS.YELLOW_SURFACE, color: COLORS.TEXT }}>
+                        ✓ {r.text}
+                        <button onClick={() => setReflected(list => list.filter((_, i) => i !== ri))}
+                          className="opacity-60 hover:opacity-100" aria-label="해제">✕</button>
+                      </span>
+                    ))}
                   </div>
                 </div>
               )}
