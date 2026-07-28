@@ -380,7 +380,7 @@ export function RegionCard({ region, color, onSelect, onExperience, deemphasizeC
       <button
         onClick={onSelect}
         className="mt-2 w-full flex items-center justify-center gap-1 text-xs font-semibold py-2 rounded-xl active:scale-[0.98] transition-transform"
-        style={{ background: color, color: '#fff' }}
+        style={{ background: COLORS.KB_YELLOW, color: COLORS.TEXT }}
       >
         이 동네로 금융 알아보기 →
       </button>
