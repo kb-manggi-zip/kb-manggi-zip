@@ -4,10 +4,12 @@
 services:
   - type: web
     name: kb-manggi-api
-    runtime: python
+    runtime: python                # 네이티브 Python(Docker 아님). Blueprint로 만들어야 이 설정이 적용됨.
     plan: free
     rootDir: backend
-    buildCommand: "pip install -r requirements-runtime.txt"
+    # pip 업그레이드 후 설치 — pydantic-core 등이 소스(Rust) 컴파일 대신 prebuilt wheel을 받게 함.
+    # (낡은 pip이 wheel 태그를 못 맞춰 소스 빌드로 빠지면 Render read-only FS에서 cargo 에러가 남.)
+    buildCommand: "pip install --upgrade pip && pip install -r requirements-runtime.txt"
     startCommand: "uvicorn app.main:app --host 0.0.0.0 --port $PORT"
     healthCheckPath: /health
     envVars:
