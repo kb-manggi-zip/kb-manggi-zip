@@ -26,6 +26,8 @@ export default function CompareTable() {
   }
 
   const { branches, dday, noticeDaysLeft, noticeDeadline, assumptions } = comparison;
+  // 공통 가정은 갈래(branch)와 무관하게 같은 텍스트라 카드 3장에 반복하지 않고 여기서 한 번만 계산.
+  const commonAssumptions = assumptions.filter(a => assumptionForBranch(a, '갱신') === 'common');
   const name = finance?.household === '신혼' ? '신혼 가구' : '나';
   // 분석 에이전트(narrate 노드)가 만든 통역을 재사용(중복 LLM 호출 없음). 없으면 로컬 템플릿.
   const briefText = state.briefing?.trim() ? state.briefing : briefings.compare(comparison, name);
@@ -122,6 +124,17 @@ export default function CompareTable() {
           </button>
         ))}
       </div>
+
+      {/* 모든 갈래에 공통되는 가정 — 카드마다 반복하지 않고 한 번만 */}
+      {commonAssumptions.length > 0 && (
+        <div className="px-5 mb-3">
+          <Accordion title="공통 가정">
+            {commonAssumptions.map(a => (
+              <p key={a} className="text-xs py-0.5">• {a}</p>
+            ))}
+          </Accordion>
+        </div>
+      )}
 
       {/* 카드 스와이프 영역 */}
       <div
@@ -280,52 +293,60 @@ function BranchCardView({
         )}
       </div>
 
-      <div className="px-5 py-3 bg-muted/40 space-y-2 text-xs border-b border-border">
-        <div>
-          <p className="text-muted-foreground font-medium mb-1">⚠️ 리스크</p>
-          {branch.risks.map(r => <p key={r}>• {r}</p>)}
-          {branch.uncertainty && (
-            <p className="mt-1 text-muted-foreground italic">※ {branch.uncertainty}</p>
-          )}
-          {branch.branch === '매매' && firstHome === '모름' && (
-            <div className="mt-2 px-2 py-1.5 rounded-lg" style={{ background: COLORS.YELLOW_SURFACE }}>
-              <p className="text-[11px]" style={{ color: COLORS.KB_GRAY }}>
-                💡 생애최초라면 LTV 70%까지 가능해 한도가 더 늘어날 수 있어요
-              </p>
-            </div>
-          )}
-        </div>
-        <div>
-          <p className="text-muted-foreground font-medium mb-1">🛡 대비</p>
-          {branch.cares.map(c => <p key={c}>• {c}</p>)}
-        </div>
-      </div>
-
-      <div className="px-5 py-3 flex items-center justify-between">
-        <p className="text-xs text-muted-foreground italic">"{branch.feature}"</p>
-        <div className="flex gap-1 flex-wrap justify-end">
-          {basisChips.map(c => <BasisChip key={c.label} label={c.label} tip={c.tip} />)}
-        </div>
-      </div>
-
-      {/* 이 갈래의 가정만 (공통 + 갈래별) */}
-      {branchAssumptions.length > 0 && (
-        <div className="px-5 py-2">
-          <Accordion title={`${branch.branch} 계산의 가정 보기`}>
-            {branchAssumptions.filter(([, k]) => k === 'branch').map(([a]) => (
-              <p key={a} className="text-xs py-0.5">• {a}</p>
-            ))}
-            {branchAssumptions.some(([, k]) => k === 'common') && (
-              <>
-                <p className="text-[11px] font-semibold mt-1.5" style={{ color: COLORS.SUB }}>공통</p>
-                {branchAssumptions.filter(([, k]) => k === 'common').map(([a]) => (
-                  <p key={a} className="text-xs py-0.5">• {a}</p>
-                ))}
-              </>
-            )}
-          </Accordion>
+      {/* 대출 한도가 실제로 바뀔 수 있는 정보라 접지 않고 항상 보이게 유지 */}
+      {branch.branch === '매매' && firstHome === '모름' && (
+        <div className="mx-5 mt-3 px-3 py-2 rounded-lg" style={{ background: COLORS.YELLOW_SURFACE }}>
+          <p className="text-[11px]" style={{ color: COLORS.KB_GRAY }}>
+            💡 생애최초라면 LTV 70%까지 가능해 한도가 더 늘어날 수 있어요
+          </p>
         </div>
       )}
+
+      {/* 접힘: 리스크·대비 — 항목별 1:1 대응은 아니라서(예: 매매의 화재보험이 자산가치 변동 리스크를
+          직접 상쇄하진 않음) 화살표로 짝짓지 않고, 각 목록 제목을 문장형으로 써서 관계만 드러낸다. */}
+      <div className="px-5 py-2 border-b border-border">
+        <Accordion title="리스크는 없나요?">
+          <div>
+            <p className="text-muted-foreground font-medium mb-1.5">⚠️ 이런 리스크가 있을 수 있어요</p>
+            <div className="space-y-1.5">
+              {branch.risks.map(r => <p key={r} className="text-xs">• {r}</p>)}
+            </div>
+            {branch.uncertainty && (
+              <p className="mt-1.5 text-xs text-muted-foreground italic">※ {branch.uncertainty}</p>
+            )}
+          </div>
+          <div className="mt-3">
+            <p className="text-muted-foreground font-medium mb-1.5">🛡 이렇게 대비해요</p>
+            <div className="space-y-1.5">
+              {branch.cares.map(c => <p key={c} className="text-xs">• {c}</p>)}
+            </div>
+          </div>
+        </Accordion>
+      </div>
+
+      {/* 접힘: 근거·가정 (feature 인용 + 근거칩 + 계산 가정) */}
+      <div className="px-5 py-2">
+        <Accordion title="어떻게 계산했나요?">
+          <p className="text-xs italic mb-2">"{branch.feature}"</p>
+          {basisChips.length > 0 && (
+            <div className="mb-2">
+              <p className="text-muted-foreground font-medium mb-1">📎 이 계산의 근거예요</p>
+              <div className="flex gap-1 flex-wrap">
+                {basisChips.map(c => <BasisChip key={c.label} label={c.label} tip={c.tip} />)}
+              </div>
+            </div>
+          )}
+          {/* 모든 갈래 공통 가정은 카드마다 반복하지 않고 카드 스와이프 위에 한 번만 보여줌 */}
+          {branchAssumptions.some(([, k]) => k === 'branch') && (
+            <div>
+              <p className="text-muted-foreground font-medium mb-1">📝 이런 가정으로 계산했어요</p>
+              {branchAssumptions.filter(([, k]) => k === 'branch').map(([a]) => (
+                <p key={a} className="text-xs py-0.5">• {a}</p>
+              ))}
+            </div>
+          )}
+        </Accordion>
+      </div>
 
       <div className="px-5 pb-5">
         <button

@@ -1,5 +1,6 @@
 import React, { useEffect, useState, useMemo } from 'react';
 import { useApp } from '../store';
+import type { Screen } from '../store';
 import { COLORS } from '../theme';
 import { MobileShell, DdayBar, BackBtn, Disclaimer } from '../components/ui';
 import AiBriefing from '../components/AiBriefing';
@@ -19,9 +20,9 @@ export default function RegionListMonthly() {
     api.regionsMonthly(state.contract?.housingType, state.contract?.preferredArea, state.finance?.household).then(setRegions);
   }, [state.contract?.housingType, state.contract?.preferredArea, state.finance?.household]);
 
-  function selectRegion(r: Region) {
+  function selectRegion(r: Region, screen: Screen) {
     dispatch({ type: 'SELECT_REGION', regionId: r.id, region: r });
-    dispatch({ type: 'NAVIGATE', screen: 'SC-07' });
+    dispatch({ type: 'NAVIGATE', screen });
   }
 
   // 전세 카드와 동일한 구성 적용(L2): 구 폴백 동일값 접기 + 재택 확정 시 통근 격하
@@ -97,7 +98,8 @@ export default function RegionListMonthly() {
             key={r.id}
             region={r}
             color={COLORS.BLUE}
-            onSelect={() => selectRegion(r)}
+            onSelect={() => selectRegion(r, 'SC-09')}
+            onExperience={() => selectRegion(r, 'SC-07')}
             deemphasizeCommute={deemphasizeCommute}
             hiddenReasons={commonReasons}
             subtitle={tab === 'similar'

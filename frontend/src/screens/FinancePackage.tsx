@@ -9,7 +9,7 @@ import type { ProductsResponse } from '../api/types';
 
 export default function FinancePackage() {
   const { state, dispatch } = useApp();
-  const { selectedBranch, comparison } = state;
+  const { selectedBranch, comparison, prevScreen } = state;
   const [products, setProducts] = useState<ProductsResponse | null>(null);
   const [toastVisible, setToastVisible] = useState(false);
   const [toastMsg, setToastMsg] = useState('');
@@ -37,7 +37,9 @@ export default function FinancePackage() {
 
       {/* 갈래 헤더 */}
       <div className="px-5 py-3 flex items-center gap-2" style={{ background: color + '22', borderBottom: `2px solid ${color}` }}>
-        <BackBtn onClick={() => dispatch({ type: 'NAVIGATE', screen: selectedBranch === '갱신' ? 'SC-08' : 'SC-07' })} />
+        {/* 동네 선택에서 바로 오는 경로(SC-04/05)가 생겨 "항상 SC-07/SC-08에서 왔다"는 가정이 깨짐 —
+            실제 직전 화면(prevScreen)으로 돌아가고, 못 잡을 때만 기존 가정으로 폴백 */}
+        <BackBtn onClick={() => dispatch({ type: 'NAVIGATE', screen: prevScreen ?? (selectedBranch === '갱신' ? 'SC-08' : 'SC-07') })} />
         <span className="text-xl">{icon}</span>
         <h1 className="text-lg font-bold" style={{ color }}>
           {selectedBranch} · KB 금융 패키지
@@ -45,14 +47,7 @@ export default function FinancePackage() {
       </div>
 
       <div className="flex-1 overflow-y-auto px-5 py-5 space-y-4">
-        {branchData && (
-          <div className="bg-muted rounded-2xl px-4 py-3 text-sm flex items-center justify-between">
-            <span className="text-muted-foreground">예상 월 부담</span>
-            <span className="font-bold text-foreground">{formatAmount(branchData.monthlyBurden)}/월</span>
-          </div>
-        )}
-
-        {/* 메인 대출 카드 */}
+        {/* 메인 대출 카드 — "예상 월 부담"은 이 카드 내부 "예상 월 상환"과 같은 값이라 중복 표시하지 않음 */}
         <div
           className="bg-card rounded-3xl border-2 overflow-hidden"
           style={{ borderColor: color, boxShadow: '0 2px 12px rgba(0,0,0,0.08)' }}
