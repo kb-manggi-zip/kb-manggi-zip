@@ -1,7 +1,7 @@
 import React, { useEffect, useState, useMemo } from 'react';
 import { useApp } from '../store';
 import { COLORS } from '../theme';
-import { MobileShell, JourneyHeader, BackBtn, Disclaimer } from '../components/ui';
+import { MobileShell, DdayBar, BackBtn, Disclaimer } from '../components/ui';
 import AiBriefing from '../components/AiBriefing';
 import { api, briefings } from '../api/client';
 import { formatAmount } from '../utils/format';
@@ -31,7 +31,7 @@ export default function RegionListMonthly() {
 
   return (
     <MobileShell>
-      <JourneyHeader step={4} dday={state.comparison?.dday} noticeDaysLeft={state.comparison?.noticeDaysLeft} />
+      <DdayBar dday={state.comparison?.dday} noticeDaysLeft={state.comparison?.noticeDaysLeft} />
 
       <div className="flex items-center gap-2 px-5 py-2 border-b-2" style={{ borderColor: COLORS.BLUE }}>
         <BackBtn onClick={() => dispatch({ type: 'NAVIGATE', screen: 'SC-03' })} />

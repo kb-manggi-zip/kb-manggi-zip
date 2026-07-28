@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { useApp } from '../store';
 import { COLORS, BRANCH_COLORS, BRANCH_ICONS } from '../theme';
-import { MobileShell, JourneyHeader, PrimaryBtn, GhostBtn } from '../components/ui';
+import { MobileShell, DdayBar, PrimaryBtn, GhostBtn } from '../components/ui';
 import { api } from '../api/client';
 
 function buildCalendar(year: number, month: number): (number | null)[][] {
@@ -72,7 +72,7 @@ export default function ReservationSheet() {
 
   return (
     <MobileShell>
-      <JourneyHeader step={7} dday={state.comparison?.dday} noticeDaysLeft={state.comparison?.noticeDaysLeft} />
+      <DdayBar dday={state.comparison?.dday} noticeDaysLeft={state.comparison?.noticeDaysLeft} />
 
       <div className="flex-1 overflow-y-auto">
         <div className="flex flex-col items-center pt-8 pb-4 px-5">

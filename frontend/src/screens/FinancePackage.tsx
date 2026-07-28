@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useApp } from '../store';
 import { COLORS, BRANCH_COLORS, BRANCH_ICONS } from '../theme';
-import { MobileShell, JourneyHeader, BackBtn, PrimaryBtn, SecondaryBtn, BasisChip, Disclaimer, Toast } from '../components/ui';
+import { MobileShell, DdayBar, BackBtn, PrimaryBtn, SecondaryBtn, BasisChip, Disclaimer, Toast } from '../components/ui';
 import AiBriefing from '../components/AiBriefing';
 import { api, briefings } from '../api/client';
 import { formatAmount } from '../utils/format';
@@ -33,7 +33,7 @@ export default function FinancePackage() {
 
   return (
     <MobileShell>
-      <JourneyHeader step={6} dday={comparison?.dday} noticeDaysLeft={comparison?.noticeDaysLeft} />
+      <DdayBar dday={comparison?.dday} noticeDaysLeft={comparison?.noticeDaysLeft} />
 
       {/* 갈래 헤더 */}
       <div className="px-5 py-3 flex items-center gap-2" style={{ background: color + '22', borderBottom: `2px solid ${color}` }}>
