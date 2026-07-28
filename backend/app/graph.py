@@ -260,7 +260,7 @@ def route_node(state: AnalyzeState) -> dict:
     tracing.span_update(
         input={"contract_type": state["contract"].get("type"), "housingType": state["contract"].get("housingType")},
         output=routing,
-        metadata={"recommended_branch": routing.get("branch")},
+        metadata={"budget_reference_branch": routing.get("branch")},  # 추천 아님 — 예산밴드 기준 갈래
     )
     return {"routing": routing}
 
@@ -294,7 +294,7 @@ def narrate_node(state: AnalyzeState) -> dict:
                     {"branch": b["branch"], "monthlyBurden": b["monthlyBurden"]}
                     for b in state["comparison"]["branches"]
                 ],
-                "recommended": (state.get("routing") or {}).get("branch"),
+                "budgetReferenceBranch": (state.get("routing") or {}).get("branch"),  # 추천 아님(예산밴드 기준)
             }
         },
         output={"briefing": text},

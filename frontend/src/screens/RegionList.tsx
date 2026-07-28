@@ -46,6 +46,8 @@ export default function RegionList() {
   const color = BRANCH_COLORS[selectedBranch];
   const icon = BRANCH_ICONS[selectedBranch];
   const briefText = regions.length > 0 ? briefings.regions(regions[0]) : null;
+  // 재택 등 통근 비중을 낮추기로 '확정'(noteAdjust)한 사용자면 통근을 '참고'로 격하(삭제 아님, G3)
+  const deemphasizeCommute = applyNote && (state.contract?.noteAdjust?.commute ?? 1) < 0.95;
 
   function selectRegion(r: Region) {
     dispatch({ type: 'SELECT_REGION', regionId: r.id, region: r });
@@ -112,7 +114,7 @@ export default function RegionList() {
             </p>
           )}
           {regions.map(r => (
-            <RegionCard key={r.id} region={r} color={color} onSelect={() => selectRegion(r)} />
+            <RegionCard key={r.id} region={r} color={color} onSelect={() => selectRegion(r)} deemphasizeCommute={deemphasizeCommute} />
           ))}
         </div>
 
@@ -183,6 +185,10 @@ function PersonaCardView({ persona, color }: { persona: PersonaProfile; color: s
             );
           })}
         </div>
+        {/* 소비축 적합도 프레임 — '취향 추론'이 아니라 '자주 가는 곳이 가까운 동네'(G4) */}
+        <p className="text-[11px] leading-snug pt-1" style={{ color: COLORS.SUB }}>
+          · 생활·소비: 지출 내역은 자주 가는 곳의 기록이라, 그곳이 가까운 동네를 우선해요
+        </p>
         <p className="text-[11px] leading-snug">근거: {persona.weightBasis}</p>
         {segment.length > 0 && (
           <p className="text-[11px] pt-1">이 세그먼트 소비 성향: {segment.map(s => s.label).join(' · ')}</p>
@@ -253,7 +259,7 @@ function ClarifyBanner({
   );
 }
 
-function RegionCard({ region, color, onSelect }: { region: Region; color: string; onSelect: () => void }) {
+function RegionCard({ region, color, onSelect, deemphasizeCommute = false }: { region: Region; color: string; onSelect: () => void; deemphasizeCommute?: boolean }) {
   return (
     <div
       className="bg-card rounded-2xl border border-border p-4 transition-all"
@@ -279,7 +285,8 @@ function RegionCard({ region, color, onSelect }: { region: Region; color: string
       </div>
       {/* 특징 한 줄 — 스코어 근거(통근) + region_facts(태그). 전부 실측/facts 값 */}
       {(() => {
-        const commute = (region.scoreReasons ?? []).map(r => (r.match(/통근 \d+분/) || [])[0]).find(Boolean);
+        let commute = (region.scoreReasons ?? []).map(r => (r.match(/통근 \d+분/) || [])[0]).find(Boolean);
+        if (commute && deemphasizeCommute) commute = `${commute} (참고)`;  // 재택 확정 → 통근 격하(G3)
         const feature = [...region.tags, commute].filter(Boolean).slice(0, 3).join(' · ');
         return feature ? <p className="text-xs" style={{ color: COLORS.SUB }}>{feature}</p> : null;
       })()}
@@ -299,7 +306,7 @@ function RegionCard({ region, color, onSelect }: { region: Region; color: string
         <div className="text-xs space-y-0.5 pt-1" style={{ color: COLORS.SUB }}>
           <span className="font-semibold" style={{ color }}>왜 추천?</span>
           {region.scoreReasons.map((r, i) => (
-            <div key={i}>· {r}</div>
+            <div key={i}>· {deemphasizeCommute && r.startsWith('통근') ? `${r} — 재택 반영, 참고용` : r}</div>
           ))}
         </div>
       )}

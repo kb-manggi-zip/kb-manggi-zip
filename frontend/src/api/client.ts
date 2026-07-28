@@ -150,7 +150,7 @@ export const api = {
   },
 
   // '이 동네에서의 하루' 개인화 발품 내레이션 (agent 모드: 백엔드 LLM+소비프로필 / 로컬: 템플릿)
-  async dayLifestyle(region: Region | null, branch: Branch, finance: FinanceInfo | null): Promise<string> {
+  async dayLifestyle(region: Region | null, branch: Branch, finance: FinanceInfo | null, budget?: number, wfh?: boolean): Promise<string> {
     const regionName = region?.name ?? '이 동네';
     const local = () => briefings.dayPlayer(regionName);
     if (!API_URL) return local();
@@ -158,7 +158,8 @@ export const api = {
       const res = await fetch(`${API_URL}/api/briefing`, {
         method: 'POST',
         headers: apiHeaders(),
-        body: JSON.stringify({ kind: 'dayPlayer', context: { region, regionName, branch, finance } }),
+        // budget = 고른 갈래 예산(발품 실거래를 예산 이하에서 뽑는 캡, G2) / wfh = 재택 확정 시 통근 격하(G3)
+        body: JSON.stringify({ kind: 'dayPlayer', context: { region, regionName, branch, finance, budget, wfh } }),
       });
       if (!res.ok) return local();
       const j = await res.json();

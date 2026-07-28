@@ -95,7 +95,14 @@ def test_sample_trade_picks_median(tmp_path):
     conn.close()
     t = trades_store.sample_trade("망원동", "sale", db_path=db)
     assert t["price"] == 500_000_000 and t["area_m2"] == 50.0  # 중위(400·500·900)=500
+    assert t["overBudget"] is False
     assert trades_store.sample_trade("없는동", "sale", db_path=db) is None
+    # G2: 예산 상한 이하에서 선정 — 4.5억 캡이면 5억·9억 제외 → 400만 남아 400 선정
+    capped = trades_store.sample_trade("망원동", "sale", max_price=450_000_000, db_path=db)
+    assert capped["price"] == 400_000_000 and capped["overBudget"] is False
+    # 상한 이하 표본이 없으면 초과 사례를 쓰되 overBudget=True로 표기(폴백)
+    over = trades_store.sample_trade("망원동", "sale", max_price=300_000_000, db_path=db)
+    assert over["overBudget"] is True
 
 
 def test_trade_fact_formats(tmp_path, monkeypatch):

@@ -150,7 +150,9 @@ def score_region(region: dict, ctx: dict) -> dict:
         cw = int(w["commute"] * 100)
         reasons.append(f"통근 {minutes}분{gu_tag} (가중치 {cw}%·조사상 최우선·세그먼트 대표 직장 기준)")
     if dc:
-        reasons.append(f"음식점·카페 {dc}곳{gu_tag}{'·소비 성향과 매칭' if values_food else ''}")
+        # 적합도 프레임: '취향 추론'이 아니라 '자주 쓰는 곳이 가까워 생활 마찰이 적다'(G4).
+        near_note = " — 자주 쓰는 곳이 가까운 동네" if values_food else ""
+        reasons.append(f"음식점·카페 {dc}곳{gu_tag}{near_note}")
     if budget > 0 and region.get("surplus", 0) > 0:
         reasons.append("예산 여유 있음")
     return {"total": total, "reasons": reasons, "breakdown": {k: round(axes[k], 3) for k in axes}, "weights": w}

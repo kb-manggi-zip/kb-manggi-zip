@@ -285,10 +285,14 @@ def read_region_transit(region_id: str, workplace: str, *, db_path: Optional[str
     return {"minutes": row[0], "transfers": row[1], "estimated": bool(row[2])} if row else None
 
 
-def sample_trade(umd_name: str, trade_type: str, *, db_path: Optional[str] = None) -> Optional[dict]:
+def sample_trade(
+    umd_name: str, trade_type: str, *, max_price: Optional[int] = None, db_path: Optional[str] = None
+) -> Optional[dict]:
     """동+거래유형의 '중위가에 가장 가까운 실거래 1건' (발품 근거용, 국토부 실데이터).
 
-    반환 {price, monthly, area_m2, deal_ym} 또는 None. (아웃라이어 대신 대표 사례)
+    max_price(예산 상한)를 주면 그 이하 거래에서 우선 선정(발품이 예산 초과 매물을 앞세우지 않게).
+    상한 이하 표본이 없으면 전체에서 대표 사례를 뽑되 overBudget=True로 표기(문장에서 '예산 상위 평형' 명시).
+    반환 {price, monthly, area_m2, deal_ym, overBudget} 또는 None. (아웃라이어 대신 대표 사례)
     """
     path = db_path or resolve_db_path(write=False)
     if not path or not Path(path).exists():
@@ -303,6 +307,24 @@ def sample_trade(umd_name: str, trade_type: str, *, db_path: Optional[str] = Non
         conn.close()
     if not rows:
         return None
-    mid = sorted(r[0] for r in rows)[len(rows) // 2]  # 중위가
-    best = min(rows, key=lambda r: abs(r[0] - mid))  # 중위가에 가장 가까운 실사례
-    return {"price": best[0], "monthly": best[1], "area_m2": best[2], "deal_ym": best[3]}
+
+    def _nearest_median(candidates: list) -> tuple:
+        mid = sorted(r[0] for r in candidates)[len(candidates) // 2]  # 중위가
+        return min(candidates, key=lambda r: abs(r[0] - mid))  # 중위가에 가장 가까운 실사례
+
+    over_budget = False
+    pool = rows
+    if max_price and max_price > 0:
+        within = [r for r in rows if r[0] <= max_price]
+        if within:
+            pool = within  # 예산 이하에서만 대표 사례 선정
+        else:
+            over_budget = True  # 예산 이하 표본 없음 → 전체에서 뽑되 표기(폴백)
+    best = _nearest_median(pool)
+    return {
+        "price": best[0],
+        "monthly": best[1],
+        "area_m2": best[2],
+        "deal_ym": best[3],
+        "overBudget": over_budget,
+    }

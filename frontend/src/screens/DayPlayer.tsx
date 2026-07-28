@@ -36,7 +36,11 @@ export default function DayPlayer() {
       setMonthlyCost(r.monthlyCost);
     });
     // '이 동네에서의 하루' 개인화 발품 내레이션(소비 프로필 그라운딩)
-    api.dayLifestyle(selectedRegion, selectedBranch, finance).then(setLifestyle);
+    // budget = 고른 갈래 예산 → 발품 실거래를 예산 이하에서 선정(G2)
+    // wfh = 통근 비중을 낮추기로 확정(재택 등)한 사용자 → 발품에서 통근 격하(G3)
+    const branchBudget = comparison?.branches.find(b => b.branch === selectedBranch)?.depositOrPrice;
+    const wfh = (state.contract?.noteAdjust?.commute ?? 1) < 0.95;
+    api.dayLifestyle(selectedRegion, selectedBranch, finance, branchBudget, wfh).then(setLifestyle);
     // 1초 전환 카드
     const t = setTimeout(() => setShowIntro(false), 1500);
     return () => clearTimeout(t);
