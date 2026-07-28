@@ -1,7 +1,7 @@
 import React, { useEffect, useState, useMemo } from 'react';
 import { useApp } from '../store';
 import { COLORS, BRANCH_COLORS, BRANCH_ICONS } from '../theme';
-import { MobileShell, JourneyHeader, BackBtn, Disclaimer, Accordion } from '../components/ui';
+import { MobileShell, DdayBar, BackBtn, Disclaimer, Accordion } from '../components/ui';
 import AiBriefing from '../components/AiBriefing';
 import { api, briefings, personaIdFor } from '../api/client';
 import { formatAmount } from '../utils/format';
@@ -73,7 +73,7 @@ export default function RegionList() {
 
   return (
     <MobileShell>
-      <JourneyHeader step={4} dday={comparison?.dday} noticeDaysLeft={comparison?.noticeDaysLeft} />
+      <DdayBar dday={comparison?.dday} noticeDaysLeft={comparison?.noticeDaysLeft} />
 
       <div className="flex items-center gap-2 px-5 py-2 border-b-2" style={{ borderColor: color }}>
         <BackBtn onClick={() => dispatch({ type: 'NAVIGATE', screen: 'SC-03' })} />

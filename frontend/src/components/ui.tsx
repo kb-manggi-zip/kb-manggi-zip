@@ -53,39 +53,6 @@ export function DdayBar({ dday, noticeDaysLeft }: { dday?: number; noticeDaysLef
   );
 }
 
-// ─── 여정 헤더 (2층 통합) — D-day 바 + 얇은 진행바 + n/7 (스텝 도트 제거) ──────
-export function JourneyHeader({ step, dday, noticeDaysLeft }: { step: number; dday?: number; noticeDaysLeft?: number }) {
-  return (
-    <>
-      {(dday !== undefined || noticeDaysLeft !== undefined) && <DdayBar dday={dday} noticeDaysLeft={noticeDaysLeft} />}
-      <div className="flex items-center gap-2 px-5 pt-2.5 pb-2">
-        <div className="flex-1 h-1 bg-border rounded-full overflow-hidden">
-          <div className="h-full rounded-full transition-all duration-500"
-            style={{ width: `${Math.min(step, 7) / 7 * 100}%`, background: COLORS.KB_YELLOW }} />
-        </div>
-        <span className="text-xs text-muted-foreground font-medium whitespace-nowrap">{step}/7</span>
-      </div>
-    </>
-  );
-}
-
-// ─── Flow Progress Bar ───────────────────────────────────────────────────────
-// 여정 7단계 — 문진→해석(AI)→비교(3갈래)→동네→발품→여력(지출)→리포트
-const FLOW_LABELS = ['문진', '해석', '비교', '동네', '발품', '여력', '리포트'];
-export function FlowProgress({ current }: { current: number }) {
-  return (
-    <div className="flex items-center px-5 pt-3 pb-2 gap-1.5">
-      {FLOW_LABELS.map((label, i) => (
-        <div
-          key={i}
-          className="flex-1 h-1 rounded-full transition-all duration-300"
-          style={{ background: i < current ? COLORS.KB_YELLOW : i === current ? COLORS.KB_YELLOW : COLORS.BORDER }}
-          title={label}
-        />
-      ))}
-    </div>
-  );
-}
 
 // ─── Primary CTA Button ──────────────────────────────────────────────────────
 export function PrimaryBtn({ children, onClick, disabled = false, className = '' }: {

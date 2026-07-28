@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useApp } from '../store';
 import { COLORS, BRANCH_COLORS, BRANCH_ICONS } from '../theme';
-import { MobileShell, BackBtn, JourneyHeader } from '../components/ui';
+import { MobileShell, BackBtn, DdayBar } from '../components/ui';
 import { formatAmount, ddayText } from '../utils/format';
 import { kbLandUrl } from '../utils/external';
 import { api } from '../api/client';
@@ -57,7 +57,7 @@ export default function DecisionReportScreen() {
 
   return (
     <MobileShell>
-      <JourneyHeader step={7} dday={rep?.dday} noticeDaysLeft={rep?.comparison.noticeDaysLeft} />
+      <DdayBar dday={rep?.dday} noticeDaysLeft={rep?.comparison.noticeDaysLeft} />
       <div className="flex items-center gap-2 px-5 py-2 border-b-2" style={{ borderColor: color }}>
         <BackBtn onClick={() => dispatch({ type: 'NAVIGATE', screen: 'SC-11' })} />
         <span className="font-bold" style={{ color }}>만기 결정 리포트</span>
