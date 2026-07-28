@@ -213,3 +213,43 @@ def test_scoring_ctx_is_single_source():
     assert ctx["budget"] == 500_000_000
     assert ctx["in_preferred"] is True
     assert "weights" in ctx and abs(sum(ctx["weights"].values()) - 1.0) < 0.01
+
+
+# ── values_food 증거 위계(본인 진술 > 실측 > 세그먼트) ────────────────
+def test_note_values_food_detects_keyword_only():
+    assert clarify.note_values_food("저 카페 자주 가요") is True
+    assert clarify.note_values_food("외식 좋아해요") is True
+    assert clarify.note_values_food("번화가 근처가 좋아요") is True  # 카페와 같은 개념(상권 밀집도)
+    assert clarify.note_values_food("") is None
+    assert clarify.note_values_food("통근이 중요해요") is None  # 무관한 축은 판단 보류
+    assert clarify.note_values_food("반려동물 키워요") is None  # 같은 consumption 가중치를 올리지만
+    assert clarify.note_values_food("재택근무예요") is None  # 사유가 다름(생활편의) → food 판정과 무관
+
+
+def test_scoring_ctx_no_note_defers_to_segment_fallback():
+    # 신혼 세그먼트 traits엔 카페/외식/배달 키워드가 없음(spending_profiles.yaml) →
+    # 자유입력도 mydata도 없으면 values_food는 scoring.py 세그먼트 폴백에 위임(키 자체를 안 실음).
+    ctx = persona.scoring_ctx({"note": ""}, {"household": "신혼"}, budget=500_000_000, in_preferred=True)
+    assert "values_food" not in ctx
+
+
+def test_scoring_ctx_note_overrides_segment_default():
+    # 본인이 직접 "카페 자주 가요"라고 말하면, 세그먼트 평균과 무관하게 values_food=True로 확정.
+    ctx = persona.scoring_ctx(
+        {"note": "저 카페 자주 가요"}, {"household": "신혼"}, budget=500_000_000, in_preferred=True
+    )
+    assert ctx["values_food"] is True
+
+
+def test_scoring_ctx_note_outranks_mydata():
+    # P2는 실측(mydata)상 카페·배달 low → values_food_override는 False (test_personal_traits.py 참고).
+    # 그래도 본인이 "카페 자주 가요"라고 말하면 1위(본인 진술)가 2위(실측)를 덮어써야 한다.
+    without_note = persona.scoring_ctx(
+        {"note": ""}, {"household": "신혼"}, budget=500_000_000, in_preferred=True, persona_id="P2"
+    )
+    assert without_note["values_food"] is False  # 기존 동작(실측) 보존 확인
+
+    with_note = persona.scoring_ctx(
+        {"note": "저 카페 자주 가요"}, {"household": "신혼"}, budget=500_000_000, in_preferred=True, persona_id="P2"
+    )
+    assert with_note["values_food"] is True  # 본인 진술이 실측을 덮어씀

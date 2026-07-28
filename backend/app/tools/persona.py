@@ -98,8 +98,11 @@ def scoring_ctx(
 ) -> dict:
     """페르소나 → 동네 스코어 입력(단일 소스). regions 노드가 인라인으로 만들던 ctx를 여기로 통일.
 
-    자유입력 보정 가중치(weights) + (persona_id 시) 실측 소비 override(values_food)를 실어
-    스코어·발품이 페르소나 조합과 같은 성향값을 쓰게 한다(일관성).
+    자유입력 보정 가중치(weights) + values_food(성향 판정) 둘 다 여기서 확정한다.
+    values_food 증거 위계(personal_traits.py 문서 그대로): 1위 본인 진술(자유입력) > 2위 개인
+    실측(mydata) > 3위 세그먼트 평균(scoring.py 폴백, 여기서 값을 안 주면 그쪽에서 traits로 추정).
+    가중치(weights)만 자유입력을 반영하고 판정(values_food)은 세그먼트 평균에 고정돼있던
+    불일치를 없애기 위해, 본인 진술을 실측보다 나중에(=더 높은 우선순위로) 적용한다.
     """
     household = finance.get("household")
     note = contract.get("note") or ""
@@ -118,5 +121,8 @@ def scoring_ctx(
 
         vf = values_food_override(derive_personal_traits(persona_id))
         if vf is not None:
-            ctx["values_food"] = vf  # 실측이 세그먼트 성향을 덮어씀
+            ctx["values_food"] = vf  # 2위: 실측이 세그먼트 성향을 덮어씀
+    vf_note = clarify_mod.note_values_food(note)
+    if vf_note is not None:
+        ctx["values_food"] = vf_note  # 1위: 본인 진술이 실측·세그먼트를 덮어씀
     return ctx

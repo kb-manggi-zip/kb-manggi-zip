@@ -1,6 +1,7 @@
 """소비 성향 '실측 override' — 개인 실측(mydata)이 세그먼트 통계를 덮어쓰는 2위 증거. 결정론(LLM 아님).
 
-증거 위계: 1위 본인 진술+HITL / 2위 개인 실측(여기) / 3위 세그먼트 통계(spending_profiles).
+증거 위계: 1위 본인 진술+HITL(구현: agents/clarify.py::note_values_food, 배선: tools/persona.py::scoring_ctx)
+         / 2위 개인 실측(여기) / 3위 세그먼트 통계(spending_profiles).
 개인 카테고리 비중 ÷ 또래 평균(rules/consumption_baseline.yaml)이 임계(±30%)를 넘으면 성향 override + 근거 문장.
 mydata 없으면 {} (세그먼트 값 유지). compare 미접촉.
 """
