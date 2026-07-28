@@ -378,10 +378,13 @@ export function RegionCard({ region, color, onSelect, onExperience, deemphasizeC
             ))}
           </Accordion>
         </div>
-      ) : hiddenReasons.length > 0 && (
-        // 통근·상권 등 근거가 전부 위 "구 기준 공통값" 배너로 접혀서 이 카드엔 남은 개별 근거가 없는 경우
+      ) : (
+        // cardReasons가 비는 두 경우 모두 커버: ①통근·상권이 "구 기준 공통값"으로 접힘(hiddenReasons)
+        // ②이 동네는 그 데이터 자체가 없어서(동·구 모두 미확보) 애초에 근거가 예산 여유 하나뿐이었던 경우
         <p className="text-xs pt-1" style={{ color: COLORS.SUB }}>
-          통근·상권 근거는 위 구 공통 안내를 참고하세요.
+          {hiddenReasons.length > 0
+            ? '통근·상권 근거는 위 구 공통 안내를 참고하세요.'
+            : '이 동네는 예산 조건에 맞아 후보에 포함됐어요.'}
         </p>
       )}
       <button
