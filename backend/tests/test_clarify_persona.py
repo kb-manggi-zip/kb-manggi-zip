@@ -56,6 +56,18 @@ def test_no_household_conflict_before_selection():
     assert r2["conflicts"]
 
 
+def test_validate_profile_rule_fallback_detects_and_holds():
+    # 최종 프로필 종합검증: LLM 비활성(테스트) → 간이 검증(mode=rule). 상충이면 held + weightAdjust 미반영.
+    note = {"note": "재택근무해요 · 통근이 제일 중요해요"}
+    r = clarify.validate_profile(note, {"household": "1인"}, budget=360_000_000)
+    assert r["mode"] == "rule"
+    assert r["conflicts"], "재택+통근 → 상충 감지"
+    assert r["held"] is True and r["weightAdjust"] == {}, "상충 남으면 확정 전 미반영"
+    # 상충 없는 입력은 해석된 boost가 실린다(확정 시 반영될 값)
+    r2 = clarify.validate_profile({"note": "카페 자주 가요"}, {"household": "1인"})
+    assert r2["mode"] == "rule" and r2["conflicts"] == [] and r2["weightAdjust"]
+
+
 def test_segment_stays_with_selection_under_unresolved_conflict():
     # J2: 미확정 note는 세그먼트를 뒤집지 않는다 — segment는 선택된 가구 유형에서만 나온다.
     from app.tools import persona

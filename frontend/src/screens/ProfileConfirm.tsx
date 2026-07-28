@@ -4,7 +4,7 @@ import { COLORS } from '../theme';
 import { MobileShell, PrimaryBtn, DdayBar } from '../components/ui';
 import { formatAmount } from '../utils/format';
 import { api } from '../api/client';
-import type { PersonaProfile } from '../api/types';
+import type { PersonaProfile, ClarifyResult } from '../api/types';
 
 function householdLabel(h: string) {
   return h === '1인' ? '1인 가구' : h === '신혼' ? '신혼 가구' : '자녀 가구';
@@ -15,17 +15,37 @@ export default function ProfileConfirm() {
   const { state, dispatch } = useApp();
   const { contract, finance, comparison } = state;
   const [persona, setPersona] = useState<PersonaProfile | null>(null);
-  const [conflicts, setConflicts] = useState<string[]>([]);
+  const [validation, setValidation] = useState<ClarifyResult | null>(null);
+  const [applied, setApplied] = useState(false);
   const [tooltip, setTooltip] = useState<string | null>(null);
+
+  // 예산(참고) — 예산↔선호 상충 판단 맥락. 갈래 미선택이라 대표로 전세(이사) 예산 사용.
+  const refBudget = comparison?.branches.find(b => b.branch === '이사')?.depositOrPrice
+    ?? comparison?.branches?.[0]?.depositOrPrice ?? 0;
 
   useEffect(() => {
     if (!contract || !finance) { dispatch({ type: 'NAVIGATE', screen: 'SC-03' }); return; }
     api.persona(contract, finance).then(setPersona).catch(() => setPersona(null));
-    // 최종 확인: 합쳐진 자유입력에 상충이 남아있으면 되묻는다(조용한 반영 금지).
-    api.clarify(contract, finance).then(r => setConflicts(r.conflicts ?? [])).catch(() => setConflicts([]));
+    // 최종 프로필 종합검증(SC-14 1회): 누적 자유입력 전체 + 가구 + 예산을 한 번에 검증(원격 AI / 로컬 간이).
+    api.validateProfile(contract, finance, refBudget).then(setValidation).catch(() => setValidation(null));
+    setApplied(false);
   }, [contract, finance]);
 
   if (!contract || !finance) return null;
+
+  const conflicts = validation?.conflicts ?? [];
+  const noteSignals = validation?.noteSignals ?? [];
+  const hasNote = !!contract.note?.trim();
+  const isRuleMode = validation?.mode === 'rule';
+  const hasAdjust = !!validation?.weightAdjust && Object.keys(validation.weightAdjust).length > 0;
+
+  // HITL 확정: 검증이 해석한 조정을 이 시점에만 프로필(noteAdjust)에 반영. 확정 전엔 미반영(B1·J2).
+  function applyAndCompare() {
+    if (validation?.weightAdjust && Object.keys(validation.weightAdjust).length > 0) {
+      dispatch({ type: 'SET_CONTRACT', contract: { ...contract!, noteAdjust: validation.weightAdjust } });
+    }
+    dispatch({ type: 'NAVIGATE', screen: 'SC-03' });
+  }
 
   const signals = persona?.consumptionSignals ?? [];
   const measured = signals.filter(s => s.source === '실측');
@@ -43,15 +63,44 @@ export default function ProfileConfirm() {
       <div className="flex-1 overflow-y-auto px-5 pb-8 space-y-5">
         <h1 className="text-2xl font-bold" style={{ color: COLORS.KB_GRAY }}>당신의 프로필</h1>
 
-        {/* 상충 재확인 — 합쳐진 자유입력에 모순이 남아있으면 정정 유도 */}
-        {conflicts.length > 0 && (
-          <div className="rounded-2xl p-4 space-y-2" style={{ background: COLORS.YELLOW_SURFACE, border: `1px solid ${COLORS.KB_YELLOW}` }}>
-            <p className="text-sm font-bold" style={{ color: COLORS.KB_GRAY }}>⚠️ 입력에 상충이 남아있어요</p>
-            {conflicts.map((c, i) => <p key={i} className="text-xs" style={{ color: COLORS.SUB }}>· {c}</p>)}
-            <button onClick={() => dispatch({ type: 'NAVIGATE', screen: 'SC-02' })}
-              className="w-full mt-1 py-2 rounded-xl text-xs font-semibold" style={{ background: COLORS.KB_YELLOW, color: COLORS.TEXT }}>
-              문진에서 정정하기
-            </button>
+        {/* 최종 프로필 종합검증 결과 — 자유입력이 있을 때만. 상충이면 정정 유도, 아니면 해석 확인 후 반영(HITL) */}
+        {hasNote && validation && (
+          <div className="rounded-2xl p-4 space-y-2"
+            style={{ background: COLORS.YELLOW_SURFACE, border: `1px solid ${COLORS.KB_YELLOW}` }}>
+            <div className="flex items-center gap-2">
+              <p className="text-sm font-bold" style={{ color: COLORS.KB_GRAY }}>
+                {conflicts.length > 0 ? '⚠️ 입력에 상충이 남아있어요' : '🤖 입력을 이렇게 이해했어요'}
+              </p>
+              <span className="text-[10px] px-1.5 py-0.5 rounded-full"
+                style={{ background: isRuleMode ? '#00000010' : COLORS.KB_YELLOW, color: isRuleMode ? COLORS.SUB : COLORS.TEXT }}>
+                {isRuleMode ? '간이 검증(규칙)' : 'AI 검증'}
+              </span>
+            </div>
+            {conflicts.length > 0 ? (
+              <>
+                {conflicts.map((c, i) => <p key={i} className="text-xs" style={{ color: COLORS.SUB }}>· {c}</p>)}
+                <button onClick={() => dispatch({ type: 'NAVIGATE', screen: 'SC-02' })}
+                  className="w-full mt-1 py-2 rounded-xl text-xs font-semibold" style={{ background: COLORS.KB_YELLOW, color: COLORS.TEXT }}>
+                  문진에서 정정하기
+                </button>
+                <p className="text-[11px]" style={{ color: COLORS.SUB }}>정할 때까지 자유입력은 동네 추천에 반영하지 않아요</p>
+              </>
+            ) : noteSignals.length > 0 ? (
+              <>
+                <div className="flex flex-wrap gap-1.5">
+                  {noteSignals.map((s, i) => (
+                    <span key={i} className="text-[11px] px-2 py-0.5 rounded-full" style={{ background: '#00000008', color: COLORS.SUB }}>{s}</span>
+                  ))}
+                </div>
+                {hasAdjust && (
+                  <p className="text-[11px]" style={{ color: applied ? COLORS.MINT : COLORS.SUB }}>
+                    {applied ? '✓ 동네 추천에 반영했어요' : '아래 [반영하고 비교]를 누르면 동네 추천에 실려요'}
+                  </p>
+                )}
+              </>
+            ) : (
+              <p className="text-xs" style={{ color: COLORS.SUB }}>특별히 반영할 신호는 없었어요.</p>
+            )}
           </div>
         )}
 
@@ -104,8 +153,17 @@ export default function ProfileConfirm() {
         </div>
       </div>
 
-      <div className="px-5 pb-8 pt-3">
-        <PrimaryBtn onClick={() => dispatch({ type: 'NAVIGATE', screen: 'SC-03' })}>이대로 비교하기 →</PrimaryBtn>
+      <div className="px-5 pb-8 pt-3 space-y-2">
+        {/* 반영할 신호가 있고 상충이 없으면 HITL 확정 버튼(이때만 noteAdjust 반영). 그 외엔 그냥 진행. */}
+        {conflicts.length === 0 && hasAdjust ? (
+          <>
+            <PrimaryBtn onClick={() => { applyAndCompare(); setApplied(true); }}>반영하고 비교하기 →</PrimaryBtn>
+            <button onClick={() => dispatch({ type: 'NAVIGATE', screen: 'SC-03' })}
+              className="w-full text-center text-xs text-muted-foreground py-1">반영 없이 비교만 할게요</button>
+          </>
+        ) : (
+          <PrimaryBtn onClick={() => dispatch({ type: 'NAVIGATE', screen: 'SC-03' })}>이대로 비교하기 →</PrimaryBtn>
+        )}
       </div>
     </MobileShell>
   );

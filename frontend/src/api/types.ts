@@ -137,6 +137,7 @@ export interface ClarifyResult {
   persona: string;         // 확정 세그먼트 라벨
   weightAdjust?: Record<string, number>; // 이 입력의 적용 boost(HITL 확정 시 랭킹에 실림)
   held?: boolean;          // 상충 미해결 → 자동 반영 보류('확인 대기'). 확정 전 랭킹 미반영
+  mode?: 'ai' | 'rule';    // 검증 경로: ai(LLM 의미검증) | rule(키워드 간이검증, 폴백)
   priorities: string[];    // 우선순위 축 라벨 순서
   conflicts?: string[];    // 감지된 모순(되묻기)
   questions?: string[];    // 되물을 질문

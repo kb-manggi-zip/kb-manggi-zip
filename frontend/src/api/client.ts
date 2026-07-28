@@ -1,5 +1,5 @@
 import { compare } from '../engine/compare';
-import { localClarify, localPersona } from '../engine/persona';
+import { localClarify, localPersona, localValidateProfile } from '../engine/persona';
 import { REGIONS_BUY, REGIONS_MOVE, REGIONS_MONTHLY } from '../data/regions';
 import { SCENES_MOVE, SCENES_BUY, SCENES_STAY, SCENES_BY_REGION, SAVED_MONEY_CARDS } from '../data/scenes';
 import { PRODUCTS_RENEWAL, PRODUCTS_MOVE, PRODUCTS_BUY } from '../data/products';
@@ -67,6 +67,15 @@ export const api = {
       '/api/clarify',
       // householdSelected=false면 가구 유형 미선택 → 상충 감지에서 제외(J1). 기본 true(하위호환).
       { method: 'POST', body: JSON.stringify({ contract, finance, priorNotes, householdSelected: householdKnown }) }
+    );
+  },
+
+  // SC-14 최종 프로필 종합검증 — 누적 자유입력+가구+예산을 한 번에 의미 검증(원격 LLM) / 간이 검증(로컬 키워드).
+  async validateProfile(contract: ContractInfo, finance: FinanceInfo, budget = 0, householdKnown = true): Promise<ClarifyResult> {
+    return localOrRemote(
+      () => localValidateProfile(contract, finance, householdKnown),
+      '/api/validate-profile',
+      { method: 'POST', body: JSON.stringify({ contract, finance, budget, householdSelected: householdKnown }) }
     );
   },
 

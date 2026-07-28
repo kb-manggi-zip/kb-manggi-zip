@@ -125,6 +125,7 @@ class ClarifyResult(BaseModel):
     persona: str  # 확정 세그먼트 라벨 (예 "1인 청년 임차")
     weightAdjust: dict = {}  # 이 입력의 적용 boost(축별 배수) — HITL 확정 시 랭킹에 실림
     held: bool = False  # 상충 미해결 → 자동 반영 보류('확인 대기'). 확정 전 랭킹 미반영
+    mode: str = "rule"  # 검증 경로: 'ai'(LLM 의미검증) | 'rule'(키워드 간이검증, 폴백)
     priorities: list[str]  # 우선순위 축 라벨 순서 (스코어 가중치 상위)
     conflicts: list[str] = []  # 감지된 모순(예 예산↔선호지역 시세) — 실데이터 근거
     questions: list[str] = []  # 되물을 질문(닫힌 루프)
@@ -268,6 +269,15 @@ class ClarifyRequest(BaseModel):
     finance: FinanceInfo
     priorNotes: list[str] = []  # 이미 반영·확정한 자유입력들(모순 되묻기용)
     householdSelected: bool = True  # 가구 유형을 실제 선택했는지(False=문진 초반 미선택 → 가구 상충 스킵, J1)
+
+
+class ValidateProfileRequest(BaseModel):
+    """SC-14 최종 프로필 종합검증 요청 — 누적 자유입력 전체 + 가구 + 예산을 한 번에 검증."""
+
+    contract: ContractInfo
+    finance: FinanceInfo
+    budget: int = 0  # 참고 예산(고른 갈래 depositOrPrice 등) — 예산↔선호 상충 판단 맥락
+    householdSelected: bool = True
 
 
 class ReportRequest(BaseModel):

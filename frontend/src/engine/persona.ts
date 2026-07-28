@@ -144,6 +144,13 @@ export function localClarify(contract: ContractInfo, finance: FinanceInfo, prior
   return { persona: SEGMENT_LABEL[household] ?? '임차 가구', weightAdjust, held: conflicts.length > 0, priorities, conflicts, questions, noteSignals: sig.labels };
 }
 
+// SC-14 최종 프로필 종합검증(로컬) — 키워드 '간이 검증'. 원격(백엔드 LLM)이 없을 때의 폴백.
+export function localValidateProfile(contract: ContractInfo, finance: FinanceInfo, householdKnown = true): ClarifyResult {
+  const r = localClarify(contract, finance, [], householdKnown);
+  // 로컬은 항상 규칙 기반이므로 mode='rule'. held면 weightAdjust 미반영(확정 전).
+  return { ...r, mode: 'rule', weightAdjust: r.held ? {} : r.weightAdjust };
+}
+
 export function localPersona(contract: ContractInfo, finance: FinanceInfo, budget = 0): PersonaProfile {
   const household = finance.household ?? '1인';
   const note = contract.note ?? '';

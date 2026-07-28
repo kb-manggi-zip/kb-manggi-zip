@@ -298,3 +298,75 @@ def clarify(
         _CLARIFY_CACHE.clear()
     _CLARIFY_CACHE[ckey] = result
     return dict(result)
+
+
+# ── 최종 프로필 종합검증 (SC-14) — 누적 자유입력 전체를 한 번에 의미 검증 ─────────────
+_VALIDATE_SYSTEM = (
+    "너는 주거상담 '최종 프로필' 검증기다. 사용자가 문진에서 자유롭게 적은 문장들과 폼값(가구 유형·예산)을 "
+    "함께 보고, **서로 모순되는 지점만** 찾아 JSON으로 답한다. 규칙(반드시 준수):\n"
+    "- 새 사실·새 축·구체 숫자를 창작하지 마라. 주어진 진술과 폼값만 대조한다.\n"
+    "- 축은 정확히 이 넷만: commute(통근), consumption(생활·소비), budget(예산), preference(선호지역).\n"
+    "- conflicts: 상충 있으면 [{summary:'무엇과 무엇이 상충', question:'어느 쪽인지 되묻는 한 문장'}], 없으면 [].\n"
+    "- weight_adjustments: 진술로 조정할 축 {축: 배수(0.3~2.0)} — 없으면 빈 객체.\n"
+    "- interpretation: 반영 이유를 한국어 짧은 구절 배열로(없으면 빈 배열).\n"
+    '출력은 오직 JSON: {"conflicts":[{"summary":"..","question":".."}], "weight_adjustments":{}, "interpretation":[]}'
+)
+
+
+def _llm_validate(notes: str, household: Optional[str], budget: int) -> Optional[dict]:
+    """llm_active일 때만. 스키마/제약 위반 시 None → 키워드(간이) 폴백. 반환 {conflicts, boost, labels}."""
+    budget_line = f"예산(참고, 만원): {budget // 10000}" if budget else "예산: 미상"
+    user = f"가구 유형: {household or '미선택'}\n{budget_line}\n자유입력들: {notes or '(없음)'}"
+    raw = generate(system=_VALIDATE_SYSTEM, user=user, fallback=lambda: "")
+    data = _extract_json(raw)
+    if data is None:
+        return None
+    wa = data.get("weight_adjustments") or {}
+    conflicts = data.get("conflicts") or []
+    interp = data.get("interpretation") or []
+    if not (isinstance(wa, dict) and isinstance(conflicts, list) and isinstance(interp, list)):
+        return None
+    for k, v in wa.items():  # 축·범위 제약(clarify와 동일) — 위반 시 폴백
+        if k not in _AXES or not isinstance(v, (int, float)) or isinstance(v, bool) or not (0.3 <= float(v) <= 2.0):
+            return None
+    msgs: list[str] = []
+    for c in conflicts:
+        if not isinstance(c, dict):
+            return None
+        q = str(c.get("question") or c.get("summary") or "").strip()
+        if q:
+            msgs.append(q)
+    return {"conflicts": msgs, "boost": {k: float(v) for k, v in wa.items()}, "labels": [str(x) for x in interp]}
+
+
+def validate_profile(contract: dict, finance: dict, budget: int = 0, household_selected: bool = True) -> dict:
+    """SC-14 최종 프로필 종합검증 — 누적된 자유입력 전체 + 가구 + 예산을 한 번에 보고 상충을 잡는다.
+
+    LLM(의미 검증, 축·사실 제약) 우선, 비활성/실패 시 **키워드 '간이 검증'** 폴백(오프라인 완주).
+    반환 ClarifyResult 형태 + mode('ai'|'rule'). HITL 확정 전엔 weightAdjust를 반영하지 않는다(held).
+    """
+    household = finance.get("household") or "1인"
+    household_for_conflict = household if household_selected else None
+    note = contract.get("note") or ""
+
+    llm = _llm_validate(note, household, budget) if (note and settings.llm_active) else None
+    if llm is not None:
+        conflicts, boost, labels, mode = llm["conflicts"], llm["boost"], llm["labels"], "ai"
+    else:
+        # 간이 검증(규칙): 가구 불일치 + 한 입력 내 상충. boost/labels는 키워드 해석.
+        conflicts = _household_conflict(household_for_conflict, note) + _intra_note_contradiction(note)
+        sig = note_signals(note)
+        boost, labels, mode = sig["boost"], sig["labels"], "rule"
+
+    held = bool(conflicts)
+    w = _apply_boost(scoring.weights_for(household), boost)
+    return {
+        "persona": segment_label(household),
+        "weightAdjust": {} if held else boost,  # 상충 남으면 반영 보류(확정 전 미반영)
+        "held": held,
+        "priorities": [AXIS_LABEL[k] for k, _ in sorted(w.items(), key=lambda kv: -kv[1])],
+        "conflicts": conflicts,
+        "questions": list(conflicts),
+        "noteSignals": labels,
+        "mode": mode,
+    }
