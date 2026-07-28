@@ -292,7 +292,7 @@ function BranchCardView({
       {/* 접힘: 리스크·대비 — 항목별 1:1 대응은 아니라서(예: 매매의 화재보험이 자산가치 변동 리스크를
           직접 상쇄하진 않음) 화살표로 짝짓지 않고, 각 목록 제목을 문장형으로 써서 관계만 드러낸다. */}
       <div className="px-5 py-2 border-b border-border">
-        <Accordion title="리스크·대비">
+        <Accordion title="리스크는 없나요?">
           <div>
             <p className="text-muted-foreground font-medium mb-1">⚠️ 이런 리스크가 있을 수 있어요</p>
             {branch.risks.map(r => <p key={r} className="text-xs py-0.5">• {r}</p>)}
@@ -309,7 +309,7 @@ function BranchCardView({
 
       {/* 접힘: 근거·가정 (feature 인용 + 근거칩 + 계산 가정) */}
       <div className="px-5 py-2">
-        <Accordion title="근거·가정">
+        <Accordion title="어떻게 계산했나요?">
           <p className="text-xs italic mb-2">"{branch.feature}"</p>
           {basisChips.length > 0 && (
             <div className="mb-2">
