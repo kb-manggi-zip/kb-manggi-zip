@@ -115,6 +115,21 @@ class Region(BaseModel):
 
 
 # ── 명확화(판단 노드) + 개인화 조합 레이어 ─────────────────────────
+class ConflictItem(BaseModel):
+    """상충 1건 — 인라인 해소(K1)용 구조. 상충하는 두 신호 + 되묻는 질문.
+
+    type='axis'(두 문장이 같은 축 반대) / 'household'(가구 유형 불일치) / 'intra'(한 문장 내부 상충).
+    optionA/optionB = axis·intra면 문장 원문, household면 가구 유형 '값'('1인'|'신혼'|'자녀').
+    """
+
+    type: str = "axis"
+    axis: str = ""  # axis 상충일 때 어느 축인지
+    optionA: str
+    optionB: str = ""
+    question: str
+    allowBoth: bool = True  # '둘 다 맞아요' 허용(가구 유형 상충은 False)
+
+
 class ClarifyResult(BaseModel):
     """문진 명확화 노드 산출 — 자연어/폼값을 '제약된 항목'으로 해석 + 모순 감지.
 
@@ -127,7 +142,8 @@ class ClarifyResult(BaseModel):
     held: bool = False  # 상충 미해결 → 자동 반영 보류('확인 대기'). 확정 전 랭킹 미반영
     mode: str = "rule"  # 검증 경로: 'ai'(LLM 의미검증) | 'rule'(키워드 간이검증, 폴백)
     priorities: list[str]  # 우선순위 축 라벨 순서 (스코어 가중치 상위)
-    conflicts: list[str] = []  # 감지된 모순(예 예산↔선호지역 시세) — 실데이터 근거
+    conflicts: list[str] = []  # 감지된 모순(질문 문자열) — 하위호환
+    conflictItems: list[ConflictItem] = []  # 인라인 해소용 구조(K1/K4)
     questions: list[str] = []  # 되물을 질문(닫힌 루프)
     noteSignals: list[str] = []  # 자유입력에서 뽑아낸 제약된 신호(반영 내역)
 
@@ -278,6 +294,7 @@ class ValidateProfileRequest(BaseModel):
     finance: FinanceInfo
     budget: int = 0  # 참고 예산(고른 갈래 depositOrPrice 등) — 예산↔선호 상충 판단 맥락
     householdSelected: bool = True
+    acceptedPairs: list[list[str]] = []  # 사용자가 '둘 다 맞아요'로 확인한 신호 쌍 — 재검증 시 제외(K1)
 
 
 class ReportRequest(BaseModel):

@@ -43,6 +43,14 @@ const CAPITAL_RANGES = [
   { label: '2억 이상', value: 250_000_000 },
 ];
 
+// 프리셋 칩 목록 + 상호배타쌍(K2). **우리가 만든 칩끼리의 관계**라 키워드 추론이 아님(오탐 없음).
+// 자유 텍스트 입력에는 이 판정을 적용하지 않는다 — 의미 충돌은 최종 AI 검증에 맡긴다.
+const PRESET_CHIPS = ['재택근무예요', '매일 통근해요', '조용한 동네가 좋아요', '번화가가 가까웠으면', '반려동물이 있어요', '아이 학교가 중요해요'];
+const EXCLUSIVE_PAIRS: [string, string][] = [
+  ['재택근무예요', '매일 통근해요'],
+  ['조용한 동네가 좋아요', '번화가가 가까웠으면'],
+];
+
 export default function ContractInput() {
   const { state, dispatch } = useApp();
 
@@ -70,13 +78,22 @@ export default function ContractInput() {
   const [firstHome, setFirstHome] = useState<FirstHome>(state.finance?.firstHome || '모름');
   const [under35, setUnder35] = useState<boolean>(state.finance?.under35 ?? false);
 
+  const [swap, setSwap] = useState<{ chip: string; partner: string } | null>(null);
+
   // 자유입력 등록 — [추가]/엔터로 명시 등록(문진 중엔 판단 안 함, 누적만). 검증은 SC-14 최종 프로필에서 1회.
   function addNote(text: string) {
     const t = text.trim();
     if (!t) return;
-    setReflected(r => [...r, { text: t }]);
+    setReflected(r => (r.some(x => x.text === t) ? r : [...r, { text: t }]));
     api.hitl('applied', [t], t);  // 관측: 사용자가 무엇을 등록했는지(확정 반영은 SC-14)
     setNote('');
+  }
+
+  // 프리셋 칩 등록 — 이미 담긴 칩과 배타 관계면 교체 제안(K2). 자유 텍스트에는 미적용.
+  function addPreset(chip: string) {
+    const pair = EXCLUSIVE_PAIRS.find(([a, b]) => (chip === a || chip === b) && reflected.some(r => r.text === (chip === a ? b : a)));
+    if (pair) { setSwap({ chip, partner: chip === pair[0] ? pair[1] : pair[0] }); return; }
+    addNote(chip);
   }
 
   // 유형 변경 시 스텝 배열 재계산, 현재 stepIdx 클램프
@@ -220,16 +237,35 @@ export default function ContractInput() {
                   추가
                 </button>
               </div>
-              {/* 예시 칩 — 탭하면 바로 '반영한 내용'에 등록(누적) */}
+              {/* 예시 칩 — 탭하면 바로 담김(누적). 배타 칩이 이미 있으면 교체 제안(K2) */}
               <div className="flex flex-wrap gap-1.5 mt-2">
-                {['재택근무예요', '반려동물이 있어요', '아이 학교가 중요해요', '부모님 근처에 살고 싶어요'].map(ex => (
-                  <button key={ex} onClick={() => addNote(ex)}
-                    className="text-xs px-3 py-1.5 rounded-full border"
+                {PRESET_CHIPS.map(ex => (
+                  <button key={ex} onClick={() => addPreset(ex)} disabled={reflected.some(r => r.text === ex)}
+                    className="text-xs px-3 py-1.5 rounded-full border disabled:opacity-40"
                     style={{ borderColor: COLORS.BORDER, background: COLORS.CARD, color: COLORS.SUB }}>
                     + {ex}
                   </button>
                 ))}
               </div>
+
+              {/* 배타 칩 교체 제안 — 자유 텍스트가 아니라 우리가 정의한 칩 관계라 오탐 없음 */}
+              {swap && (
+                <div className="mt-2 rounded-2xl border p-3 space-y-2" style={{ borderColor: COLORS.KB_YELLOW, background: COLORS.YELLOW_SURFACE }}>
+                  <p className="text-xs" style={{ color: COLORS.TEXT }}>
+                    '{swap.partner}'와 반대되는 내용이에요. 바꿀까요?
+                  </p>
+                  <div className="flex gap-2">
+                    <button onClick={() => { setReflected(r => r.filter(x => x.text !== swap.partner)); addNote(swap.chip); setSwap(null); }}
+                      className="flex-1 text-xs font-semibold py-2 rounded-xl" style={{ background: COLORS.KB_YELLOW, color: COLORS.TEXT }}>
+                      바꾸기
+                    </button>
+                    <button onClick={() => { addNote(swap.chip); setSwap(null); }}
+                      className="flex-1 text-xs font-semibold py-2 rounded-xl border" style={{ borderColor: COLORS.BORDER, color: COLORS.SUB, background: COLORS.CARD }}>
+                      둘 다 담기
+                    </button>
+                  </div>
+                </div>
+              )}
 
               {/* 반영한 내용 — 누적, X로 해제. 상충 검증·해석은 다음 '당신의 프로필'(SC-14)에서 한 번에. */}
               {reflected.length > 0 && (

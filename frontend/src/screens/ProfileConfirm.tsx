@@ -16,6 +16,7 @@ export default function ProfileConfirm() {
   const { contract, finance, comparison } = state;
   const [persona, setPersona] = useState<PersonaProfile | null>(null);
   const [validation, setValidation] = useState<ClarifyResult | null>(null);
+  const [acceptedPairs, setAcceptedPairs] = useState<string[][]>([]);  // '둘 다 맞아요'로 확인한 쌍(K1)
   const [applied, setApplied] = useState(false);
   const [tooltip, setTooltip] = useState<string | null>(null);
 
@@ -27,22 +28,37 @@ export default function ProfileConfirm() {
     if (!contract || !finance) { dispatch({ type: 'NAVIGATE', screen: 'SC-03' }); return; }
     api.persona(contract, finance).then(setPersona).catch(() => setPersona(null));
     // 최종 프로필 종합검증(SC-14 1회): 누적 자유입력 전체 + 가구 + 예산을 한 번에 검증(원격 AI / 로컬 간이).
-    api.validateProfile(contract, finance, refBudget).then(setValidation).catch(() => setValidation(null));
+    // acceptedPairs 변하면 재검증(둘 다 맞아요로 확인한 쌍 제외).
+    api.validateProfile(contract, finance, refBudget, true, acceptedPairs).then(setValidation).catch(() => setValidation(null));
     setApplied(false);
-  }, [contract, finance]);
+  }, [contract, finance, acceptedPairs]); // eslint-disable-line react-hooks/exhaustive-deps
 
   if (!contract || !finance) return null;
 
-  const conflicts = validation?.conflicts ?? [];
+  const items = validation?.conflictItems ?? [];
   const noteSignals = validation?.noteSignals ?? [];
   const hasNote = !!contract.note?.trim();
   const isRuleMode = validation?.mode === 'rule';
-  const hasAdjust = !!validation?.weightAdjust && Object.keys(validation.weightAdjust).length > 0;
+  const held = !!validation?.held;
+  const hasAdjust = !held && !!validation?.weightAdjust && Object.keys(validation.weightAdjust).length > 0;
 
-  // HITL 확정: 검증이 해석한 조정을 이 시점에만 프로필(noteAdjust)에 반영. 확정 전엔 미반영(B1·J2).
+  // ── 인라인 해소(K1): 되묻기의 목적은 재입력이 아니라 확인 ──
+  const notesOf = () => (contract!.note ?? '').split(' · ').map(s => s.trim()).filter(Boolean);
+  function removeNote(loser: string) {  // A/B 선택 → 안 고른 신호 제거
+    const notes = notesOf().filter(n => n !== loser);
+    dispatch({ type: 'SET_CONTRACT', contract: { ...contract!, note: notes.join(' · '), noteAdjust: {} } });
+  }
+  function acceptPair(pair: string[]) {  // '둘 다 맞아요' → 그 쌍은 상충으로 안 봄(사용자 확인한 상쇄)
+    setAcceptedPairs(p => [...p, pair]);
+  }
+  function changeHousehold(seg: string) {  // 가구 유형 상충 → 문진 복귀 없이 갱신
+    dispatch({ type: 'SET_FINANCE', finance: { ...finance!, household: seg as typeof finance.household } });
+  }
+
+  // HITL 확정: 상충이 없을 때만, 검증이 해석한 조정을 이 시점에 noteAdjust에 반영(확정 전 미반영, B1·J2).
   function applyAndCompare() {
-    if (validation?.weightAdjust && Object.keys(validation.weightAdjust).length > 0) {
-      dispatch({ type: 'SET_CONTRACT', contract: { ...contract!, noteAdjust: validation.weightAdjust } });
+    if (hasAdjust) {
+      dispatch({ type: 'SET_CONTRACT', contract: { ...contract!, noteAdjust: validation!.weightAdjust! } });
     }
     dispatch({ type: 'NAVIGATE', screen: 'SC-03' });
   }
@@ -69,21 +85,42 @@ export default function ProfileConfirm() {
             style={{ background: COLORS.YELLOW_SURFACE, border: `1px solid ${COLORS.KB_YELLOW}` }}>
             <div className="flex items-center gap-2">
               <p className="text-sm font-bold" style={{ color: COLORS.KB_GRAY }}>
-                {conflicts.length > 0 ? '⚠️ 입력에 상충이 남아있어요' : '🤖 입력을 이렇게 이해했어요'}
+                {items.length > 0 ? '몇 가지만 확인할게요' : '🤖 입력을 이렇게 이해했어요'}
               </p>
               <span className="text-[10px] px-1.5 py-0.5 rounded-full"
                 style={{ background: isRuleMode ? '#00000010' : COLORS.KB_YELLOW, color: isRuleMode ? COLORS.SUB : COLORS.TEXT }}>
                 {isRuleMode ? '간이 검증(규칙)' : 'AI 검증'}
               </span>
             </div>
-            {conflicts.length > 0 ? (
+            {items.length > 0 ? (
               <>
-                {conflicts.map((c, i) => <p key={i} className="text-xs" style={{ color: COLORS.SUB }}>· {c}</p>)}
-                <button onClick={() => dispatch({ type: 'NAVIGATE', screen: 'SC-02' })}
-                  className="w-full mt-1 py-2 rounded-xl text-xs font-semibold" style={{ background: COLORS.KB_YELLOW, color: COLORS.TEXT }}>
-                  문진에서 정정하기
-                </button>
+                {/* 인라인 해소 — 되돌리지 않고 그 자리에서 확인(K1) */}
+                {items.map((it, i) => (
+                  <div key={i} className="rounded-xl p-2.5 space-y-2" style={{ background: COLORS.CARD }}>
+                    <p className="text-xs font-medium" style={{ color: COLORS.KB_GRAY }}>{it.question}</p>
+                    <div className="flex flex-wrap gap-1.5">
+                      {it.type === 'household' ? (
+                        <>
+                          <ChoiceBtn label={`${householdLabel(it.optionA)}가 맞아요`} onClick={() => acceptPair([it.optionA, it.optionB!])} />
+                          <ChoiceBtn label={`${householdLabel(it.optionB!)}로 바꿀게요`} primary onClick={() => changeHousehold(it.optionB!)} />
+                        </>
+                      ) : it.type === 'intra' ? (
+                        <ChoiceBtn label="의도한 게 맞아요 (둘 다)" onClick={() => acceptPair([it.optionA])} />
+                      ) : (
+                        <>
+                          <ChoiceBtn label={`「${it.optionA}」`} onClick={() => removeNote(it.optionB!)} />
+                          <ChoiceBtn label={`「${it.optionB}」`} onClick={() => removeNote(it.optionA)} />
+                          {it.allowBoth && <ChoiceBtn label="둘 다 맞아요" onClick={() => acceptPair([it.optionA, it.optionB!])} />}
+                        </>
+                      )}
+                    </div>
+                  </div>
+                ))}
                 <p className="text-[11px]" style={{ color: COLORS.SUB }}>정할 때까지 자유입력은 동네 추천에 반영하지 않아요</p>
+                <button onClick={() => dispatch({ type: 'NAVIGATE', screen: 'SC-02' })}
+                  className="text-[11px] underline" style={{ color: COLORS.SUB }}>
+                  문진에서 직접 고치기
+                </button>
               </>
             ) : noteSignals.length > 0 ? (
               <>
@@ -126,8 +163,19 @@ export default function ProfileConfirm() {
             <FactTag label={contract.type === '전세' ? '전세 거주 중' : '월세 거주 중'} />
             {finance.firstHome !== '아니오' && <FactTag label="생애최초 가능 검토" />}
             <FactTag label={finance.annualIncome >= 70_000_000 ? '소득 안정' : '소득 성장 단계'} />
-            {/* 본인 진술(확정한 조정) */}
-            {stated.map((s, i) => <FactTag key={`st${i}`} label={s.label} note="직접 말씀하신 내용" />)}
+            {/* 본인 진술 — 상충 미해결(held)이면 회색 + '확인 대기', 화살표(→ …) 효과는 확정 전 숨김(K3) */}
+            {stated.map((s, i) => {
+              const base = held ? s.label.split('→')[0].trim() : s.label;
+              return held
+                ? (
+                  <span key={`st${i}`} className="inline-flex items-center gap-1 px-3 py-2 rounded-full border text-sm"
+                    style={{ borderColor: COLORS.BORDER, background: '#00000006', color: COLORS.SUB }}>
+                    {base}
+                    <span className="text-[10px] px-1.5 py-0.5 rounded-full" style={{ background: '#00000010', color: COLORS.SUB }}>확인 대기</span>
+                  </span>
+                )
+                : <FactTag key={`st${i}`} label={s.label} note="직접 말씀하신 내용" />;
+            })}
             {/* 실측(합성) — 배지 + 근거 툴팁 */}
             {measured.map((s, i) => (
               <button key={`m${i}`}
@@ -154,8 +202,8 @@ export default function ProfileConfirm() {
       </div>
 
       <div className="px-5 pb-8 pt-3 space-y-2">
-        {/* 반영할 신호가 있고 상충이 없으면 HITL 확정 버튼(이때만 noteAdjust 반영). 그 외엔 그냥 진행. */}
-        {conflicts.length === 0 && hasAdjust ? (
+        {/* 상충 없고 반영할 신호가 있으면 HITL 확정 버튼(이때만 noteAdjust 반영). 그 외엔 그냥 진행. */}
+        {items.length === 0 && hasAdjust ? (
           <>
             <PrimaryBtn onClick={() => { applyAndCompare(); setApplied(true); }}>반영하고 비교하기 →</PrimaryBtn>
             <button onClick={() => dispatch({ type: 'NAVIGATE', screen: 'SC-03' })}
@@ -166,6 +214,19 @@ export default function ProfileConfirm() {
         )}
       </div>
     </MobileShell>
+  );
+}
+
+// 인라인 해소 선택 버튼(K1)
+function ChoiceBtn({ label, onClick, primary = false }: { label: string; onClick: () => void; primary?: boolean }) {
+  return (
+    <button onClick={onClick}
+      className="text-xs font-semibold px-3 py-2 rounded-xl border active:scale-95 transition-transform"
+      style={primary
+        ? { background: COLORS.KB_YELLOW, color: COLORS.TEXT, borderColor: COLORS.KB_YELLOW }
+        : { background: COLORS.CARD, color: COLORS.KB_GRAY, borderColor: COLORS.BORDER }}>
+      {label}
+    </button>
   );
 }
 

@@ -127,6 +127,7 @@ def _run_validate_profile(req: ValidateProfileRequest) -> ClarifyResult:
         req.finance.model_dump(),
         budget=req.budget,
         household_selected=req.householdSelected,
+        accepted_pairs=req.acceptedPairs,
     )
     tracing.span_update(
         input={"notes": req.contract.note, "household": req.finance.household, "budget": req.budget},

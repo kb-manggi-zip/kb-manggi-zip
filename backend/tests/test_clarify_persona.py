@@ -68,6 +68,29 @@ def test_validate_profile_rule_fallback_detects_and_holds():
     assert r2["mode"] == "rule" and r2["conflicts"] == [] and r2["weightAdjust"]
 
 
+def test_validate_profile_structured_conflicts_and_accept():
+    # K1: 상충이 구조(conflictItems)로 나와 인라인 해소가 가능하고, '둘 다'(accepted)면 해소+반영.
+    # (conftest가 LLM_ENABLED=false → 간이검증 경로)
+    r = clarify.validate_profile({"note": "재택근무예요 · 매일 통근해요"}, {"household": "1인"})
+    axis = [c for c in r["conflictItems"] if c["type"] == "axis"]
+    assert axis and {axis[0]["optionA"], axis[0]["optionB"]} == {"재택근무예요", "매일 통근해요"}
+    assert axis[0]["allowBoth"] is True and r["held"] is True and r["weightAdjust"] == {}
+    # '둘 다 맞아요' → 그 쌍은 상충 제외, 해석 boost 반영(사용자가 확인한 상쇄)
+    r2 = clarify.validate_profile(
+        {"note": "재택근무예요 · 매일 통근해요"},
+        {"household": "1인"},
+        accepted_pairs=[["재택근무예요", "매일 통근해요"]],
+    )
+    assert r2["conflictItems"] == [] and r2["weightAdjust"]
+
+
+def test_validate_profile_household_conflict_carries_values():
+    # K1: 가구 불일치는 optionA/optionB에 '가구 유형 값'을 실어 문진 복귀 없이 바꿀 수 있게 한다.
+    r = clarify.validate_profile({"note": "아이 학교가 중요해요"}, {"household": "1인"})
+    hh = [c for c in r["conflictItems"] if c["type"] == "household"]
+    assert hh and hh[0]["optionA"] == "1인" and hh[0]["optionB"] == "자녀" and hh[0]["allowBoth"] is False
+
+
 def test_segment_stays_with_selection_under_unresolved_conflict():
     # J2: 미확정 note는 세그먼트를 뒤집지 않는다 — segment는 선택된 가구 유형에서만 나온다.
     from app.tools import persona

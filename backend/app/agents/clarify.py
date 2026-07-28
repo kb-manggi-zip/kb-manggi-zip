@@ -301,72 +301,192 @@ def clarify(
 
 
 # ── 최종 프로필 종합검증 (SC-14) — 누적 자유입력 전체를 한 번에 의미 검증 ─────────────
+# 반환 conflictItems = 인라인 해소용 구조(K1/K4). 각 항목: 상충하는 두 신호 + 되묻는 질문.
 _VALIDATE_SYSTEM = (
-    "너는 주거상담 '최종 프로필' 검증기다. 사용자가 문진에서 자유롭게 적은 문장들과 폼값(가구 유형·예산)을 "
-    "함께 보고, **서로 모순되는 지점만** 찾아 JSON으로 답한다. 규칙(반드시 준수):\n"
-    "- 새 사실·새 축·구체 숫자를 창작하지 마라. 주어진 진술과 폼값만 대조한다.\n"
+    "너는 주거상담 '최종 프로필' 검증기다. 사용자가 문진에서 담아둔 문장들과 폼값(가구 유형·예산)을 "
+    "함께 보고, **서로 모순되는 문장 쌍만** 찾아 JSON으로 답한다. 규칙(반드시 준수):\n"
+    "- 새 사실·새 축·구체 숫자를 창작하지 마라. 주어진 문장과 폼값만 대조한다.\n"
+    "- **가구 유형(1인/신혼/자녀) 불일치는 다루지 마라(별도 처리). 담아둔 '문장끼리'의 축 상충만 찾아라.**\n"
     "- 축은 정확히 이 넷만: commute(통근), consumption(생활·소비), budget(예산), preference(선호지역).\n"
-    "- conflicts: 상충 있으면 [{summary:'무엇과 무엇이 상충', question:'어느 쪽인지 되묻는 한 문장'}], 없으면 [].\n"
+    "- conflicts: 상충 있으면 [{optionA:'문장 그대로', optionB:'상충하는 문장 그대로', axis:'축', "
+    "question:'무엇과 무엇이 부딪히는지 짧게'}] — optionA/optionB는 반드시 입력 문장을 그대로 인용. 없으면 [].\n"
     "- weight_adjustments: 진술로 조정할 축 {축: 배수(0.3~2.0)} — 없으면 빈 객체.\n"
     "- interpretation: 반영 이유를 한국어 짧은 구절 배열로(없으면 빈 배열).\n"
-    '출력은 오직 JSON: {"conflicts":[{"summary":"..","question":".."}], "weight_adjustments":{}, "interpretation":[]}'
+    '출력은 오직 JSON: {"conflicts":[{"optionA":"..","optionB":"..","axis":"..","question":".."}], '
+    '"weight_adjustments":{}, "interpretation":[]}'
 )
 
 
-def _llm_validate(notes: str, household: Optional[str], budget: int) -> Optional[dict]:
-    """llm_active일 때만. 스키마/제약 위반 시 None → 키워드(간이) 폴백. 반환 {conflicts, boost, labels}."""
+def _split_notes(note: str) -> list[str]:
+    """누적 자유입력(문진에서 ' · '로 합침) → 개별 문장 리스트."""
+    return [n.strip() for n in (note or "").replace(" · ", "\x00").split("\x00") if n.strip()]
+
+
+def _household_conflict_items(notes: list[str], household: Optional[str], accepted: set) -> list[dict]:
+    """가구 불일치 = **사실 대조(결정론)**. 선택된 가구 ↔ 자유입력이 시사하는 가구가 다르면 되묻기.
+
+    optionA/optionB에 가구 유형 '값'을 실어 프론트가 문진 복귀 없이 finance.household를 바꿀 수 있게 한다.
+    """
+    if not household:
+        return []
+    items: list[dict] = []
+    seen: set = set()
+    for n in notes:
+        for seg, keys in _HOUSEHOLD_HINTS.items():
+            if seg != household and seg not in seen and any(k in n for k in keys):
+                if frozenset((household, seg)) in accepted:
+                    continue
+                seen.add(seg)
+                items.append(
+                    {
+                        "type": "household",
+                        "axis": "",
+                        "optionA": household,  # 값(프론트가 라벨 변환)
+                        "optionB": seg,
+                        "question": f"'{n}' — 가구 유형이 '{SEGMENT_LABEL.get(household, household)}'가 맞나요?",
+                        "allowBoth": False,
+                    }
+                )
+    return items
+
+
+def _axis_conflict_items_kw(notes: list[str], accepted: set) -> list[dict]:
+    """축 상충(간이 검증, 키워드) — 두 문장이 같은 축을 반대 방향으로 밀면 되묻기. optionA/optionB=문장 원문."""
+    items: list[dict] = []
+    sigs = [(n, note_signals(n)["boost"]) for n in notes]
+    for i in range(len(sigs)):
+        for j in range(i + 1, len(sigs)):
+            na, ba = sigs[i]
+            nb, bb = sigs[j]
+            if frozenset((na, nb)) in accepted:
+                continue
+            for axis in _AXES:
+                da, db = _axis_dir(ba, axis), _axis_dir(bb, axis)
+                if da and db and da != db:
+                    items.append(
+                        {
+                            "type": "axis",
+                            "axis": axis,
+                            "optionA": na,
+                            "optionB": nb,
+                            "question": f"'{na}' ↔ '{nb}' — '{AXIS_LABEL[axis]}'에서 서로 반대예요.",
+                            "allowBoth": True,
+                        }
+                    )
+                    break
+    for n in notes:  # 한 문장 안에 반대 방향(예: '재택인데 통근') → 인라인은 '둘 다'/정정
+        if _intra_note_contradiction(n) and frozenset((n,)) not in accepted:
+            items.append(
+                {
+                    "type": "intra",
+                    "axis": "",
+                    "optionA": n,
+                    "optionB": "",
+                    "question": f"'{n}' 안에 서로 반대되는 내용이 있어요.",
+                    "allowBoth": True,
+                }
+            )
+    return items
+
+
+def _match_note(opt: str, notes: list[str]) -> Optional[str]:
+    """LLM이 인용한 문자열 → 실제 담아둔 문장으로 매핑(정확 → 포함 순). 매칭 없으면 None."""
+    opt = (opt or "").strip()
+    if not opt:
+        return None
+    for n in notes:  # 정확 일치 우선
+        if n == opt:
+            return n
+    for n in notes:  # 포함(부분 인용) 허용
+        if opt in n or n in opt:
+            return n
+    return None
+
+
+def _llm_axis_conflicts(notes: list[str], household: Optional[str], budget: int) -> Optional[dict]:
+    """llm_active일 때만. 축 상충(의미) + 해석 boost. 스키마/제약 위반 시 None → 키워드 폴백.
+
+    가구 유형 불일치는 여기서 다루지 않는다(별도 결정론 경로). 여기선 '문장 ↔ 문장' 축 상충만.
+    """
     budget_line = f"예산(참고, 만원): {budget // 10000}" if budget else "예산: 미상"
-    user = f"가구 유형: {household or '미선택'}\n{budget_line}\n자유입력들: {notes or '(없음)'}"
-    raw = generate(system=_VALIDATE_SYSTEM, user=user, fallback=lambda: "")
-    data = _extract_json(raw)
+    user = f"가구 유형: {household or '미선택'}\n{budget_line}\n담아둔 문장들: {notes or '(없음)'}"
+    data = _extract_json(generate(system=_VALIDATE_SYSTEM, user=user, fallback=lambda: ""))
     if data is None:
         return None
-    wa = data.get("weight_adjustments") or {}
-    conflicts = data.get("conflicts") or []
-    interp = data.get("interpretation") or []
+    wa, conflicts, interp = (
+        data.get("weight_adjustments") or {},
+        data.get("conflicts") or [],
+        data.get("interpretation") or [],
+    )
     if not (isinstance(wa, dict) and isinstance(conflicts, list) and isinstance(interp, list)):
         return None
-    for k, v in wa.items():  # 축·범위 제약(clarify와 동일) — 위반 시 폴백
+    for k, v in wa.items():
         if k not in _AXES or not isinstance(v, (int, float)) or isinstance(v, bool) or not (0.3 <= float(v) <= 2.0):
             return None
-    msgs: list[str] = []
+    items: list[dict] = []
     for c in conflicts:
         if not isinstance(c, dict):
             return None
-        q = str(c.get("question") or c.get("summary") or "").strip()
-        if q:
-            msgs.append(q)
-    return {"conflicts": msgs, "boost": {k: float(v) for k, v in wa.items()}, "labels": [str(x) for x in interp]}
+        # optionA/optionB는 반드시 '실제 담아둔 문장'으로 매핑(인라인 A/B 제거가 정확히 되도록).
+        # 매칭 안 되면(폼값 인용 등 LLM 잡음) 버린다 — 가구 불일치는 별도 결정론 경로가 잡는다.
+        a, b = _match_note(str(c.get("optionA") or ""), notes), _match_note(str(c.get("optionB") or ""), notes)
+        ax = str(c.get("axis") or "")
+        if a and b and a != b:
+            items.append(
+                {
+                    "type": "axis",
+                    "axis": ax if ax in _AXES else "",
+                    "optionA": a,
+                    "optionB": b,
+                    "question": str(c.get("question") or f"'{a}' ↔ '{b}'").strip(),
+                    "allowBoth": True,
+                }
+            )
+    return {"items": items, "boost": {k: float(v) for k, v in wa.items()}, "labels": [str(x) for x in interp]}
 
 
-def validate_profile(contract: dict, finance: dict, budget: int = 0, household_selected: bool = True) -> dict:
-    """SC-14 최종 프로필 종합검증 — 누적된 자유입력 전체 + 가구 + 예산을 한 번에 보고 상충을 잡는다.
+def validate_profile(
+    contract: dict,
+    finance: dict,
+    budget: int = 0,
+    household_selected: bool = True,
+    accepted_pairs: Optional[list] = None,
+) -> dict:
+    """SC-14 최종 프로필 종합검증 — 누적 자유입력 전체 + 가구 + 예산을 한 번에 보고 상충을 잡는다.
 
-    LLM(의미 검증, 축·사실 제약) 우선, 비활성/실패 시 **키워드 '간이 검증'** 폴백(오프라인 완주).
-    반환 ClarifyResult 형태 + mode('ai'|'rule'). HITL 확정 전엔 weightAdjust를 반영하지 않는다(held).
+    가구 불일치는 **사실 대조(결정론)**, 축/의미 상충은 **LLM(의미검증)** 우선·키워드('간이검증') 폴백.
+    accepted_pairs: 사용자가 '둘 다 맞아요'로 확인한 쌍(frozenset). 그 쌍은 다시 상충으로 잡지 않는다(K1).
+    반환 ClarifyResult 형태 + conflictItems(인라인 해소용) + mode('ai'|'rule').
     """
     household = finance.get("household") or "1인"
     household_for_conflict = household if household_selected else None
-    note = contract.get("note") or ""
+    notes = _split_notes(contract.get("note") or "")
+    accepted = {frozenset(p) for p in (accepted_pairs or [])}
 
-    llm = _llm_validate(note, household, budget) if (note and settings.llm_active) else None
+    # 축/의미 상충: LLM 우선, 폴백 키워드
+    llm = _llm_axis_conflicts(notes, household, budget) if (notes and settings.llm_active) else None
     if llm is not None:
-        conflicts, boost, labels, mode = llm["conflicts"], llm["boost"], llm["labels"], "ai"
+        axis_items = [c for c in llm["items"] if frozenset((c["optionA"], c["optionB"])) not in accepted]
+        labels, mode = llm["labels"], "ai"
     else:
-        # 간이 검증(규칙): 가구 불일치 + 한 입력 내 상충. boost/labels는 키워드 해석.
-        conflicts = _household_conflict(household_for_conflict, note) + _intra_note_contradiction(note)
-        sig = note_signals(note)
-        boost, labels, mode = sig["boost"], sig["labels"], "rule"
+        axis_items = _axis_conflict_items_kw(notes, accepted)
+        labels, mode = note_signals(" ".join(notes))["labels"], "rule"
 
-    held = bool(conflicts)
+    # 가구 불일치: 항상 결정론(사실 대조)
+    conflict_items = _household_conflict_items(notes, household_for_conflict, accepted) + axis_items
+    held = bool(conflict_items)
+
+    # 확정(상충 없음) 시에만 해석 boost 반영 — '둘 다'로 확인된 상쇄는 사용자가 확인한 것이라 그대로 둔다.
+    boost = {} if held else note_signals(" ".join(notes))["boost"]
     w = _apply_boost(scoring.weights_for(household), boost)
     return {
         "persona": segment_label(household),
-        "weightAdjust": {} if held else boost,  # 상충 남으면 반영 보류(확정 전 미반영)
+        "weightAdjust": boost,
         "held": held,
         "priorities": [AXIS_LABEL[k] for k, _ in sorted(w.items(), key=lambda kv: -kv[1])],
-        "conflicts": conflicts,
-        "questions": list(conflicts),
+        "conflicts": [c["question"] for c in conflict_items],  # 하위호환(문자열)
+        "conflictItems": conflict_items,  # 인라인 해소용 구조(K1/K4)
+        "questions": [c["question"] for c in conflict_items],
         "noteSignals": labels,
         "mode": mode,
     }

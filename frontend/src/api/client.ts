@@ -71,11 +71,12 @@ export const api = {
   },
 
   // SC-14 최종 프로필 종합검증 — 누적 자유입력+가구+예산을 한 번에 의미 검증(원격 LLM) / 간이 검증(로컬 키워드).
-  async validateProfile(contract: ContractInfo, finance: FinanceInfo, budget = 0, householdKnown = true): Promise<ClarifyResult> {
+  // acceptedPairs: '둘 다 맞아요'로 확인한 신호 쌍 — 재검증 시 상충에서 제외(K1).
+  async validateProfile(contract: ContractInfo, finance: FinanceInfo, budget = 0, householdKnown = true, acceptedPairs: string[][] = []): Promise<ClarifyResult> {
     return localOrRemote(
-      () => localValidateProfile(contract, finance, householdKnown),
+      () => localValidateProfile(contract, finance, householdKnown, acceptedPairs),
       '/api/validate-profile',
-      { method: 'POST', body: JSON.stringify({ contract, finance, budget, householdSelected: householdKnown }) }
+      { method: 'POST', body: JSON.stringify({ contract, finance, budget, householdSelected: householdKnown, acceptedPairs }) }
     );
   },
 

@@ -139,9 +139,20 @@ export interface ClarifyResult {
   held?: boolean;          // 상충 미해결 → 자동 반영 보류('확인 대기'). 확정 전 랭킹 미반영
   mode?: 'ai' | 'rule';    // 검증 경로: ai(LLM 의미검증) | rule(키워드 간이검증, 폴백)
   priorities: string[];    // 우선순위 축 라벨 순서
-  conflicts?: string[];    // 감지된 모순(되묻기)
+  conflicts?: string[];    // 감지된 모순(되묻기 문자열, 하위호환)
+  conflictItems?: ConflictItem[];  // 인라인 해소용 구조(K1/K4)
   questions?: string[];    // 되물을 질문
   noteSignals?: string[];  // 자유입력에서 뽑아낸 제약된 신호
+}
+
+// 상충 1건 — 인라인 해소(K1). type: axis(문장↔문장) | household(가구 유형) | intra(한 문장 내부)
+export interface ConflictItem {
+  type: 'axis' | 'household' | 'intra';
+  axis?: string;
+  optionA: string;   // axis·intra면 문장 원문, household면 가구 유형 값('1인'|'신혼'|'자녀')
+  optionB?: string;
+  question: string;
+  allowBoth: boolean;
 }
 
 // 개인화 '조합' 레이어 산출물 — 완성 페르소나 → 리소스 조합(화면 프로필 카드)

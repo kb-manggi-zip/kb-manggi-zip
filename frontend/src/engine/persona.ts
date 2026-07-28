@@ -1,7 +1,7 @@
 // 개인화 조합 레이어 — 로컬(백엔드 미연결) 폴백용 TS 포트.
 // 백엔드 app/agents/clarify.py · app/tools/persona.py 의 참조 구현을 옮긴 것.
 // (숫자 로직의 정본은 백엔드. 여기는 로컬 데모 백업 — DB 불필요·순수.)
-import type { ClarifyResult, PersonaProfile, ContractInfo, FinanceInfo } from '../api/types';
+import type { ClarifyResult, ConflictItem, PersonaProfile, ContractInfo, FinanceInfo } from '../api/types';
 
 const AXIS_LABEL: Record<string, string> = {
   commute: '통근', consumption: '생활·소비', budget: '예산 여유', preference: '선호지역',
@@ -144,11 +144,60 @@ export function localClarify(contract: ContractInfo, finance: FinanceInfo, prior
   return { persona: SEGMENT_LABEL[household] ?? '임차 가구', weightAdjust, held: conflicts.length > 0, priorities, conflicts, questions, noteSignals: sig.labels };
 }
 
-// SC-14 최종 프로필 종합검증(로컬) — 키워드 '간이 검증'. 원격(백엔드 LLM)이 없을 때의 폴백.
-export function localValidateProfile(contract: ContractInfo, finance: FinanceInfo, householdKnown = true): ClarifyResult {
-  const r = localClarify(contract, finance, [], householdKnown);
-  // 로컬은 항상 규칙 기반이므로 mode='rule'. held면 weightAdjust 미반영(확정 전).
-  return { ...r, mode: 'rule', weightAdjust: r.held ? {} : r.weightAdjust };
+// SC-14 최종 프로필 종합검증(로컬) — 키워드 '간이 검증'(mode=rule). 백엔드 LLM 없을 때의 폴백.
+// conflictItems를 구조로 반환해 인라인 해소(K1)가 로컬 모드에서도 동작하게 한다.
+export function localValidateProfile(
+  contract: ContractInfo, finance: FinanceInfo, householdKnown = true, acceptedPairs: string[][] = []
+): ClarifyResult {
+  const household = finance.household ?? '1인';
+  const notes = (contract.note ?? '').split(' · ').map(s => s.trim()).filter(Boolean);
+  const accepted = new Set(acceptedPairs.map(p => [...p].sort().join('¦')));
+  const isAccepted = (a: string, b: string) => accepted.has([a, b].sort().join('¦'));
+  const items: ConflictItem[] = [];
+
+  // 가구 불일치(결정론) — 선택 시에만
+  if (householdKnown && finance.household) {
+    const seen = new Set<string>();
+    for (const n of notes)
+      for (const [seg, keys] of Object.entries(HOUSEHOLD_HINTS))
+        if (seg !== household && !seen.has(seg) && keys.some(k => n.includes(k)) && !isAccepted(household, seg)) {
+          seen.add(seg);
+          items.push({ type: 'household', optionA: household, optionB: seg, allowBoth: false,
+            question: `'${n}' — 가구 유형이 '${SEGMENT_LABEL[household] ?? household}'가 맞나요?` });
+        }
+  }
+  // 축 상충(키워드) — 문장 쌍이 같은 축 반대 방향
+  const sigs = notes.map(n => ({ n, boost: noteSignals(n).boost }));
+  for (let i = 0; i < sigs.length; i++)
+    for (let j = i + 1; j < sigs.length; j++) {
+      if (isAccepted(sigs[i].n, sigs[j].n)) continue;
+      for (const axis of Object.keys(AXIS_LABEL)) {
+        const da = axisDir(sigs[i].boost, axis), db = axisDir(sigs[j].boost, axis);
+        if (da && db && da !== db) {
+          items.push({ type: 'axis', axis, optionA: sigs[i].n, optionB: sigs[j].n, allowBoth: true,
+            question: `'${sigs[i].n}' ↔ '${sigs[j].n}' — '${AXIS_LABEL[axis]}'에서 서로 반대예요.` });
+          break;
+        }
+      }
+    }
+  for (const n of notes)
+    if (intraNoteConflict(n) && !accepted.has([n].join('¦')))
+      items.push({ type: 'intra', optionA: n, optionB: '', allowBoth: true, question: `'${n}' 안에 서로 반대되는 내용이 있어요.` });
+
+  const held = items.length > 0;
+  const boost = held ? {} : noteSignals(notes.join(' ')).boost;
+  const w = noteWeights(household, held ? '' : notes.join(' '));
+  return {
+    persona: SEGMENT_LABEL[household] ?? '임차 가구',
+    weightAdjust: boost,
+    held,
+    mode: 'rule',
+    priorities: Object.entries(w).sort((a, b) => b[1] - a[1]).map(([k]) => AXIS_LABEL[k]),
+    conflicts: items.map(c => c.question),
+    conflictItems: items,
+    questions: items.map(c => c.question),
+    noteSignals: noteSignals(notes.join(' ')).labels,
+  };
 }
 
 export function localPersona(contract: ContractInfo, finance: FinanceInfo, budget = 0): PersonaProfile {
