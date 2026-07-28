@@ -233,26 +233,34 @@ _CLARIFY_CACHE: dict = {}
 _CLARIFY_CACHE_MAX = 512
 
 
-def clarify(contract: dict, finance: dict, note: str = "", prior_notes: Optional[list] = None) -> dict:
+def clarify(
+    contract: dict,
+    finance: dict,
+    note: str = "",
+    prior_notes: Optional[list] = None,
+    household_selected: bool = True,
+) -> dict:
     """폼값+자유입력 → ClarifyResult(dict).
 
     prior_notes: 이미 반영·확정한 자유입력들. 이번 입력이 이와 축 방향에서 충돌하면 되묻는다.
+    household_selected: 사용자가 가구 유형을 **실제 선택**했는지. False(문진 초반 미선택)면 가구 상충 감지 스킵(J1).
+      (household는 스키마상 항상 유효값이 오므로, 선택 여부는 이 플래그로만 판별한다.)
     반환: {persona, priorities, conflicts, questions, noteSignals}
     """
-    household_sel = finance.get("household")  # None/빈값 = 사용자가 아직 미선택(J1)
-    household = household_sel or "1인"  # 가중치·세그먼트 기본값(표시용). 상충 감지엔 household_sel만 쓴다.
+    household = finance.get("household") or "1인"  # 가중치·세그먼트 기본값(표시용)
+    household_for_conflict = household if household_selected else None  # 미선택이면 대조 제외(J1)
     note = note or contract.get("note") or ""
 
     # 캐시 조회 (같은 입력 → 같은 결과. LLM 호출도 여기서 스킵)
-    # household_sel(미선택 None vs 선택 '1인')을 키에 포함 — 상충 결과가 달라 캐시 충돌 방지.
-    ckey = (note, household_sel, tuple(prior_notes or ()), settings.llm_active)
+    # household_selected를 키에 포함 — 선택 여부에 따라 상충 결과가 달라 캐시 충돌 방지.
+    ckey = (note, household, household_selected, tuple(prior_notes or ()), settings.llm_active)
     hit = _CLARIFY_CACHE.get(ckey)
     if hit is not None:
         return dict(hit)
 
-    # 1) 모순 감지 = 항상 결정론. 가구 불일치는 **선택된 값끼리만**(미선택이면 household_sel=None → 스킵, J1).
+    # 1) 모순 감지 = 항상 결정론. 가구 불일치는 **선택된 값일 때만**(미선택이면 household_for_conflict=None → 스킵, J1).
     conflicts = (
-        _household_conflict(household_sel, note)
+        _household_conflict(household_for_conflict, note)
         + _intra_note_contradiction(note)
         + _contradictions(prior_notes or [], note)
     )

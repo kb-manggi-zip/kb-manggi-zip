@@ -99,19 +99,18 @@ function axisDir(boost: Record<string, number>, axis: string): number {
   return v > 1.05 ? 1 : v < 0.95 ? -1 : 0;
 }
 
-export function localClarify(contract: ContractInfo, finance: FinanceInfo, priorNotes: string[] = []): ClarifyResult {
-  const householdSel = finance.household;  // 미선택이면 undefined (J1)
-  const household = householdSel ?? '1인';  // 가중치·세그먼트 기본값(표시용)
+export function localClarify(contract: ContractInfo, finance: FinanceInfo, priorNotes: string[] = [], householdKnown = true): ClarifyResult {
+  const household = finance.household ?? '1인';  // 가중치·세그먼트 기본값(표시용)
   const note = contract.note ?? '';
   const sig = noteSignals(note);
   const w = noteWeights(household, note);
   const priorities = Object.entries(w).sort((a, b) => b[1] - a[1]).map(([k]) => AXIS_LABEL[k]);
   const conflicts: string[] = [];
-  // 가구 불일치는 **선택된 값끼리만** — 미선택(undefined)이면 대조 스킵(J1)
-  if (householdSel) {
+  // 가구 불일치는 **실제 선택된 값일 때만** — 미선택(householdKnown=false)이면 대조 스킵(J1)
+  if (householdKnown && finance.household) {
     for (const [seg, keys] of Object.entries(HOUSEHOLD_HINTS)) {
-      if (seg !== householdSel && keys.some(k => note.includes(k)))
-        conflicts.push(`'${seg}' 관련 언급이 있는데 가구 유형은 '${householdSel}'로 선택하셨어요. 맞는지 확인해 주세요.`);
+      if (seg !== household && keys.some(k => note.includes(k)))
+        conflicts.push(`'${seg}' 관련 언급이 있는데 가구 유형은 '${household}'로 선택하셨어요. 맞는지 확인해 주세요.`);
     }
   }
   // 한 입력 안에 같은 축을 높이는+낮추는 표현이 함께 → 되묻기(조용한 상쇄 금지)

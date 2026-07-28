@@ -267,6 +267,7 @@ class ClarifyRequest(BaseModel):
     contract: ContractInfo
     finance: FinanceInfo
     priorNotes: list[str] = []  # 이미 반영·확정한 자유입력들(모순 되묻기용)
+    householdSelected: bool = True  # 가구 유형을 실제 선택했는지(False=문진 초반 미선택 → 가구 상충 스킵, J1)
 
 
 class ReportRequest(BaseModel):

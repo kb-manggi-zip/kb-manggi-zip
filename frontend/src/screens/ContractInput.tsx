@@ -79,9 +79,10 @@ export default function ContractInput() {
     const t = setTimeout(() => {
       api.clarify(
         { type: contractType, deposit: 0, monthlyRent: 0, expiryDate: '', renewalUsed, housingType, note },
-        // 가구 미선택이면 household를 넘기지 않는다(기본값 '1인'으로 오탐 방지, J1)
-        { annualIncome: 0, ownCapital: 0, household: householdTouched ? household : (undefined as unknown as Household), firstHome, under35 },
+        // household는 항상 유효값 전송(스키마 필수). 실제 선택 여부는 householdTouched 플래그로 별도 전달(J1).
+        { annualIncome: 0, ownCapital: 0, household, firstHome, under35 },
         reflected.map(r => r.text),  // 이전 반영 → 모순 되묻기
+        householdTouched,            // 미선택이면 가구 상충 감지 스킵
       ).then(setInterp).catch(() => setInterp(null));
     }, 400);
     return () => clearTimeout(t);

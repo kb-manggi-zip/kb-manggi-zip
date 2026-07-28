@@ -61,11 +61,12 @@ export const api = {
   },
 
   // 명확화(판단) — 자연어/폼값 → 제약 해석 + 모순 되묻기(가구불일치·이전 반영 충돌). priorNotes=확정된 조정들.
-  async clarify(contract: ContractInfo, finance: FinanceInfo, priorNotes: string[] = []): Promise<ClarifyResult> {
+  async clarify(contract: ContractInfo, finance: FinanceInfo, priorNotes: string[] = [], householdKnown = true): Promise<ClarifyResult> {
     return localOrRemote(
-      () => localClarify(contract, finance, priorNotes),
+      () => localClarify(contract, finance, priorNotes, householdKnown),
       '/api/clarify',
-      { method: 'POST', body: JSON.stringify({ contract, finance, priorNotes }) }
+      // householdSelected=false면 가구 유형 미선택 → 상충 감지에서 제외(J1). 기본 true(하위호환).
+      { method: 'POST', body: JSON.stringify({ contract, finance, priorNotes, householdSelected: householdKnown }) }
     );
   },
 

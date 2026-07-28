@@ -107,7 +107,11 @@ def clarify_endpoint(req: ClarifyRequest, session_id: str | None = Depends(get_s
 
     with session_scope(session_id):
         result = clarify_agent.clarify(
-            req.contract.model_dump(), req.finance.model_dump(), note=req.contract.note, prior_notes=req.priorNotes
+            req.contract.model_dump(),
+            req.finance.model_dump(),
+            note=req.contract.note,
+            prior_notes=req.priorNotes,
+            household_selected=req.householdSelected,
         )
     return ClarifyResult(**result)
 

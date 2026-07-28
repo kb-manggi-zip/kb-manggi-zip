@@ -47,11 +47,11 @@ def test_household_conflict_detected():
 
 
 def test_no_household_conflict_before_selection():
-    # J1: 가구 유형 미선택(household 없음)이면 자녀 힌트가 있어도 상충 오탐하지 않는다.
-    r = clarify.clarify({}, {}, note="아이 학군 좋은 동네였으면")
+    # J1: 가구 유형 미선택(household_selected=False)이면 자녀 힌트가 있어도 상충 오탐하지 않는다.
+    r = clarify.clarify({}, {"household": "1인"}, note="아이 학군 좋은 동네였으면", household_selected=False)
     assert r["conflicts"] == [], "가구 미선택 → 대조 불가 → 상충 없음"
     assert r["held"] is False
-    # 명시적으로 '1인'을 선택하면 그때부터 상충 감지(현행 유지)
+    # 실제로 '1인'을 선택하면(기본 household_selected=True) 그때부터 상충 감지(현행 유지)
     r2 = clarify.clarify({}, {"household": "1인"}, note="아이 학군 좋은 동네였으면")
     assert r2["conflicts"]
 
