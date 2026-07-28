@@ -307,15 +307,19 @@ function BranchCardView({
       <div className="px-5 py-2 border-b border-border">
         <Accordion title="리스크는 없나요?">
           <div>
-            <p className="text-muted-foreground font-medium mb-1">⚠️ 이런 리스크가 있을 수 있어요</p>
-            {branch.risks.map(r => <p key={r} className="text-xs py-0.5">• {r}</p>)}
+            <p className="text-muted-foreground font-medium mb-1.5">⚠️ 이런 리스크가 있을 수 있어요</p>
+            <div className="space-y-1.5">
+              {branch.risks.map(r => <p key={r} className="text-xs">• {r}</p>)}
+            </div>
             {branch.uncertainty && (
-              <p className="mt-1 text-xs text-muted-foreground italic">※ {branch.uncertainty}</p>
+              <p className="mt-1.5 text-xs text-muted-foreground italic">※ {branch.uncertainty}</p>
             )}
           </div>
-          <div className="mt-2">
-            <p className="text-muted-foreground font-medium mb-1">🛡 이렇게 대비해요</p>
-            {branch.cares.map(c => <p key={c} className="text-xs py-0.5">• {c}</p>)}
+          <div className="mt-3">
+            <p className="text-muted-foreground font-medium mb-1.5">🛡 이렇게 대비해요</p>
+            <div className="space-y-1.5">
+              {branch.cares.map(c => <p key={c} className="text-xs">• {c}</p>)}
+            </div>
           </div>
         </Accordion>
       </div>
