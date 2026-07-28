@@ -6,8 +6,9 @@ import AiBriefing from '../components/AiBriefing';
 import { formatDday, formatDate, formatNoticeDeadline, formatAmount, ddayText } from '../utils/format';
 import { PERSONAS, briefings } from '../api/client';
 
-const DEMO_TOAST_MSG = 'P2 신혼 데모 데이터가 채워졌어요 ✓';
 const TAB_TOAST_MSG = "이 데모에서는 '추천' 탭의 만기 도우미를 소개해요 🙂";
+// 골든패스 프리셋 노출 여부 — 기본 노출(데모 빌드가 곧 배포본). VITE_HIDE_DEMO=1이면 숨김.
+const SHOW_DEMO_PRESETS = import.meta.env.VITE_HIDE_DEMO !== '1';
 const TABS = ['추천', '매물', '시세', '청약', '뉴스'];
 
 export default function HomeEntry() {
@@ -26,11 +27,12 @@ export default function HomeEntry() {
     setTimeout(() => setToast(null), 2500);
   }
 
-  function loadDemo() {
-    const p2 = PERSONAS[1];
-    dispatch({ type: 'SET_CONTRACT', contract: p2.contract });
-    dispatch({ type: 'SET_FINANCE', finance: p2.finance });
-    showToast(DEMO_TOAST_MSG);
+  // 골든패스 프리셋: 입력값(contract/finance)만 채운다. 이후는 정상 백엔드 경로(SC-12 계산 등)를
+  // 그대로 탄다 — 프리셋 전용 계산 우회 없음. SET_CONTRACT가 계약을 통째 교체하므로 이전 note/noteAdjust도 초기화됨.
+  function loadPreset(p: typeof PERSONAS[number]) {
+    dispatch({ type: 'SET_CONTRACT', contract: p.contract });
+    dispatch({ type: 'SET_FINANCE', finance: p.finance });
+    showToast(`${p.id} ${p.label} 데모 입력을 채웠어요 ✓`);
   }
 
   // 재방문 revisit 텍스트: 비교표가 있을 때 D-day 기반
@@ -208,14 +210,23 @@ export default function HomeEntry() {
         </div>
       </div>
 
-      <div className="px-5 pb-6 flex justify-end">
-        <button
-          onClick={loadDemo}
-          className="text-xs text-muted-foreground border border-border rounded-full px-3 py-1.5"
-        >
-          🧪 데모 데이터 채우기
-        </button>
-      </div>
+      {/* 골든패스 프리셋 3종 — 입력만 채우고 정상 경로. (프로덕션 빌드에도 노출; VITE_HIDE_DEMO=1로 숨김 가능) */}
+      {SHOW_DEMO_PRESETS && (
+        <div className="px-5 pb-6">
+          <p className="text-[11px] text-muted-foreground mb-1.5 text-right">🧪 데모 프리셋 · 입력만 채움, 계산은 정상 경로</p>
+          <div className="flex justify-end gap-1.5 flex-wrap">
+            {PERSONAS.map(p => (
+              <button
+                key={p.id}
+                onClick={() => loadPreset(p)}
+                className="text-xs text-muted-foreground border border-border rounded-full px-3 py-1.5"
+              >
+                {p.id} · {p.label}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
 
       <Toast message={toast || ''} visible={toast !== null} />
     </MobileShell>

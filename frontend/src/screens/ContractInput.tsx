@@ -68,6 +68,8 @@ export default function ContractInput() {
   const [annualIncome, setAnnualIncome] = useState(state.finance?.annualIncome || 0);
   const [ownCapital, setOwnCapital] = useState(state.finance?.ownCapital || 0);
   const [household, setHousehold] = useState<Household>(state.finance?.household || '1인');
+  // 가구 유형을 실제로 선택했는지(기본값 '1인'과 구분). 미선택이면 상충 감지에서 제외(J1).
+  const [householdTouched, setHouseholdTouched] = useState<boolean>(state.finance?.household != null);
   const [firstHome, setFirstHome] = useState<FirstHome>(state.finance?.firstHome || '모름');
   const [under35, setUnder35] = useState<boolean>(state.finance?.under35 ?? false);
 
@@ -77,7 +79,8 @@ export default function ContractInput() {
     const t = setTimeout(() => {
       api.clarify(
         { type: contractType, deposit: 0, monthlyRent: 0, expiryDate: '', renewalUsed, housingType, note },
-        { annualIncome: 0, ownCapital: 0, household, firstHome, under35 },
+        // 가구 미선택이면 household를 넘기지 않는다(기본값 '1인'으로 오탐 방지, J1)
+        { annualIncome: 0, ownCapital: 0, household: householdTouched ? household : (undefined as unknown as Household), firstHome, under35 },
         reflected.map(r => r.text),  // 이전 반영 → 모순 되묻기
       ).then(setInterp).catch(() => setInterp(null));
     }, 400);
@@ -437,7 +440,7 @@ export default function ContractInput() {
                   {(['1인', '신혼', '자녀'] as Household[]).map(h => (
                     <button
                       key={h}
-                      onClick={() => setHousehold(h)}
+                      onClick={() => { setHousehold(h); setHouseholdTouched(true); }}
                       className="py-2.5 rounded-xl text-sm font-medium border transition-colors"
                       style={{
                         borderColor: household === h ? COLORS.KB_YELLOW : COLORS.BORDER,

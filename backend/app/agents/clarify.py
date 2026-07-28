@@ -215,7 +215,12 @@ def segment_label(household: Optional[str]) -> str:
 
 
 def _household_conflict(household: Optional[str], note: str) -> list[str]:
-    """자유입력이 다른 가구유형을 시사하면 되묻기(실사용자 오선택 방지). **항상 결정론.**"""
+    """자유입력이 다른 가구유형을 시사하면 되묻기(실사용자 오선택 방지). **항상 결정론.**
+
+    household가 None/빈값(=가구 유형 미선택)이면 대조 불가 → [] (J1: 미선택 필드는 상충 대상 제외).
+    """
+    if not household:
+        return []
     out = []
     for seg, keys in _HOUSEHOLD_HINTS.items():
         if seg != household and any(k in note for k in keys):
@@ -234,18 +239,20 @@ def clarify(contract: dict, finance: dict, note: str = "", prior_notes: Optional
     prior_notes: 이미 반영·확정한 자유입력들. 이번 입력이 이와 축 방향에서 충돌하면 되묻는다.
     반환: {persona, priorities, conflicts, questions, noteSignals}
     """
-    household = finance.get("household") or "1인"
+    household_sel = finance.get("household")  # None/빈값 = 사용자가 아직 미선택(J1)
+    household = household_sel or "1인"  # 가중치·세그먼트 기본값(표시용). 상충 감지엔 household_sel만 쓴다.
     note = note or contract.get("note") or ""
 
     # 캐시 조회 (같은 입력 → 같은 결과. LLM 호출도 여기서 스킵)
-    ckey = (note, household, tuple(prior_notes or ()), settings.llm_active)
+    # household_sel(미선택 None vs 선택 '1인')을 키에 포함 — 상충 결과가 달라 캐시 충돌 방지.
+    ckey = (note, household_sel, tuple(prior_notes or ()), settings.llm_active)
     hit = _CLARIFY_CACHE.get(ckey)
     if hit is not None:
         return dict(hit)
 
-    # 1) 모순 감지 = 항상 결정론 (가구유형 불일치 + 한 입력 내 상충 + 이전 반영과 방향 충돌)
+    # 1) 모순 감지 = 항상 결정론. 가구 불일치는 **선택된 값끼리만**(미선택이면 household_sel=None → 스킵, J1).
     conflicts = (
-        _household_conflict(household, note)
+        _household_conflict(household_sel, note)
         + _intra_note_contradiction(note)
         + _contradictions(prior_notes or [], note)
     )

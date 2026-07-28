@@ -46,6 +46,26 @@ def test_household_conflict_detected():
     assert "자녀" in r["conflicts"][0]
 
 
+def test_no_household_conflict_before_selection():
+    # J1: 가구 유형 미선택(household 없음)이면 자녀 힌트가 있어도 상충 오탐하지 않는다.
+    r = clarify.clarify({}, {}, note="아이 학군 좋은 동네였으면")
+    assert r["conflicts"] == [], "가구 미선택 → 대조 불가 → 상충 없음"
+    assert r["held"] is False
+    # 명시적으로 '1인'을 선택하면 그때부터 상충 감지(현행 유지)
+    r2 = clarify.clarify({}, {"household": "1인"}, note="아이 학군 좋은 동네였으면")
+    assert r2["conflicts"]
+
+
+def test_segment_stays_with_selection_under_unresolved_conflict():
+    # J2: 미확정 note는 세그먼트를 뒤집지 않는다 — segment는 선택된 가구 유형에서만 나온다.
+    from app.tools import persona
+
+    r = clarify.clarify({}, {"household": "1인"}, note="아이 학교 근처였으면")
+    assert r["persona"] == "1인 청년 임차 가구", "상충 미해결이어도 segment는 선택값 유지"
+    p = persona.build_persona({"note": "아이 학교 근처였으면"}, {"household": "1인"})
+    assert p["segment"] == "1인 청년 임차 가구"
+
+
 def test_intra_note_contradiction():
     # 한 입력에 재택(통근↓)+통근(통근↑) 함께 → 조용한 상쇄 대신 되묻기
     r = clarify.clarify({}, {"household": "1인"}, note="재택근무해요 통근해요")
