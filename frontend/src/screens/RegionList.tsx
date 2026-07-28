@@ -192,7 +192,7 @@ function PersonaCardView({ persona, color }: { persona: PersonaProfile; color: s
       <p className="text-[11px] text-muted-foreground">{persona.budgetBand}</p>
 
       {/* 추천 기준 보기 — 세그먼트 가중치·근거는 접어둔다('당신은'이 아니라 '이 세그먼트는') */}
-      <Accordion title="추천 기준 보기">
+      <Accordion title="추천 기준">
         <p className="text-[11px] pb-1">
           이 세그먼트는 동네를 볼 때 아래 순서로 봐요. 자유입력을 반영하면 여기 가중치가 함께 조정돼요.
           {adjusted && <span style={{ color }}> 회색 눈금 = 기본, 막대 = 반영 후.</span>}
@@ -305,16 +305,14 @@ export function commonGuName(regions: Region[]): string | null {
 
 export function RegionCard({ region, color, onSelect, onExperience, deemphasizeCommute = false, hiddenReasons = [], subtitle, leadSignal }: { region: Region; color: string; onSelect: () => void; onExperience: () => void; deemphasizeCommute?: boolean; hiddenReasons?: string[]; subtitle?: string; leadSignal?: string }) {
   // J4: 상단 공통 안내로 접힌 '구 기준' 이유는 카드에서 제외 → 동별로 다른 값만 남긴다
-  const cardReasons = (region.scoreReasons ?? []).filter(r => !hiddenReasons.includes(r));
+  // '예산 여유 있음'은 우측 상단 뱃지("+X 여유")가 이미 더 구체적으로 보여주므로 중복 제거.
+  const cardReasons = (region.scoreReasons ?? []).filter(r => !hiddenReasons.includes(r) && r !== '예산 여유 있음');
   // L3: 미니 리포트 요약 1줄 — {소비 신호} 당신에게 — {동네 차별 팩트}. 구 폴백 공통값은 차별 팩트 아님 → 제외.
+  // 예산 여유도 뱃지와 중복이라 제외 — 뱃지에 없는 다른 차별 정보(카페밀집도 등)만 문장에 담는다.
+  // 카드에 이미 나와있는 중위가·실거래건수는 폴백으로 다시 안 쓴다 — 차별 팩트(카페 등) 없으면 빈 문자열.
   const summaryFacts = (() => {
     const distinct = cardReasons.filter(r => !r.includes('구 기준'));
-    const bits: string[] = [];
-    const dc = distinct.map(r => (r.match(/음식점·카페 \d+곳/) || [])[0]).find(Boolean);
-    if (dc) bits.push(dc);
-    if (region.surplus > 0) bits.push(`예산 여유 +${formatAmount(region.surplus)}`);
-    if (bits.length === 0) bits.push(`중위 ${formatAmount(region.midPrice)}`, `실거래 ${region.tradeCount}건`);
-    return bits.slice(0, 2).join(', ');
+    return distinct.map(r => (r.match(/음식점·카페 \d+곳/) || [])[0]).find(Boolean) ?? '';
   })();
   // 통근이 접히지 않았을 때만(동별 실측) 칩 레벨에 표시 + 대표 직장 기준 각주
   const commuteFolded = hiddenReasons.some(r => r.includes('통근'));
@@ -366,15 +364,19 @@ export function RegionCard({ region, color, onSelect, onExperience, deemphasizeC
         </div>
       )}
       {/* L3 미니 리포트 요약 — 소비 신호 × 동네 차별 팩트(구 폴백 공통값 제외). 순수 템플릿(LLM 없음) */}
-      <p className="text-xs font-medium pt-1" style={{ color }}>
-        {leadSignal ? `${leadSignal} 당신에게 — ${summaryFacts}` : `이 동네 — ${summaryFacts}`}
-      </p>
+      {/* 개인화 신호도 차별 팩트도 없으면(예: 카페 데이터 없는 동네) 빈 줄만 남기지 않고 아예 생략 */}
+      {(leadSignal || summaryFacts) && (
+        <p className="text-xs font-medium pt-1" style={{ color }}>
+          {leadSignal ? `${leadSignal} 당신에게` : '이 동네'}{summaryFacts && ` — ${summaryFacts}`}
+        </p>
+      )}
       {cardReasons.length > 0 && (
-        <div className="text-xs space-y-0.5 pt-1" style={{ color: COLORS.SUB }}>
-          <span className="font-semibold" style={{ color }}>왜 추천?</span>
-          {cardReasons.map((r, i) => (
-            <div key={i}>· {deemphasizeCommute && r.startsWith('통근') ? `${r} — 재택 반영, 참고용` : r}</div>
-          ))}
+        <div className="pt-1">
+          <Accordion title="왜 추천?">
+            {cardReasons.map((r, i) => (
+              <p key={i} className="text-xs py-0.5">· {deemphasizeCommute && r.startsWith('통근') ? `${r} — 재택 반영, 참고용` : r}</p>
+            ))}
+          </Accordion>
         </div>
       )}
       <button
