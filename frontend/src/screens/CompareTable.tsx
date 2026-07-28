@@ -280,52 +280,50 @@ function BranchCardView({
         )}
       </div>
 
-      <div className="px-5 py-3 bg-muted/40 space-y-2 text-xs border-b border-border">
-        <div>
-          <p className="text-muted-foreground font-medium mb-1">⚠️ 리스크</p>
-          {branch.risks.map(r => <p key={r}>• {r}</p>)}
-          {branch.uncertainty && (
-            <p className="mt-1 text-muted-foreground italic">※ {branch.uncertainty}</p>
-          )}
-          {branch.branch === '매매' && firstHome === '모름' && (
-            <div className="mt-2 px-2 py-1.5 rounded-lg" style={{ background: COLORS.YELLOW_SURFACE }}>
-              <p className="text-[11px]" style={{ color: COLORS.KB_GRAY }}>
-                💡 생애최초라면 LTV 70%까지 가능해 한도가 더 늘어날 수 있어요
-              </p>
-            </div>
-          )}
-        </div>
-        <div>
-          <p className="text-muted-foreground font-medium mb-1">🛡 대비</p>
-          {branch.cares.map(c => <p key={c}>• {c}</p>)}
-        </div>
-      </div>
-
-      <div className="px-5 py-3 flex items-center justify-between">
-        <p className="text-xs text-muted-foreground italic">"{branch.feature}"</p>
-        <div className="flex gap-1 flex-wrap justify-end">
-          {basisChips.map(c => <BasisChip key={c.label} label={c.label} tip={c.tip} />)}
-        </div>
-      </div>
-
-      {/* 이 갈래의 가정만 (공통 + 갈래별) */}
-      {branchAssumptions.length > 0 && (
-        <div className="px-5 py-2">
-          <Accordion title={`${branch.branch} 계산의 가정 보기`}>
-            {branchAssumptions.filter(([, k]) => k === 'branch').map(([a]) => (
-              <p key={a} className="text-xs py-0.5">• {a}</p>
-            ))}
-            {branchAssumptions.some(([, k]) => k === 'common') && (
-              <>
-                <p className="text-[11px] font-semibold mt-1.5" style={{ color: COLORS.SUB }}>공통</p>
-                {branchAssumptions.filter(([, k]) => k === 'common').map(([a]) => (
-                  <p key={a} className="text-xs py-0.5">• {a}</p>
-                ))}
-              </>
+      {/* 접힘: 리스크·대비 */}
+      <div className="px-5 py-2 border-b border-border">
+        <Accordion title="리스크·대비 보기">
+          <div>
+            <p className="text-muted-foreground font-medium mb-1">⚠️ 리스크</p>
+            {branch.risks.map(r => <p key={r} className="text-xs py-0.5">• {r}</p>)}
+            {branch.uncertainty && (
+              <p className="mt-1 text-xs text-muted-foreground italic">※ {branch.uncertainty}</p>
             )}
-          </Accordion>
-        </div>
-      )}
+            {branch.branch === '매매' && firstHome === '모름' && (
+              <div className="mt-2 px-2 py-1.5 rounded-lg" style={{ background: COLORS.YELLOW_SURFACE }}>
+                <p className="text-[11px]" style={{ color: COLORS.KB_GRAY }}>
+                  💡 생애최초라면 LTV 70%까지 가능해 한도가 더 늘어날 수 있어요
+                </p>
+              </div>
+            )}
+          </div>
+          <div className="mt-2">
+            <p className="text-muted-foreground font-medium mb-1">🛡 대비</p>
+            {branch.cares.map(c => <p key={c} className="text-xs py-0.5">• {c}</p>)}
+          </div>
+        </Accordion>
+      </div>
+
+      {/* 접힘: 근거·가정 (feature 인용 + 근거칩 + 계산 가정) */}
+      <div className="px-5 py-2">
+        <Accordion title="근거·가정 보기">
+          <p className="text-xs italic mb-2">"{branch.feature}"</p>
+          <div className="flex gap-1 flex-wrap mb-2">
+            {basisChips.map(c => <BasisChip key={c.label} label={c.label} tip={c.tip} />)}
+          </div>
+          {branchAssumptions.filter(([, k]) => k === 'branch').map(([a]) => (
+            <p key={a} className="text-xs py-0.5">• {a}</p>
+          ))}
+          {branchAssumptions.some(([, k]) => k === 'common') && (
+            <>
+              <p className="text-[11px] font-semibold mt-1.5" style={{ color: COLORS.SUB }}>공통</p>
+              {branchAssumptions.filter(([, k]) => k === 'common').map(([a]) => (
+                <p key={a} className="text-xs py-0.5">• {a}</p>
+              ))}
+            </>
+          )}
+        </Accordion>
+      </div>
 
       <div className="px-5 pb-5">
         <button
