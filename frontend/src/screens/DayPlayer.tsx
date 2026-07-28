@@ -194,24 +194,19 @@ export default function DayPlayer() {
               <p className="text-white text-2xl font-bold">{formatAmount(selectedBurden ?? monthlyCost)}/월</p>
               <p className="text-white/50 text-[11px] mt-1">규제·금리 기준 계산값 · {regionName} 시세로 산출</p>
             </div>
-            {/* 지출 여력으로 연결 */}
-            <button
-              onClick={() => dispatch({ type: 'NAVIGATE', screen: 'SC-13' })}
-              className="w-full py-3 rounded-full text-sm font-bold text-foreground"
-              style={{ background: COLORS.KB_YELLOW }}
-            >
-              이 하루, 실현 가능한지 볼까요? →
-            </button>
+            {/* 만기 결정 리포트(SC-13)는 SaveReminder(SC-11)를 거쳐야만 진입 — 금융패키지·예약도
+                안 본 채로 리포트의 "다음 액션"을 보게 되는 지름길을 없앰(SavedMoneyPlayer와 동일 패턴). */}
             <div className="grid grid-cols-2 gap-3">
               <button
                 onClick={() => dispatch({ type: 'NAVIGATE', screen: 'SC-03' })}
-                className="py-2.5 rounded-full text-sm font-semibold border border-white/50 text-white"
+                className="py-3 rounded-full text-sm font-semibold border border-white/30 text-white"
               >
                 세 갈래 다시 보기
               </button>
               <button
                 onClick={() => dispatch({ type: 'NAVIGATE', screen: 'SC-09' })}
-                className="py-2.5 rounded-full text-sm font-semibold border border-white/50 text-white"
+                className="py-3 rounded-full text-sm font-semibold text-foreground"
+                style={{ background: COLORS.KB_YELLOW }}
               >
                 금융 알아보기
               </button>
