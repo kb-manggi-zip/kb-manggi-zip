@@ -41,6 +41,13 @@ SEGMENT_LABEL = {
     "자녀": "자녀 양육 가구",
 }
 
+# 카페·외식 소비 성향 키워드 — _NOTE_MAP(가중치 보정)과 note_values_food(실제 성향 판정)가 공유.
+# 하나의 목록만 유지해 "중요도만 올라가고 실제 판정은 안 바뀌는" 드리프트를 구조적으로 막는다.
+_CAFE_KEYWORDS = ("카페", "외식", "맛집", "배달", "먹")
+# "번화가/상권 선호"도 개념상 같은 축(consumption=외식·카페 밀집도)을 가리키는 표현이라 동일 취급.
+# 별도 그룹인 이유: _NOTE_MAP의 반영 라벨 문구("번화가·상권 선호")를 카페 라벨과 다르게 유지하기 위함.
+_COMMERCIAL_KEYWORDS = ("번화가", "시내", "상권 좋", "핫플")
+
 # 자유입력 키워드 → (반영 라벨, 축별 가중치 배수). **정해진 항목만** — 폴백 경로 규칙.
 # 배수는 '감'이 아니라 방향만(↑/↓) 부여하는 보정 — 재정규화되므로 절대크기 아닌 상대조정.
 _NOTE_MAP: list[tuple[tuple[str, ...], str, dict]] = [
@@ -51,7 +58,7 @@ _NOTE_MAP: list[tuple[tuple[str, ...], str, dict]] = [
     ),
     (("자차", "차로", "운전", "차 있"), "자차 이동 → 통근시간 민감도↓", {"commute": 0.7}),
     (("도보", "걸어", "걸어서"), "도보 생활권 선호 → 선호지역 근접↑", {"preference": 1.2}),
-    (("카페", "외식", "맛집", "배달", "먹"), "외식·카페 소비 성향 → 상권 매치↑", {"consumption": 1.3}),
+    (_CAFE_KEYWORDS, "외식·카페 소비 성향 → 상권 매치↑", {"consumption": 1.3}),
     (("조용", "한적", "정주", "오래 살"), "정주·생활환경 중시 → 선호지역↑", {"preference": 1.2}),
     (("통근", "출퇴근", "회사", "직장", "가까운 데"), "통근 최소화 우선 → 통근↑", {"commute": 1.3}),
     (
@@ -132,6 +139,26 @@ def note_signals(note: str) -> dict:
             for axis, mult in b.items():
                 boost[axis] = boost.get(axis, 1.0) * mult
     return {"labels": labels, "boost": boost}
+
+
+def note_values_food(note: str) -> Optional[bool]:
+    """자유입력에서 카페·외식 소비 성향 직접 감지 → score_consumption의 values_food 판정.
+
+    기존엔 자유입력이 consumption '가중치'(중요도)만 올리고, 그 가중치가 곱해지는 '판정'
+    (values_food)은 세그먼트 평균(spending_profiles traits)에만 의존해 — "카페 좋아한다"고
+    말해도 세그먼트 평균이 아니라고 하면 판정이 안 바뀌는 불일치가 있었다.
+
+    personal_traits.py 문서화된 증거 위계("1위 본인 진술+HITL / 2위 개인 실측 / 3위 세그먼트")의
+    1위가 실제로는 구현된 적이 없었음 — 이 함수가 그 빈 자리를 채운다(tools/persona.py에서 실측보다도
+    우선 적용). 부정 표현(카페 싫어함)은 아직 감지하지 않음 — 침묵/반대를 False로 단정하지 않고
+    True 아니면 None(판단 보류, 하위 tier에 위임)만 반환한다.
+
+    "번화가/상권 선호"(_COMMERCIAL_KEYWORDS)도 개념상 같은 축(외식·카페 밀집도)을 가리키므로
+    함께 감지한다. 단 "재택"·"반려동물"은 같은 consumption 가중치를 올리지만 사유가 다르므로
+    (생활편의·산책공간이지 외식·카페가 아님) 여기 포함하지 않는다.
+    """
+    note = note or ""
+    return True if any(k in note for k in _CAFE_KEYWORDS + _COMMERCIAL_KEYWORDS) else None
 
 
 def _apply_boost(w: dict, boost: dict) -> dict:
