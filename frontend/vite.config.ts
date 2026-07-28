@@ -17,6 +17,12 @@ function figmaAssetResolver() {
 }
 
 export default defineConfig({
+  // 배포 시 백엔드 연결 플래그를 빌드타임에 주입(셸/Vercel env → 클라이언트).
+  // Vite가 셸 VITE_* 를 import.meta.env로 자동 노출하지 않는 케이스를 확실히 커버.
+  define: {
+    'import.meta.env.VITE_REMOTE': JSON.stringify(process.env.VITE_REMOTE ?? ''),
+    'import.meta.env.VITE_API_URL': JSON.stringify(process.env.VITE_API_URL ?? ''),
+  },
   plugins: [
     figmaAssetResolver(),
     // The React and Tailwind plugins are both required for Make, even if

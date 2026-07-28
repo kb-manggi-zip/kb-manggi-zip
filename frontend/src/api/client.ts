@@ -21,7 +21,12 @@ import type {
 export { PERSONAS, SAVED_MONEY_CARDS, briefings };
 export const NOTICE_DEADLINE_MONTHS = RULES.noticeDeadlineMonths;
 
-const API_URL = import.meta.env.VITE_API_URL;
+// 원격(백엔드) 연결 모드 판별:
+//  - VITE_API_URL 설정 → 그 절대주소로 호출(별도 백엔드, 예: Render).
+//  - VITE_REMOTE=1 (주소 없음) → same-origin 상대경로 '/api/...'(프론트·백엔드 한 배포, 예: 단일 Vercel).
+//  - 둘 다 없음 → 로컬 폴백(engine/·data/). 데모 백업.
+const API_URL = import.meta.env.VITE_API_URL ?? '';
+const IS_REMOTE = import.meta.env.VITE_REMOTE === '1' || !!API_URL;
 
 // 원격 호출 공통 헤더 — Content-Type + 여정 세션ID(Langfuse Sessions 그룹핑).
 function apiHeaders(): Record<string, string> {
@@ -29,7 +34,7 @@ function apiHeaders(): Record<string, string> {
 }
 
 async function localOrRemote<T>(local: () => T, path: string, opts?: RequestInit): Promise<T> {
-  if (!API_URL) return local();
+  if (!IS_REMOTE) return local();
   const res = await fetch(`${API_URL}${path}`, { ...opts, headers: apiHeaders() });
   if (!res.ok) throw new Error(`API error: ${res.status}`);
   return res.json();
@@ -82,7 +87,7 @@ export const api = {
 
   // HITL 확정 이벤트 — 관측 전용(Langfuse 세션에 '제안→사용자 확정' 기록). 로컬 모드는 no-op.
   async hitl(choice: 'applied' | 'skipped', signals: string[], note: string): Promise<void> {
-    if (!API_URL) return;
+    if (!IS_REMOTE) return;
     try {
       await fetch(`${API_URL}/api/hitl`, {
         method: 'POST', headers: apiHeaders(),
@@ -165,7 +170,7 @@ export const api = {
   async dayLifestyle(region: Region | null, branch: Branch, finance: FinanceInfo | null, budget?: number, wfh?: boolean): Promise<string> {
     const regionName = region?.name ?? '이 동네';
     const local = () => briefings.dayPlayer(regionName);
-    if (!API_URL) return local();
+    if (!IS_REMOTE) return local();
     try {
       const res = await fetch(`${API_URL}/api/briefing`, {
         method: 'POST',
@@ -190,7 +195,7 @@ export const api = {
   },
 
   async reservation(req: ReservationRequest): Promise<void> {
-    if (!API_URL) {
+    if (!IS_REMOTE) {
       const existing = JSON.parse(localStorage.getItem('kb_reservation') || '[]');
       localStorage.setItem('kb_reservation', JSON.stringify([...existing, req]));
       return;
@@ -219,7 +224,7 @@ export const api = {
     onChunk: (text: string) => void,
     localText: string,
   ): Promise<void> {
-    if (!API_URL) {
+    if (!IS_REMOTE) {
       for (const tok of localText.match(/\S+\s*/g) ?? []) {
         onChunk(tok);
         await new Promise(r => setTimeout(r, 40));

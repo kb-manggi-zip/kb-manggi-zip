@@ -1,7 +1,50 @@
-# 배포 가이드 — 프론트 Vercel + 백엔드 Render (무료)
+# 배포 가이드
 
-구조: **프론트(Vercel 정적) → `VITE_API_URL`로 백엔드(Render) 호출.** 백엔드가 살아있어야
-AI 검증·동네 스코어·발품·지출·다음액션이 모두 동작한다(없으면 프론트만 로컬 폴백으로 계산만).
+> 백엔드가 살아있어야 AI 검증·동네 스코어·발품·지출·다음액션이 모두 동작한다
+> (없으면 프론트만 로컬 폴백으로 계산만).
+
+두 가지 방법:
+- **A. 단일 Vercel (권장·현재 세팅)** — 프론트+백엔드를 한 Vercel 프로젝트에. GitHub import → Deploy 한 번. ↓
+- **B. 프론트 Vercel + 백엔드 Render** — 확장/안정성 필요 시. 맨 아래 참고.
+
+---
+
+## A. 단일 Vercel 배포 (staging용)
+
+레포 루트에 이미 세팅됨: `vercel.json`(프론트 빌드 + `/api/*`→Python 함수), `api/index.py`(백엔드 ASGI),
+`api/requirements.txt`(런타임 의존성), `backend/**`는 함수에 번들(데이터·룰 포함).
+
+### 순서
+1. [vercel.com](https://vercel.com) → **Add New → Project** → 이 GitHub 레포 **import**.
+2. **Root Directory = 레포 루트(기본값 그대로)** — `frontend`로 바꾸지 말 것(루트 `vercel.json`을 써야 함).
+3. **Environment Variables** 추가:
+   - `VITE_REMOTE` = `1`  (프론트가 same-origin `/api`로 호출하게 — 이게 없으면 로컬 폴백으로 뜸)
+   - `ANTHROPIC_API_KEY` = (Anthropic 키, **secret**) — AI 라이브용
+   - `LLM_ENABLED` = `true`
+4. **Deploy**. 완료 후 `https://<프로젝트>.vercel.app` → 문진~리포트까지 눌러보며 확인.
+   - 헬스체크: `https://<프로젝트>.vercel.app/api/health` → `{"status":"ok","llm_active":true,...}`
+
+> `VITE_REMOTE`는 `vercel.json`의 buildCommand(`VITE_REMOTE=1 ...`)에도 이미 들어가 있어
+> 안 넣어도 되지만, 대시보드에도 넣어두면 확실하다.
+
+### 알아둘 리스크 (서버리스라 생기는 것)
+- **콜드스타트**: 유휴 후 첫 요청 ~5-10초(langgraph/anthropic 로드). 이후 빠름.
+- **리포트(⑤)는 LLM 여러 번 호출** → `maxDuration: 60`으로 뒀지만 Vercel Hobby가 짧게 캡하면
+  간혹 타임아웃 날 수 있음. (clarify/spend 캐시로 완화)
+- **함수 크기 250MB**: 의존성+`backend/**`(demo.db 9.3MB 포함)라 아슬할 수 있음. 빌드 실패 시
+  `api/requirements.txt`에서 `langfuse` 제거(트레이싱만 빠지고 기능 동작) 등으로 줄인다.
+- **쓰기 데이터(예약)는 유실**(임시 파일시스템). 읽기 전용 demo.db는 정상.
+- **/api 404가 나면**: FastAPI 라우터 prefix가 `/api`라 경로 보존이 관건. `vercel.json` rewrite가
+  `/api/(.*)`→`/api/index`인지 확인.
+
+> ⚠️ 이 서버리스 구성은 배포해봐야 검증된다(로컬에선 프론트 빌드·백엔드 import까지만 확인함).
+> 무거운 백엔드라 flaky하면 아래 B(또는 Cloud Run)로 옮기는 걸 권장.
+
+---
+
+## B. 프론트 Vercel + 백엔드 Render (안정 확장용)
+
+구조: **프론트(Vercel 정적) → `VITE_API_URL`로 백엔드(Render) 호출.**
 
 > ⚠️ 두 서비스는 서로의 주소를 알아야 해서 **순서상 백엔드를 먼저** 올리고, 그 주소를 프론트에 넣는다.
 
