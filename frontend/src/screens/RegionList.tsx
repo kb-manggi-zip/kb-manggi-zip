@@ -370,7 +370,7 @@ export function RegionCard({ region, color, onSelect, onExperience, deemphasizeC
           {leadSignal ? `${leadSignal} 당신에게` : '이 동네'}{summaryFacts && ` — ${summaryFacts}`}
         </p>
       )}
-      {cardReasons.length > 0 && (
+      {cardReasons.length > 0 ? (
         <div className="pt-1">
           <Accordion title="왜 추천?">
             {cardReasons.map((r, i) => (
@@ -378,6 +378,11 @@ export function RegionCard({ region, color, onSelect, onExperience, deemphasizeC
             ))}
           </Accordion>
         </div>
+      ) : hiddenReasons.length > 0 && (
+        // 통근·상권 등 근거가 전부 위 "구 기준 공통값" 배너로 접혀서 이 카드엔 남은 개별 근거가 없는 경우
+        <p className="text-xs pt-1" style={{ color: COLORS.SUB }}>
+          통근·상권 근거는 위 구 공통 안내를 참고하세요.
+        </p>
       )}
       <button
         onClick={onSelect}
