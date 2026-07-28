@@ -10,3 +10,22 @@ export function kbLandUrl(_regionName?: string): string {
   // _regionName은 현재 URL에 싣지 않음(딥링크 파라미터 미검증). 진입점만 반환.
   return KBLAND_ENTRY;
 }
+
+// ── 금융상품 공식 페이지 (Q2) — 전부 실제 접속으로 검증한 URL만(추측 딥링크 금지) ──
+//  · 버팀목/디딤돌 = 주택도시기금(nhuf.molit.go.kr) — 검증: 버팀목·디딤돌 상품 명시, 정상
+//  · 반환보증 = HUG(khug.or.kr) 전세보증금반환보증 상품개요 — 검증: 정상
+//  · KB 상품 = KB국민은행(kbstar.com) 공식 도메인(딥링크 미검증 → 베이스 진입만)
+const OFFICIAL = {
+  huf: 'https://nhuf.molit.go.kr/',
+  hug: 'https://www.khug.or.kr/hug/web/ig/dr/igdr000001.jsp',
+  kb: 'https://www.kbstar.com/',
+};
+
+/** 상품명 → 공식 페이지 URL. 매칭 없으면 null(링크 없이 이름만). */
+export function officialProductUrl(name: string): string | null {
+  const n = name || '';
+  if (/버팀목|디딤돌/.test(n)) return OFFICIAL.huf;
+  if (/반환보증|보증/.test(n)) return OFFICIAL.hug;
+  if (/KB|전세대출|전세자금|주택담보|주담대/.test(n)) return OFFICIAL.kb;
+  return null;
+}

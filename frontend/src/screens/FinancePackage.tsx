@@ -5,7 +5,19 @@ import { MobileShell, DdayBar, BackBtn, PrimaryBtn, SecondaryBtn, BasisChip, Dis
 import AiBriefing from '../components/AiBriefing';
 import { api, briefings } from '../api/client';
 import { formatAmount } from '../utils/format';
+import { officialProductUrl } from '../utils/external';
 import type { ProductsResponse } from '../api/types';
+
+// Q2: 상품명 → 공식 페이지가 매칭되면 외부 링크로, 없으면 텍스트로.
+function ProductName({ name, className }: { name: string; className?: string }) {
+  const url = officialProductUrl(name);
+  if (!url) return <span className={className}>{name}</span>;
+  return (
+    <a href={url} target="_blank" rel="noopener noreferrer" className={`${className ?? ''} underline underline-offset-2`}>
+      {name} ↗
+    </a>
+  );
+}
 
 export default function FinancePackage() {
   const { state, dispatch } = useApp();
@@ -47,6 +59,11 @@ export default function FinancePackage() {
       </div>
 
       <div className="flex-1 overflow-y-auto px-5 py-5 space-y-4">
+        {/* Q1: 상품은 자격 기준 — 동네와 무관함을 명시(동네 카드엔 상품 미표시, 여기 한 곳) */}
+        <p className="text-[11px] px-1" style={{ color: COLORS.SUB }}>
+          아래 상품은 <b>당신 자격 기준</b>이에요(동네와 무관). 상품명을 누르면 공식 페이지로 이어져요.
+        </p>
+
         {/* 메인 대출 카드 — "예상 월 부담"은 이 카드 내부 "예상 월 상환"과 같은 값이라 중복 표시하지 않음 */}
         <div
           className="bg-card rounded-3xl border-2 overflow-hidden"
@@ -57,7 +74,7 @@ export default function FinancePackage() {
               <span className="text-xs font-bold px-2 py-0.5 rounded-full text-white mb-2 inline-block" style={{ background: color }}>
                 주요 대출
               </span>
-              <h2 className="text-base font-bold mt-1">{products.mainLoan.name}</h2>
+              <ProductName name={products.mainLoan.name} className="text-base font-bold mt-1 inline-block" />
               <p className="text-sm text-muted-foreground mt-0.5">{products.mainLoan.condition}</p>
             </div>
           </div>
@@ -100,16 +117,20 @@ export default function FinancePackage() {
           <div className="bg-card rounded-2xl border border-border overflow-hidden" style={{ boxShadow: '0 2px 8px rgba(0,0,0,0.06)' }}>
             <div className="px-5 pt-4 pb-3">
               <span className="text-xs text-muted-foreground font-medium">보장</span>
-              <h3 className="font-semibold mt-1">{products.guarantee.name}</h3>
+              <ProductName name={products.guarantee.name} className="font-semibold mt-1 inline-block" />
               <p className="text-sm text-muted-foreground">{products.guarantee.condition}</p>
               <p className="text-sm mt-2 text-foreground/80">{products.guarantee.recommendReason}</p>
             </div>
             <div className="px-5 pb-4">
               <SecondaryBtn
-                onClick={() => toast('PoC — 상품 페이지 연결 예정')}
+                onClick={() => {
+                  const url = officialProductUrl(products.guarantee!.name);
+                  if (url) window.open(url, '_blank', 'noopener,noreferrer');
+                  else toast('PoC — 상품 페이지 연결 예정');
+                }}
                 className="h-10 text-sm"
               >
-                자세히 알아보기
+                공식 페이지에서 자세히 →
               </SecondaryBtn>
             </div>
           </div>
@@ -121,7 +142,7 @@ export default function FinancePackage() {
             <div className="flex items-start justify-between">
               <div>
                 <span className="text-xs text-muted-foreground">추가</span>
-                <h3 className="font-semibold">{products.extra.name}</h3>
+                <ProductName name={products.extra.name} className="font-semibold inline-block" />
                 <p className="text-sm text-muted-foreground mt-0.5">{products.extra.condition}</p>
                 <p className="text-sm mt-1">{products.extra.recommendReason}</p>
               </div>
