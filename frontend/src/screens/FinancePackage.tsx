@@ -47,14 +47,7 @@ export default function FinancePackage() {
       </div>
 
       <div className="flex-1 overflow-y-auto px-5 py-5 space-y-4">
-        {branchData && (
-          <div className="bg-muted rounded-2xl px-4 py-3 text-sm flex items-center justify-between">
-            <span className="text-muted-foreground">예상 월 부담</span>
-            <span className="font-bold text-foreground">{formatAmount(branchData.monthlyBurden)}/월</span>
-          </div>
-        )}
-
-        {/* 메인 대출 카드 */}
+        {/* 메인 대출 카드 — "예상 월 부담"은 이 카드 내부 "예상 월 상환"과 같은 값이라 중복 표시하지 않음 */}
         <div
           className="bg-card rounded-3xl border-2 overflow-hidden"
           style={{ borderColor: color, boxShadow: '0 2px 12px rgba(0,0,0,0.08)' }}
