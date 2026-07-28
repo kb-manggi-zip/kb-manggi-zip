@@ -33,6 +33,16 @@ def test_valid_select_passes():
     assert rows and rows[0][0] > 0
 
 
+def test_strftime_allowed_for_monthly_trend():
+    # O2-2: 월별 추이용 strftime 허용 → 동적 SQL이 authorizer 차단 없이 실행됨(이전엔 전부 폴백).
+    rows = sq.guarded_execute(
+        "SELECT strftime('%Y-%m', tx_date) AS ym, SUM(amount) FROM transactions "
+        "WHERE persona_id=:pid GROUP BY ym ORDER BY ym",
+        "P1",
+    )
+    assert rows and all(len(r[0]) == 7 for r in rows)  # 'YYYY-MM' 월 그룹
+
+
 # ── persona 격리 (타 페르소나 데이터 차단) ────────────────────────
 def test_persona_isolation():
     p1 = sq.standard_aggregates("P1")["monthlyTotal"]

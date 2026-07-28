@@ -31,7 +31,9 @@ MYDATA_DB = BACKEND_ROOT / "data" / "mydata.demo.db"
 
 ALLOWED_TABLE = "transactions"
 ALLOWED_COLUMNS = {"tx_id", "persona_id", "tx_date", "category", "merchant_label", "amount", "is_fixed"}
-ALLOWED_FUNCTIONS = {"count", "sum", "avg", "min", "max", "round", "abs", "substr", "total"}
+# strftime 추가(O2-2): LLM이 월별 추이에 자연스럽게 쓰는 날짜 함수. 읽기 전용이라 안전.
+# (없으면 동적 SQL이 전부 authorizer DENY → 표준 폴백으로 빠졌음)
+ALLOWED_FUNCTIONS = {"count", "sum", "avg", "min", "max", "round", "abs", "substr", "total", "strftime", "date"}
 
 # sqlite authorizer 액션/반환 코드(안정값 — 버전 무관 하드코딩)
 _SQLITE_OK, _SQLITE_DENY = 0, 1
@@ -160,8 +162,12 @@ def _llm_questions(persona_ctx: str, branch: str) -> list[str]:
 
 def _llm_sql(question: str) -> Optional[str]:
     raw = generate(system=_SQL_SYSTEM, user=f"질문: {question}\nSQL:", fallback=lambda: "")
-    m = re.search(r"(?is)\bselect\b.*", raw or "")
-    return m.group(0).strip().rstrip(";") if m else None
+    # 마크다운 코드펜스(```sql ... ```) 제거 — LLM이 감싸서 내면 ``` 토큰이 SQL에 섞여 실행 실패했음(O2-2).
+    raw = (raw or "").replace("```sql", " ").replace("```", " ")
+    m = re.search(r"(?is)\bselect\b.*", raw)
+    if not m:
+        return None
+    return m.group(0).split(";")[0].strip()  # 첫 SELECT 문장만(세미콜론 이후 설명·다중문 절단)
 
 
 # ── 최종 분석 ────────────────────────────────────────────────────────
