@@ -3,7 +3,7 @@ import { useApp } from '../store';
 import { COLORS, BRANCH_COLORS, BRANCH_ICONS } from '../theme';
 import { MobileShell, BackBtn, DdayBar } from '../components/ui';
 import { formatAmount, ddayText } from '../utils/format';
-import { kbLandUrl } from '../utils/external';
+import { kbLandUrl, officialProductUrl } from '../utils/external';
 import { api } from '../api/client';
 import type { DecisionReport } from '../api/types';
 
@@ -22,6 +22,28 @@ function Section({ n, title, open, onToggle, children }: {
         <span className="text-xs text-muted-foreground">{open ? '접기' : '자세히'}</span>
       </button>
       {open && <div className="px-4 pb-4 space-y-2">{children}</div>}
+    </div>
+  );
+}
+
+// Q1: 금융상품 한 행(태그·상품명·공식링크·설명). 상품명은 매칭되면 공식 페이지로 외부 링크(Q2).
+function FinItem({ tag, name, url, sub, extra, icon, color }: {
+  tag: string; name: string; url: string | null; sub?: string; extra?: string; icon?: string; color: string;
+}) {
+  return (
+    <div className="rounded-xl p-3" style={{ background: COLORS.YELLOW_SURFACE }}>
+      <div className="flex items-center gap-1.5 flex-wrap">
+        <span className="text-[10px] font-bold px-1.5 py-0.5 rounded" style={{ background: color + '22', color }}>{tag}</span>
+        {url ? (
+          <a href={url} target="_blank" rel="noopener noreferrer" className="text-sm font-semibold underline underline-offset-2" style={{ color: COLORS.TEXT }}>
+            {icon ? icon + ' ' : ''}{name} ↗
+          </a>
+        ) : (
+          <span className="text-sm font-semibold" style={{ color: COLORS.TEXT }}>{icon ? icon + ' ' : ''}{name}</span>
+        )}
+      </div>
+      {sub && <p className="text-xs mt-0.5 text-muted-foreground">{sub}</p>}
+      {extra && <p className="text-sm font-bold mt-1" style={{ color }}>{extra}</p>}
     </div>
   );
 }
@@ -53,7 +75,10 @@ export default function DecisionReportScreen() {
   }
 
   const color = BRANCH_COLORS[selectedBranch];
-  const selBurden = rep?.comparison.branches.find(b => b.branch === selectedBranch)?.monthlyBurden;
+  const selBranch = rep?.comparison.branches.find(b => b.branch === selectedBranch);
+  const selBurden = selBranch?.monthlyBurden;
+  // Q1: 갈래 → 필요 여신명(정보 병치)
+  const loanName = selectedBranch === '매매' ? '주택담보대출' : selectedBranch === '이사' ? '신규 전세자금대출' : '증액분 전세자금대출';
 
   // P4: 이 사람 고유의 한 줄 결론 — 전부 '이미 계산된 값'만 결정론 조립(LLM 없음). 없는 요소는 생략.
   const oneLine = (() => {
@@ -169,29 +194,55 @@ export default function DecisionReportScreen() {
             )}
 
             <Section n="⑥" title="다음 액션 · KB 연결" open={!!open['⑥']} onToggle={() => toggle('⑥')}>
-              {/* P3: 갈래 → 필요 여신 매핑(정보 병치, 권유 아님) */}
-              <p className="text-xs" style={{ color: COLORS.SUB }}>
-                고르신 <b style={{ color }}>{selectedBranch}</b>에 필요한 여신: <b>{selectedBranch === '매매' ? '주택담보대출' : selectedBranch === '이사' ? '신규 전세자금대출' : '증액분 전세자금대출'}</b>
+              {/* Q1: 금융상품은 여기 한 곳에서만, '자격 기준(동네 무관)'으로 3분류(필요 여신/자격 상품/보호 장치) */}
+              <p className="text-[11px] mb-1.5" style={{ color: COLORS.SUB }}>
+                아래는 <b>당신 자격 기준</b>이에요(동네와 무관). 정보 제공이며 권유가 아니에요.
               </p>
+
+              {/* ① 필요 여신 — 갈래가 결정 */}
+              <FinItem
+                tag="필요 여신"
+                color={color}
+                name={loanName}
+                url={officialProductUrl(loanName)}
+                sub={`고르신 ${selectedBranch}에 필요한 대출`}
+              />
+
+              {/* ② 자격 상품 — 조건 충족 시 더 유리한 정책상품(버팀목·디딤돌 등) */}
               {rep.nextAction && (
-                <div className="mt-1.5 mb-2 rounded-xl p-3" style={{ background: COLORS.YELLOW_SURFACE }}>
-                  <p className="text-sm font-semibold" style={{ color: COLORS.TEXT }}>
-                    {rep.nextAction.eligible ? '💡 ' : '🔎 '}{rep.nextAction.headline}
-                  </p>
-                  <p className="text-xs mt-0.5 text-muted-foreground">{rep.nextAction.detail}</p>
-                  {rep.nextAction.eligible && rep.nextAction.annualSaving > 0 && (
-                    <p className="text-sm font-bold mt-1" style={{ color: color }}>일반 기준 대비 연 약 {man(rep.nextAction.annualSaving)} 절감(자격 충족 시)</p>
-                  )}
-                  {/* P3: 지출 여력과 연결(⑤ 값 재사용) */}
-                  {rep.spend && selBurden != null && (
-                    <p className="text-[11px] mt-1" style={{ color: COLORS.SUB }}>
-                      이 월 부담 {man(selBurden)}은 변동지출 여력 {man(rep.spend.variableMonthly)} {selBurden <= rep.spend.variableMonthly ? '안이에요' : '을 넘어요'}.
-                    </p>
-                  )}
-                  <p className="text-[11px] mt-1" style={{ color: COLORS.SUB }}>* 정보 제공이며 권유가 아니에요. 실제 한도·금리·자격은 KB 심사에 따라요.</p>
-                </div>
+                <FinItem
+                  tag="자격 상품"
+                  color={color}
+                  name={rep.nextAction.headline}
+                  url={officialProductUrl(rep.nextAction.headline)}
+                  icon={rep.nextAction.eligible ? '💡' : '🔎'}
+                  sub={rep.nextAction.detail}
+                  extra={rep.nextAction.eligible && rep.nextAction.annualSaving > 0
+                    ? `일반 기준 대비 연 약 ${man(rep.nextAction.annualSaving)} 절감(자격 충족 시)`
+                    : undefined}
+                />
               )}
-              <p className="text-sm">갱신 통보 기한 <b>{ddayText(rep.dday)}</b> · 기한일 {rep.noticeDeadline}</p>
+
+              {/* ③ 보호 장치 — 전세(갱신·이사)에서 보증금 반환보증 */}
+              {selectedBranch !== '매매' && selBranch?.guaranteeMonthly != null && selBranch.guaranteeMonthly > 0 && (
+                <FinItem
+                  tag="보호 장치"
+                  color={color}
+                  name="전세보증금 반환보증"
+                  url={officialProductUrl('반환보증')}
+                  sub={`보증료 월 약 ${man(selBranch.guaranteeMonthly)} — 보증금 미반환 위험 대비`}
+                />
+              )}
+
+              {/* 지출 여력과 연결(⑤ 값 재사용) */}
+              {rep.spend && selBurden != null && (
+                <p className="text-[11px] mt-2" style={{ color: COLORS.SUB }}>
+                  이 월 부담 {man(selBurden)}은 변동지출 여력 {man(rep.spend.variableMonthly)} {selBurden <= rep.spend.variableMonthly ? '안이에요' : '을 넘어요'}.
+                </p>
+              )}
+              <p className="text-[11px] mt-0.5" style={{ color: COLORS.SUB }}>* 자격·한도·금리는 정보 제공이며 실제 조건은 KB 심사에 따라요(권유 아님).</p>
+
+              <p className="text-sm mt-2">갱신 통보 기한 <b>{ddayText(rep.dday)}</b> · 기한일 {rep.noticeDeadline}</p>
               {/* 이사·매매면 그 동네 실매물을 KB부동산에서 이어보기(외부 링크·AI 큐레이션 아님) */}
               {rep.topRegion && (
                 <a
