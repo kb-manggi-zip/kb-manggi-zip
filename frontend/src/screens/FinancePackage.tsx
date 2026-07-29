@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useApp } from '../store';
 import { COLORS, BRANCH_COLORS, BRANCH_ICONS } from '../theme';
-import { MobileShell, DdayBar, BackBtn, PrimaryBtn, SecondaryBtn, BasisChip, Disclaimer, Toast } from '../components/ui';
+import { MobileShell, DdayBar, BackBtn, PrimaryBtn, SecondaryBtn, BasisChip, Disclaimer } from '../components/ui';
 import AiBriefing from '../components/AiBriefing';
 import { api, briefings } from '../api/client';
 import { formatAmount } from '../utils/format';
@@ -46,8 +46,6 @@ export default function FinancePackage() {
   const { state, dispatch } = useApp();
   const { selectedBranch, comparison, prevScreen } = state;
   const [products, setProducts] = useState<ProductsResponse | null>(null);
-  const [toastVisible, setToastVisible] = useState(false);
-  const [toastMsg, setToastMsg] = useState('');
 
   useEffect(() => {
     if (!selectedBranch || !comparison) return;
@@ -59,12 +57,6 @@ export default function FinancePackage() {
   const color = BRANCH_COLORS[selectedBranch];
   const icon = BRANCH_ICONS[selectedBranch];
   const branchData = comparison?.branches.find(b => b.branch === selectedBranch);
-
-  function toast(msg: string) {
-    setToastMsg(msg);
-    setToastVisible(true);
-    setTimeout(() => setToastVisible(false), 2000);
-  }
 
   return (
     <MobileShell>
@@ -96,10 +88,10 @@ export default function FinancePackage() {
         >
           <div className="px-5 pt-5 pb-3 flex items-start justify-between">
             <div className="flex-1">
-              <span className="text-xs font-bold px-2 py-0.5 rounded-full text-white mb-2 inline-block" style={{ background: color }}>
+              <span className="text-xs font-bold px-2 py-0.5 rounded-full text-white mb-2 block w-fit" style={{ background: color }}>
                 주요 대출
               </span>
-              <ProductName name={products.mainLoan.name} className="text-base font-bold mt-1 inline-block" />
+              <ProductName name={products.mainLoan.name} className="text-base font-bold inline-block" />
               <p className="text-sm text-muted-foreground mt-0.5">{products.mainLoan.condition}</p>
             </div>
           </div>
@@ -141,23 +133,23 @@ export default function FinancePackage() {
         {products.guarantee && (
           <div className="bg-card rounded-2xl border border-border overflow-hidden" style={{ boxShadow: '0 2px 8px rgba(0,0,0,0.06)' }}>
             <div className="px-5 pt-4 pb-3">
-              <span className="text-xs text-muted-foreground font-medium">보장</span>
-              <ProductName name={products.guarantee.name} className="font-semibold mt-1 inline-block" />
+              <span className="text-xs text-muted-foreground font-medium block">보장</span>
+              <ProductName name={products.guarantee.name} className="font-semibold inline-block" />
               <p className="text-sm text-muted-foreground">{products.guarantee.condition}</p>
               <p className="text-sm mt-2 text-foreground/80">{products.guarantee.recommendReason}</p>
             </div>
-            <div className="px-5 pb-4">
-              <SecondaryBtn
-                onClick={() => {
-                  const url = officialProductUrl(products.guarantee!.name);
-                  if (url) window.open(url, '_blank', 'noopener,noreferrer');
-                  else toast('PoC — 상품 페이지 연결 예정');
-                }}
-                className="h-10 text-sm"
-              >
-                공식 페이지에서 자세히 →
-              </SecondaryBtn>
-            </div>
+            {officialProductUrl(products.guarantee.name) && (
+              <div className="px-5 pb-4">
+                <SecondaryBtn
+                  onClick={() => {
+                    window.open(officialProductUrl(products.guarantee!.name)!, '_blank', 'noopener,noreferrer');
+                  }}
+                  className="h-10 text-sm"
+                >
+                  공식 페이지에서 자세히 →
+                </SecondaryBtn>
+              </div>
+            )}
           </div>
         )}
 
@@ -166,7 +158,7 @@ export default function FinancePackage() {
           <div className="bg-card rounded-2xl border border-border p-4">
             <div className="flex items-start justify-between">
               <div>
-                <span className="text-xs text-muted-foreground">추가</span>
+                <span className="text-xs text-muted-foreground block">추가</span>
                 <ProductName name={products.extra.name} className="font-semibold inline-block" />
                 <p className="text-sm text-muted-foreground mt-0.5">{products.extra.condition}</p>
                 <p className="text-sm mt-1">{products.extra.recommendReason}</p>
@@ -190,7 +182,6 @@ export default function FinancePackage() {
       </div>
 
       <Disclaimer />
-      <Toast message={toastMsg} visible={toastVisible} />
     </MobileShell>
   );
 }

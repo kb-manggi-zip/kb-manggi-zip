@@ -414,7 +414,7 @@ export function RegionCard({ region, color, onSelect, onExperience, deemphasizeC
       </button>
       {/* 실매물 이어보기 — 발품을 대체하지 않고 좁혀서 잇는다(외부 링크, AI 큐레이션 아님) */}
       <a
-        href={kbLandUrl(region.name)}
+        href={kbLandUrl(region.lat, region.lng)}
         target="_blank"
         rel="noopener noreferrer"
         onClick={e => e.stopPropagation()}
