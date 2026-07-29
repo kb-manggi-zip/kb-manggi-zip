@@ -1,0 +1,32 @@
+name: Sync fork (Vercel deploy source)
+
+# prev-live/prev-live의 main이 바뀔 때마다 Vercel이 보고 있는 개인 포크
+# (numberonekkaebi/prev-live)의 main으로 그대로 밀어서, 머지=자동 배포가 되게 한다.
+# 포크는 GitHub 조직 프라이빗 레포를 Vercel Hobby(무료)로 배포하기 위한 우회 방법이라
+# 필요함 — Vercel Hobby는 org 소속 프라이빗 레포에서 직접 배포를 지원하지 않는다.
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch: {}
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout main (full history)
+        uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 0
+
+      - name: Push to fork
+        env:
+          FORK_SYNC_TOKEN: ${{ secrets.FORK_SYNC_TOKEN }}
+        run: |
+          if [ -z "$FORK_SYNC_TOKEN" ]; then
+            echo "::error::FORK_SYNC_TOKEN secret이 설정되지 않았어요. 리포 Settings > Secrets and variables > Actions에 추가하세요."
+            exit 1
+          fi
+          git remote add fork "https://x-access-token:${FORK_SYNC_TOKEN}@github.com/numberonekkaebi/prev-live.git"
+          git push fork main:main
