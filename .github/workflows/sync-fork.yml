@@ -24,9 +24,12 @@ jobs:
         env:
           FORK_SYNC_TOKEN: ${{ secrets.FORK_SYNC_TOKEN }}
         run: |
-          if [ -z "$FORK_SYNC_TOKEN" ]; then
+          # 시크릿 값에 복붙 과정에서 섞여드는 공백/개행을 방어적으로 제거(URL이 깨지는 걸 방지)
+          TOKEN=$(printf '%s' "$FORK_SYNC_TOKEN" | tr -d '[:space:]')
+          if [ -z "$TOKEN" ]; then
             echo "::error::FORK_SYNC_TOKEN secret이 설정되지 않았어요. 리포 Settings > Secrets and variables > Actions에 추가하세요."
             exit 1
           fi
-          git remote add fork "https://x-access-token:${FORK_SYNC_TOKEN}@github.com/numberonekkaebi/prev-live.git"
+          echo "token length: ${#TOKEN}"
+          git remote add fork "https://x-access-token:${TOKEN}@github.com/numberonekkaebi/prev-live.git"
           git push fork main:main
