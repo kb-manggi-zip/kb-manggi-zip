@@ -117,12 +117,22 @@ def scoring_ctx(
         "weights": clarify_mod.note_weights(household, note, contract.get("noteAdjust")),
     }
     if persona_id:
-        from .personal_traits import derive_personal_traits, values_food_override
+        from .personal_traits import derive_personal_traits, values_food_override, values_leisure_override
 
-        vf = values_food_override(derive_personal_traits(persona_id))
+        traits = derive_personal_traits(persona_id)
+        vf = values_food_override(traits)
         if vf is not None:
             ctx["values_food"] = vf  # 2위: 실측이 세그먼트 성향을 덮어씀
+        vl = values_leisure_override(traits)
+        if vl is not None:
+            ctx["values_leisure"] = vl
     vf_note = clarify_mod.note_values_food(note)
     if vf_note is not None:
         ctx["values_food"] = vf_note  # 1위: 본인 진술이 실측·세그먼트를 덮어씀
+    vl_note = clarify_mod.note_values_leisure(note)
+    if vl_note is not None:
+        ctx["values_leisure"] = vl_note
+    vg_note = clarify_mod.note_values_grocery(note)
+    # 그로서리는 별도 실측 카테고리가 없음 — 진술 있으면 그걸, 없으면 food 신호 재사용(식비=그로서리 대용).
+    ctx["values_grocery"] = vg_note if vg_note is not None else ctx.get("values_food")
     return ctx
