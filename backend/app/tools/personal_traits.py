@@ -73,3 +73,13 @@ def values_food_override(overrides: dict) -> Optional[bool]:
     ):
         return False
     return None
+
+
+def values_leisure_override(overrides: dict) -> Optional[bool]:
+    """실측 override의 '여가' 카테고리로 여가 성향 판정. values_food_override와 동일 패턴(단일 카테고리)."""
+    level = overrides.get("여가", {}).get("level")
+    if level == "high":
+        return True
+    if level == "low":
+        return False
+    return None

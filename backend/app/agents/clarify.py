@@ -47,6 +47,9 @@ _CAFE_KEYWORDS = ("카페", "외식", "맛집", "배달", "먹")
 # "번화가/상권 선호"도 개념상 같은 축(consumption=외식·카페 밀집도)을 가리키는 표현이라 동일 취급.
 # 별도 그룹인 이유: _NOTE_MAP의 반영 라벨 문구("번화가·상권 선호")를 카페 라벨과 다르게 유지하기 위함.
 _COMMERCIAL_KEYWORDS = ("번화가", "시내", "상권 좋", "핫플")
+# 장보기·여가 성향 키워드 — note_values_grocery/note_values_leisure과 _NOTE_MAP이 공유.
+_GROCERY_KEYWORDS = ("장보기", "마트", "시장")
+_LEISURE_KEYWORDS = ("여가", "취미", "운동", "산책", "나들이")
 
 # 자유입력 키워드 → (반영 라벨, 축별 가중치 배수). **정해진 항목만** — 폴백 경로 규칙.
 # 배수는 '감'이 아니라 방향만(↑/↓) 부여하는 보정 — 재정규화되므로 절대크기 아닌 상대조정.
@@ -72,6 +75,8 @@ _NOTE_MAP: list[tuple[tuple[str, ...], str, dict]] = [
     (("지하철", "전철", "역 가까", "역세권"), "대중교통 접근 중시 → 통근 편의↑", {"commute": 1.2}),
     (("번화가", "시내", "상권 좋", "핫플"), "번화가·상권 선호 → 상권 매치↑", {"consumption": 1.3}),
     (("한적한 동네", "공원", "산책로", "자연"), "쾌적·정주 환경 선호 → 선호지역↑", {"preference": 1.2}),
+    (_GROCERY_KEYWORDS, "장보기 성향 → 생활상권 매치↑", {"consumption": 1.3}),
+    (_LEISURE_KEYWORDS, "여가 활동 선호 → 생활상권 매치↑", {"consumption": 1.3}),
 ]
 
 # 자유입력이 특정 가구를 시사하는데 폼 선택과 다르면 모순(되묻기). 창작 아닌 사실 대조.
@@ -159,6 +164,18 @@ def note_values_food(note: str) -> Optional[bool]:
     """
     note = note or ""
     return True if any(k in note for k in _CAFE_KEYWORDS + _COMMERCIAL_KEYWORDS) else None
+
+
+def note_values_grocery(note: str) -> Optional[bool]:
+    """자유입력에서 장보기 성향 직접 감지 → score_consumption의 그로서리 게이트. note_values_food와 동일 패턴."""
+    note = note or ""
+    return True if any(k in note for k in _GROCERY_KEYWORDS) else None
+
+
+def note_values_leisure(note: str) -> Optional[bool]:
+    """자유입력에서 여가 성향 직접 감지 → score_consumption의 여가 게이트. note_values_food와 동일 패턴."""
+    note = note or ""
+    return True if any(k in note for k in _LEISURE_KEYWORDS) else None
 
 
 def _apply_boost(w: dict, boost: dict) -> dict:
