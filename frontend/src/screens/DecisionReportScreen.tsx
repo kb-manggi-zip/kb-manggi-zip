@@ -1,10 +1,10 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import { useApp } from '../store';
 import { COLORS, BRANCH_COLORS, BRANCH_ICONS } from '../theme';
 import { MobileShell, BackBtn, DdayBar } from '../components/ui';
 import { formatAmount, ddayText } from '../utils/format';
 import { kbLandUrl, officialProductUrl } from '../utils/external';
-import { api } from '../api/client';
+import { api, briefings } from '../api/client';
 import type { DecisionReport } from '../api/types';
 
 const man = (won: number) => `${Math.round(won / 10_000).toLocaleString()}만원`;
@@ -52,14 +52,31 @@ export default function DecisionReportScreen() {
   const { state, dispatch } = useApp();
   const { contract, finance, selectedBranch, selectedRegionId } = state;
   const [rep, setRep] = useState<DecisionReport | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [open, setOpen] = useState<Record<string, boolean>>({ '⑤': true }); // ⑤ 지출만 기본 펼침(핵심 신규)
+  const [loading, setLoading] = useState(true);   // 최초 로드(리포트 없음)
+  const [switching, setSwitching] = useState(false); // 갈래 전환 재조회 중(이전 리포트 유지)
+  const [switchError, setSwitchError] = useState<string | null>(null);
+  const [open, setOpen] = useState<Record<string, boolean>>({ '②': true, '⑤': true }); // ② 전환 컨트롤 + ⑤ 지출 기본 펼침
   const toggle = (k: string) => setOpen(o => ({ ...o, [k]: !o[k] }));
+  const repRef = useRef<DecisionReport | null>(null);
+  useEffect(() => { repRef.current = rep; }, [rep]);
 
   useEffect(() => {
     if (!contract || !finance || !selectedBranch) { setLoading(false); return; }
+    let cancelled = false;
+    const hadRep = repRef.current != null;
+    // 전환 재조회는 이전 리포트를 지우지 않고 로딩만 표시(R5 조건②: 깨짐/이전값 노출 방지)
+    if (hadRep) setSwitching(true); else setLoading(true);
+    setSwitchError(null);
     api.report(contract, finance, selectedBranch, undefined, selectedRegionId ?? undefined)
-      .then(setRep).catch(() => setRep(null)).finally(() => setLoading(false));
+      .then(r => { if (!cancelled) setRep(r); })
+      .catch(() => {
+        if (cancelled) return;
+        // 실패 시: 이전 리포트가 있으면 그대로 유지(화면은 rep.selectedBranch 기준이라 정합 유지), 안내만.
+        if (repRef.current) setSwitchError(`‘${selectedBranch}’ 기준 재계산에 실패했어요 — 이전 리포트를 유지했어요.`);
+        else setRep(null);
+      })
+      .finally(() => { if (!cancelled) { setLoading(false); setSwitching(false); } });
+    return () => { cancelled = true; };
   }, [contract, finance, selectedBranch, selectedRegionId]);
 
   if (!contract || !finance || !selectedBranch) {
@@ -74,11 +91,16 @@ export default function DecisionReportScreen() {
     );
   }
 
-  const color = BRANCH_COLORS[selectedBranch];
-  const selBranch = rep?.comparison.branches.find(b => b.branch === selectedBranch);
+  // 화면은 항상 '지금 렌더된 리포트의 갈래(rep.selectedBranch)' 기준 — 전환/실패 중에도 리포트 내부 정합 보장.
+  // store의 selectedBranch는 '요청한 갈래'(fetch 트리거)일 뿐, 표시는 shown으로 통일.
+  const shown = rep?.selectedBranch ?? selectedBranch;
+  const color = BRANCH_COLORS[shown];
+  const selBranch = rep?.comparison.branches.find(b => b.branch === shown);
   const selBurden = selBranch?.monthlyBurden;
   // Q1: 갈래 → 필요 여신명(정보 병치)
-  const loanName = selectedBranch === '매매' ? '주택담보대출' : selectedBranch === '이사' ? '신규 전세자금대출' : '증액분 전세자금대출';
+  const loanName = shown === '매매' ? '주택담보대출' : shown === '이사' ? '신규 전세자금대출' : '증액분 전세자금대출';
+  // R5: 관점 선언 + 비교 잔상(결정론·compare 값 재사용)
+  const perspective = rep ? briefings.reportPerspective(rep.comparison, shown, man) : null;
 
   // P4: 이 사람 고유의 한 줄 결론 — 전부 '이미 계산된 값'만 결정론 조립(LLM 없음). 없는 요소는 생략.
   const oneLine = (() => {
@@ -87,7 +109,7 @@ export default function DecisionReportScreen() {
     const withinBudget = /여력 안|안에 있어요/.test(rep.feasibility || '');
     const na = rep.nextAction;
     const bits = [
-      `${selectedBranch}${region1 ? ` · ${region1}` : ''}`,
+      `${shown}${region1 ? ` · ${region1}` : ''}`,
       selBurden != null ? `월 ${man(selBurden)}` : null,
       rep.spend ? (withinBudget ? '변동지출 여력 안' : '여력 초과 주의') : null,
       na?.eligible && na.annualSaving > 0 ? `${na.headline.split(' ')[0]} 자격 시 연 약 ${man(na.annualSaving)} 절감 가능` : null,
@@ -106,14 +128,36 @@ export default function DecisionReportScreen() {
       <div className="flex-1 overflow-y-auto px-5 py-4 space-y-3">
         {loading && <p className="text-sm text-muted-foreground text-center py-10">리포트를 만드는 중…</p>}
 
+        {/* R5 조건②: 전환 실패 시 이전 리포트 유지 + 안내 */}
+        {switchError && (
+          <div className="rounded-xl px-3 py-2 text-xs" style={{ background: '#FDECEC', color: '#B42318' }}>
+            {switchError}
+          </div>
+        )}
+        {/* R5 조건②: 전환 재조회 중 로딩 표시(이전 리포트는 dim 처리, 값 오인 방지) */}
+        {switching && (
+          <div className="flex items-center justify-center gap-2 rounded-xl px-3 py-2 text-xs" style={{ background: color + '14', color }}>
+            <span className="inline-block w-3 h-3 rounded-full border-2 border-current border-t-transparent animate-spin" />
+            ‘{selectedBranch}’ 기준으로 다시 계산 중…
+          </div>
+        )}
+
         {rep && (
-          <>
+          <div className={`space-y-3 ${switching ? 'opacity-40 pointer-events-none' : ''}`}>
             {/* 1층 — 상단 요약 카드(월부담) + P4 한 줄 결론 */}
             <div className="rounded-2xl p-4 text-center" style={{ background: color + '14', border: `1px solid ${color}44` }}>
-              <p className="text-xs text-muted-foreground">{BRANCH_ICONS[selectedBranch]} {selectedBranch} · 월 부담</p>
+              <p className="text-xs text-muted-foreground">{BRANCH_ICONS[shown]} {shown} · 월 부담</p>
               <p className="text-3xl font-bold my-1" style={{ color: COLORS.TEXT }}>{selBurden != null ? man(selBurden) : '—'}</p>
               <p className="text-xs" style={{ color: COLORS.SUB }}>{rep.feasibility}</p>
             </div>
+            {/* R5: 관점 선언 + 비교 잔상 — 고른 길이 중심이되 비교 맥락을 리포트 안에 유지(결정론) */}
+            {perspective && (
+              <div className="rounded-2xl px-4 py-3 space-y-0.5" style={{ background: color + '0A', border: `1px solid ${color}22` }}>
+                <p className="text-sm font-semibold" style={{ color: COLORS.TEXT }}>🧭 {perspective.declare}</p>
+                {perspective.contrast && <p className="text-xs leading-relaxed" style={{ color: COLORS.SUB }}>{perspective.contrast}</p>}
+                <p className="text-[11px] pt-0.5" style={{ color: COLORS.SUB }}>아래 <b>‘세 갈래 채점’</b>에서 갈래를 눌러 다른 기준으로 바꿔볼 수 있어요.</p>
+              </div>
+            )}
             {/* P4: 이 사람 고유 한 줄 결론(결정론 조립) */}
             {oneLine && (
               <div className="rounded-2xl px-4 py-3" style={{ background: color + '0A', borderLeft: `3px solid ${color}` }}>
@@ -137,15 +181,29 @@ export default function DecisionReportScreen() {
 
             <Section n="②" title="세 갈래 채점" open={!!open['②']} onToggle={() => toggle('②')}>
               <div className="grid grid-cols-3 gap-2">
-                {rep.comparison.branches.map(b => (
-                  <div key={b.branch} className="rounded-xl p-2.5 text-center border-l-4"
-                    style={{ borderColor: BRANCH_COLORS[b.branch], background: b.branch === selectedBranch ? COLORS.YELLOW_SURFACE : COLORS.CARD }}>
-                    <p className="text-sm">{BRANCH_ICONS[b.branch]}</p>
-                    <p className="text-[11px] font-medium" style={{ color: BRANCH_COLORS[b.branch] }}>{b.branch}</p>
-                    <p className="text-sm font-bold mt-0.5">{man(b.monthlyBurden)}</p>
-                  </div>
-                ))}
+                {rep.comparison.branches.map(b => {
+                  const active = b.branch === shown;
+                  return (
+                    // R5: 칩을 눌러 그 갈래 기준으로 리포트 전체를 다시 봄(SELECT_BRANCH → 재조회)
+                    <button
+                      key={b.branch}
+                      onClick={() => { if (!active) dispatch({ type: 'SELECT_BRANCH', branch: b.branch }); }}
+                      aria-pressed={active}
+                      className="rounded-xl p-2.5 text-center border-l-4 transition-transform active:scale-[0.97]"
+                      style={{
+                        borderColor: BRANCH_COLORS[b.branch],
+                        background: active ? COLORS.YELLOW_SURFACE : COLORS.CARD,
+                        boxShadow: active ? `0 0 0 2px ${BRANCH_COLORS[b.branch]}55` : 'none',
+                      }}
+                    >
+                      <p className="text-sm">{BRANCH_ICONS[b.branch]}</p>
+                      <p className="text-[11px] font-medium" style={{ color: BRANCH_COLORS[b.branch] }}>{b.branch}</p>
+                      <p className="text-sm font-bold mt-0.5">{man(b.monthlyBurden)}</p>
+                    </button>
+                  );
+                })}
               </div>
+              <p className="text-[11px] mt-2 text-center" style={{ color: COLORS.SUB }}>👆 갈래를 눌러 다른 기준으로 리포트를 다시 볼 수 있어요</p>
             </Section>
 
             {rep.topRegion ? (
@@ -160,7 +218,7 @@ export default function DecisionReportScreen() {
                   여기 숫자는 이 동네 <b>실거래 시세 기준</b>이에요. 실제 매물·집주인 의사는 확인이 필요해요 — 아래 KB부동산에서 이어보세요.
                 </p>
               </Section>
-            ) : selectedBranch === '갱신' && (
+            ) : shown === '갱신' && (
               // 갱신은 새 동네 추천이 없음 → 현재 동네 유지를 명시(빈 구간 방지, B7)
               <Section n="③" title="현재 동네 유지" open={!!open['③']} onToggle={() => toggle('③')}>
                 <p className="text-sm leading-relaxed text-muted-foreground">
@@ -170,7 +228,7 @@ export default function DecisionReportScreen() {
             )}
 
             {rep.dayBrief && (
-              <Section n="④" title={selectedBranch === '갱신' ? '유지하는 하루' : `그 동네의 하루${rep.topRegion ? ` (${rep.topRegion.name.split(' ').pop()} 기준)` : ''}`} open={!!open['④']} onToggle={() => toggle('④')}>
+              <Section n="④" title={shown === '갱신' ? '유지하는 하루' : `그 동네의 하루${rep.topRegion ? ` (${rep.topRegion.name.split(' ').pop()} 기준)` : ''}`} open={!!open['④']} onToggle={() => toggle('④')}>
                 <p className="text-sm leading-relaxed text-muted-foreground">{rep.dayBrief}</p>
               </Section>
             )}
@@ -205,7 +263,7 @@ export default function DecisionReportScreen() {
                 color={color}
                 name={loanName}
                 url={officialProductUrl(loanName)}
-                sub={`고르신 ${selectedBranch}에 필요한 대출`}
+                sub={`고르신 ${shown}에 필요한 대출`}
               />
 
               {/* ② 자격 상품 — 조건 충족 시 더 유리한 정책상품(버팀목·디딤돌 등) */}
@@ -224,7 +282,7 @@ export default function DecisionReportScreen() {
               )}
 
               {/* ③ 보호 장치 — 전세(갱신·이사)에서 보증금 반환보증 */}
-              {selectedBranch !== '매매' && selBranch?.guaranteeMonthly != null && selBranch.guaranteeMonthly > 0 && (
+              {shown !== '매매' && selBranch?.guaranteeMonthly != null && selBranch.guaranteeMonthly > 0 && (
                 <FinItem
                   tag="보호 장치"
                   color={color}
@@ -256,7 +314,7 @@ export default function DecisionReportScreen() {
                 </a>
               )}
             </Section>
-          </>
+          </div>
         )}
       </div>
 
