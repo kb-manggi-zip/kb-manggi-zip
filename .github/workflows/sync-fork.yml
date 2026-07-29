@@ -28,6 +28,16 @@ jobs:
       - name: Remove checkout's auth header override
         run: git config --unset-all http.https://github.com/.extraheader
 
+      # Vercel Hobby는 "commit author가 프로젝트 소유 계정과 다르면" private 레포 배포를
+      # 막는다("does not support collaboration for private repositories"). prev-live/prev-live에
+      # 커밋한 사람은 numberonekkaebi 계정이 아니므로, 포크로 밀기 전에 author를 numberonekkaebi
+      # 본인 계정으로 다시 씌운다(원본 저장소 히스토리에는 영향 없음, 이 러너의 임시 체크아웃에만 적용).
+      - name: Rewrite commit author to fork owner
+        run: |
+          git config user.name "numberonekkaebi"
+          git config user.email "310057774+numberonekkaebi@users.noreply.github.com"
+          git commit --amend --no-edit --author="numberonekkaebi <310057774+numberonekkaebi@users.noreply.github.com>"
+
       - name: Force-push to fork
         env:
           FORK_SYNC_TOKEN: ${{ secrets.FORK_SYNC_TOKEN }}
