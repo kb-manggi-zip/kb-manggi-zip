@@ -7,8 +7,8 @@ condition: "임차보증금 80% 이내, 최고 2.22억(채권보전 시 4.44억)
 reason: "보증금의 80% 이내에서 한도가 정해지는 전세대출이에요"
 max_amount: 222000000
 basis: "KB·보증기관 공시 기준"
-source_url: "https://obank.kbstar.com/quics?page=C103557&cc=b104363:b104516&isNew=N&prcode=LN20000026&QSL=F"
-checked_at: 2026-07-20   # ref/rules_확정값_실데이터반영용.md 대조
+source_url: "https://obank.kbstar.com/quics?page=C103507&cc=b104363:b104516&isNew=N&prcode=LN20000026&QSL=F"
+checked_at: 2026-07-20   # ref/rules_확정값_실데이터반영용.md 대조(요율 수치 기준. source_url 링크는 2026-07-29 실브라우저로 page 코드 재확인)
 ---
 ## KB 전세자금대출
 - **대상**: 전세(임차) 계약자. 갱신 시 연장·증액, 이사 시 신규.
