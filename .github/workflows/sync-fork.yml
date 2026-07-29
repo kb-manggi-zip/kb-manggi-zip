@@ -18,6 +18,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       # actions/checkout이 남기는 임시 인증 헤더(.git/config의 http.https://github.com/.extraheader)가
       # 아래 push 단계에서 쓰려는 FORK_SYNC_TOKEN보다 우선 적용돼 "Repository not found"가 남 —
