@@ -19,6 +19,12 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      # actions/checkout이 남기는 임시 인증 헤더(.git/config의 http.https://github.com/.extraheader)가
+      # 아래 push 단계에서 쓰려는 FORK_SYNC_TOKEN보다 우선 적용돼 "Repository not found"가 남 —
+      # 원인: github.com/cpina/github-action-push-to-another-repository issue #75.
+      - name: Remove checkout's auth header override
+        run: git config --unset-all http.https://github.com/.extraheader
+
       - name: Push to fork
         uses: cpina/github-action-push-to-another-repository@main
         env:
