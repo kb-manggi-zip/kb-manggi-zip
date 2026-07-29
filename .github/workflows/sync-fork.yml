@@ -4,6 +4,9 @@ name: Sync fork (Vercel deploy source)
 # (numberonekkaebi/prev-live)의 main으로 그대로 밀어서, 머지=자동 배포가 되게 한다.
 # 포크는 GitHub 조직 프라이빗 레포를 Vercel Hobby(무료)로 배포하기 위한 우회 방법이라
 # 필요함 — Vercel Hobby는 org 소속 프라이빗 레포에서 직접 배포를 지원하지 않는다.
+#
+# 직접 git push로는 원인 불명의 "repository not found"가 계속 나서(토큰 자체는 로컬
+# git ls-remote로 정상 확인됨), 검증된 서드파티 액션으로 교체.
 
 on:
   push:
@@ -14,22 +17,16 @@ jobs:
   sync:
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout main (full history)
-        uses: actions/checkout@v4
-        with:
-          ref: main
-          fetch-depth: 0
+      - uses: actions/checkout@v4
 
       - name: Push to fork
+        uses: cpina/github-action-push-to-another-repository@main
         env:
-          FORK_SYNC_TOKEN: ${{ secrets.FORK_SYNC_TOKEN }}
-        run: |
-          # 시크릿 값에 복붙 과정에서 섞여드는 공백/개행을 방어적으로 제거(URL이 깨지는 걸 방지)
-          TOKEN=$(printf '%s' "$FORK_SYNC_TOKEN" | tr -d '[:space:]')
-          if [ -z "$TOKEN" ]; then
-            echo "::error::FORK_SYNC_TOKEN secret이 설정되지 않았어요. 리포 Settings > Secrets and variables > Actions에 추가하세요."
-            exit 1
-          fi
-          echo "token length: ${#TOKEN}"
-          git remote add fork "https://x-access-token:${TOKEN}@github.com/numberonekkaebi/prev-live.git"
-          git push fork main:main
+          API_TOKEN_GITHUB: ${{ secrets.FORK_SYNC_TOKEN }}
+        with:
+          source-directory: '.'
+          destination-github-username: numberonekkaebi
+          destination-repository-name: prev-live
+          user-email: numberonekkaebi@users.noreply.github.com
+          commit-message: ${{ github.event.head_commit.message }}
+          target-branch: main
