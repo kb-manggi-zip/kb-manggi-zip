@@ -5,8 +5,9 @@ name: Sync fork (Vercel deploy source)
 # 포크는 GitHub 조직 프라이빗 레포를 Vercel Hobby(무료)로 배포하기 위한 우회 방법이라
 # 필요함 — Vercel Hobby는 org 소속 프라이빗 레포에서 직접 배포를 지원하지 않는다.
 #
-# 직접 git push로는 원인 불명의 "repository not found"가 계속 나서(토큰 자체는 로컬
-# git ls-remote로 정상 확인됨), 검증된 서드파티 액션으로 교체.
+# 서드파티 액션(cpina/github-action-push-to-another-repository)은 강제 push 옵션이
+# 없어 포크 쪽에 남은 디버깅용 테스트 커밋과 히스토리가 갈라지면(non-fast-forward) 실패함.
+# 원인 규명 후 직접 git push --force로 단순화(미러 용도라 포크 쪽 독자 커밋은 보존 불필요).
 
 on:
   push:
@@ -22,19 +23,13 @@ jobs:
           fetch-depth: 0
 
       # actions/checkout이 남기는 임시 인증 헤더(.git/config의 http.https://github.com/.extraheader)가
-      # 아래 push 단계에서 쓰려는 FORK_SYNC_TOKEN보다 우선 적용돼 "Repository not found"가 남 —
+      # 아래 push 단계의 토큰보다 우선 적용돼 "Repository not found"가 남 —
       # 원인: github.com/cpina/github-action-push-to-another-repository issue #75.
       - name: Remove checkout's auth header override
         run: git config --unset-all http.https://github.com/.extraheader
 
-      - name: Push to fork
-        uses: cpina/github-action-push-to-another-repository@main
+      - name: Force-push to fork
         env:
-          API_TOKEN_GITHUB: ${{ secrets.FORK_SYNC_TOKEN }}
-        with:
-          source-directory: '.'
-          destination-github-username: numberonekkaebi
-          destination-repository-name: prev-live
-          user-email: numberonekkaebi@users.noreply.github.com
-          commit-message: ${{ github.event.head_commit.message }}
-          target-branch: main
+          FORK_SYNC_TOKEN: ${{ secrets.FORK_SYNC_TOKEN }}
+        run: |
+          git push --force "https://x-access-token:${FORK_SYNC_TOKEN}@github.com/numberonekkaebi/prev-live.git" HEAD:main
