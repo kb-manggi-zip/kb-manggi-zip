@@ -4,6 +4,7 @@ import type { Screen } from '../store';
 import { COLORS, BRANCH_COLORS, BRANCH_ICONS } from '../theme';
 import { MobileShell, DdayBar, BackBtn, Disclaimer, Accordion } from '../components/ui';
 import AiBriefing from '../components/AiBriefing';
+import { KakaoMap } from '../components/KakaoMap';
 import { api, briefings, personaIdFor } from '../api/client';
 import { formatAmount } from '../utils/format';
 import { kbLandUrl } from '../utils/external';
@@ -88,24 +89,11 @@ export default function RegionList() {
       </div>
 
       <div className="flex-1 overflow-y-auto">
-        {/* 미니 지도 스트립 */}
-        <div
-          className="mx-5 mt-4 rounded-2xl overflow-hidden relative"
-          style={{ height: 130, background: '#E8EDF5' }}
-        >
-          <div className="absolute inset-0 flex items-center justify-center text-muted-foreground text-sm">
-            📍 지도 미리보기
-          </div>
-          {regions.map((r, i) => (
-            <div
-              key={r.id}
-              className="absolute text-xs font-bold"
-              style={{ left: `${20 + i * 28}%`, top: `${30 + (i % 2) * 20}%`, color: COLORS.BLUE }}
-            >
-              📍{r.name.split(' ').pop()}
-            </div>
-          ))}
-        </div>
+        {/* 미니 지도 스트립 — 후보 동네들을 실제 좌표 마커로 */}
+        <KakaoMap
+          className="mx-5 mt-4"
+          pins={regions.map(r => ({ id: r.id, name: r.name.split(' ').pop() || r.name, lat: r.lat, lng: r.lng }))}
+        />
 
         {/* 개인화 프로필 카드 — 완성 페르소나 → 조합된 리소스·근거 */}
         {persona && <PersonaCardView persona={persona} color={color} />}
