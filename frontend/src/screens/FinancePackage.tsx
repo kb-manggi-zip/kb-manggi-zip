@@ -19,6 +19,29 @@ function ProductName({ name, className }: { name: string; className?: string }) 
   );
 }
 
+// 상품 로딩 스켈레톤 — 오류 오인 방지용 '불러오는 중' 표시(백엔드 상품 사유 LLM 대기 구간).
+function FinanceSkeleton({ color }: { color: string }) {
+  return (
+    <div className="space-y-4 animate-pulse" aria-busy="true" aria-label="상품 불러오는 중">
+      <div className="h-3 w-3/5 rounded bg-muted" />
+      <div className="rounded-3xl border-2 p-5 space-y-3" style={{ borderColor: color + '55' }}>
+        <div className="h-5 w-1/2 rounded bg-muted" />
+        <div className="h-3 w-3/4 rounded bg-muted" />
+        <div className="h-16 w-full rounded-xl bg-muted" />
+        <div className="grid grid-cols-2 gap-3">
+          <div className="h-12 rounded-xl bg-muted" />
+          <div className="h-12 rounded-xl bg-muted" />
+        </div>
+      </div>
+      <div className="rounded-2xl border border-border p-5 space-y-2">
+        <div className="h-4 w-1/3 rounded bg-muted" />
+        <div className="h-3 w-2/3 rounded bg-muted" />
+      </div>
+      <p className="text-xs text-center text-muted-foreground">맞춤 상품을 불러오는 중이에요…</p>
+    </div>
+  );
+}
+
 export default function FinancePackage() {
   const { state, dispatch } = useApp();
   const { selectedBranch, comparison, prevScreen } = state;
@@ -31,7 +54,7 @@ export default function FinancePackage() {
     api.products(selectedBranch, comparison).then(setProducts);
   }, [selectedBranch, comparison]);
 
-  if (!selectedBranch || !products) return null;
+  if (!selectedBranch) return null;
 
   const color = BRANCH_COLORS[selectedBranch];
   const icon = BRANCH_ICONS[selectedBranch];
@@ -59,6 +82,8 @@ export default function FinancePackage() {
       </div>
 
       <div className="flex-1 overflow-y-auto px-5 py-5 space-y-4">
+        {/* 상품 사유는 백엔드 LLM seam(상품별 1콜) — 응답 전 빈 화면 대신 스켈레톤으로 '불러오는 중' 신호 */}
+        {!products ? <FinanceSkeleton color={color} /> : <>
         {/* Q1: 상품은 자격 기준 — 동네와 무관함을 명시(동네 카드엔 상품 미표시, 여기 한 곳) */}
         <p className="text-[11px] px-1" style={{ color: COLORS.SUB }}>
           아래 상품은 <b>당신 자격 기준</b>이에요(동네와 무관). 상품명을 누르면 공식 페이지로 이어져요.
@@ -149,10 +174,11 @@ export default function FinancePackage() {
             </div>
           </div>
         )}
+        </>}
       </div>
 
       <div className="px-5 pb-8 pt-3 space-y-3">
-        <PrimaryBtn onClick={() => dispatch({ type: 'NAVIGATE', screen: 'SC-10' })}>
+        <PrimaryBtn onClick={() => products && dispatch({ type: 'NAVIGATE', screen: 'SC-10' })} disabled={!products}>
           상담 예약하기
         </PrimaryBtn>
         <button
