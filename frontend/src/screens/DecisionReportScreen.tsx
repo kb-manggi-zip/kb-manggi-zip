@@ -304,7 +304,7 @@ export default function DecisionReportScreen() {
               {/* 이사·매매면 그 동네 실매물을 KB부동산에서 이어보기(외부 링크·AI 큐레이션 아님) */}
               {rep.topRegion && (
                 <a
-                  href={kbLandUrl(rep.topRegion.name)}
+                  href={kbLandUrl(rep.topRegion.lat, rep.topRegion.lng)}
                   target="_blank"
                   rel="noopener noreferrer"
                   className="mt-2 flex items-center justify-center gap-1 text-xs font-medium py-2 rounded-xl border"
