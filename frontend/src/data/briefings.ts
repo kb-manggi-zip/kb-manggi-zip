@@ -6,6 +6,13 @@ function lightest(c: CompareResponse): string {
   return sorted[0].branch;
 }
 
+// 받침 유무에 따라 이/가 조사를 자동으로 고름(예: 갱신→갱신이, 이사→이사가).
+function withSubjectParticle(word: string): string {
+  const code = word.charCodeAt(word.length - 1) - 0xac00;
+  const hasBatchim = code >= 0 && code <= 11171 && code % 28 !== 0;
+  return `${word}${hasBatchim ? '이' : '가'}`;
+}
+
 function buyMonthly(c: CompareResponse): string {
   const b = c.branches.find(br => br.branch === '매매');
   return b ? formatAmount(b.monthlyBurden) : '-';
@@ -40,7 +47,7 @@ export const briefings = {
   },
 
   compare: (c: CompareResponse, name: string): string =>
-    `${name}님, 세 경우를 계산했어요. 매달 부담만 보면 ${lightest(c)}가 가장 가볍지만, ` +
+    `${name}님, 세 경우를 계산했어요. 매달 부담만 보면 ${withSubjectParticle(lightest(c))} 가장 가볍지만, ` +
     `매매의 월 ${buyMonthly(c)} 중 일부는 이자가 아니라 자산으로 쌓여요. ` +
     `어느 쪽이 맞는지는 ${name}님의 계획에 달려 있어요.`,
 
