@@ -168,7 +168,7 @@ export default function RenewalChecklist() {
       <div className="flex items-center gap-2 px-5 py-3 border-b-2" style={{ borderColor: COLORS.MINT }}>
         <BackBtn onClick={() => dispatch({ type: 'NAVIGATE', screen: 'SC-03' })} />
         <span className="text-lg">🏠</span>
-        <span className="font-bold" style={{ color: COLORS.MINT }}>눌러앉기 · 갱신 절차</span>
+        <span className="font-bold" style={{ color: COLORS.MINT }}>갱신 절차</span>
       </div>
 
       <div className="flex-1 overflow-y-auto">
