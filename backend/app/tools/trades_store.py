@@ -11,6 +11,7 @@
 """
 
 import json
+import logging
 import os
 import sqlite3
 from datetime import datetime, timezone
@@ -61,18 +62,65 @@ CREATE TABLE IF NOT EXISTS region_transit (
 """
 
 
+_log = logging.getLogger("trades_store")
+_READ_DB_CHOICE: Optional[str] = None  # 읽기 DB 결정 메모이즈(매 read마다 COUNT 방지)
+
+
+def _real_db_has_region_data() -> bool:
+    """실DB(trades.db)가 통근/상권 데이터를 실제로 갖고 있나. 없으면 개인화가 조용히 죽으므로 체크."""
+    try:
+        con = sqlite3.connect(str(REAL_DB))
+        n = con.execute("SELECT COUNT(*) FROM region_transit").fetchone()[0]
+        con.close()
+        return n > 0
+    except Exception:
+        return False
+
+
+def _resolve_read_db() -> Optional[str]:
+    """읽기 DB 선택 + 함정 가드. 결과를 1회 메모이즈하고 어느 DB를 읽는지 로그로 남긴다."""
+    global _READ_DB_CHOICE
+    if _READ_DB_CHOICE is not None:
+        return _READ_DB_CHOICE or None
+    if REAL_DB.exists():
+        if _real_db_has_region_data():
+            choice = str(REAL_DB)
+        elif DEMO_DB.exists():
+            # 가드: 실DB에 통근/상권이 비어 있으면 완전한 데모 DB로 폴백(조용히 넘어가지 않고 경고).
+            _log.warning(
+                "trades.db에 region_transit이 비어 있어 데모 DB로 폴백합니다 (개인화 통근/상권 보존). "
+                "stale trades.db를 삭제하거나 refresh_regions로 채우세요. fallback=%s",
+                DEMO_DB,
+            )
+            choice = str(DEMO_DB)
+        else:
+            choice = str(REAL_DB)
+    elif DEMO_DB.exists():
+        choice = str(DEMO_DB)
+    else:
+        choice = ""
+    _log.info("실거래 DB 사용: %s", choice or "(없음)")
+    _READ_DB_CHOICE = choice
+    return choice or None
+
+
+def _reset_read_db_cache() -> None:
+    """테스트 전용 — 읽기 DB 결정 메모이즈 초기화."""
+    global _READ_DB_CHOICE
+    _READ_DB_CHOICE = None
+
+
 def resolve_db_path(write: bool = False) -> Optional[str]:
-    """읽기: env > 실DB > 데모DB. 쓰기: env > 실DB(기본)."""
+    """읽기: env > 실DB(통근데이터 有) > 데모DB. 쓰기: env > 실DB(기본).
+
+    읽기 시 실DB에 region_transit이 비어 있으면(=stale) 데모 DB로 폴백한다(경고 로그).
+    """
     env = os.environ.get("TRADES_DB")
     if env:
         return env
     if write:
         return str(REAL_DB)
-    if REAL_DB.exists():
-        return str(REAL_DB)
-    if DEMO_DB.exists():
-        return str(DEMO_DB)
-    return None
+    return _resolve_read_db()
 
 
 def connect(path: str) -> sqlite3.Connection:

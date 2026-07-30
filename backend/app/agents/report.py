@@ -115,7 +115,11 @@ def _feasibility_sentence(selected, spend: Optional[dict]) -> str:
     gap = burden - variable
     adjustables = [t for t in spend["topCategories"] if t["category"] not in ("주거", "보험")][:2]
     hint = ", ".join(f"{t['category']} {_man(t['monthly'])}" for t in adjustables) or "변동지출"
-    return f"월 {_man(gap)}이 현재 변동지출 여력({_man(variable)})을 넘어요. 조정 가능 지출: {hint}."
+    # 초과분(gap)을 부담액처럼 표기하지 않도록 — 부담·여력·초과를 분리해 명시.
+    return (
+        f"선택하신 '{selected.branch}'의 월 부담 {_man(burden)}이 현재 변동지출 여력 {_man(variable)}을 "
+        f"넘어요(초과 {_man(gap)}). 조정 가능 지출: {hint}."
+    )
 
 
 def build_report(
