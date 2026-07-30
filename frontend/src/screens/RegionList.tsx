@@ -401,7 +401,7 @@ export function RegionCard({ region, color, onSelect, onExperience, deemphasizeC
         className="mt-2 w-full flex items-center justify-center gap-1 text-xs font-semibold py-2 rounded-xl active:scale-[0.98] transition-transform"
         style={{ background: COLORS.KB_YELLOW, color: COLORS.TEXT }}
       >
-        이 동네로 금융 알아보기 →
+        이 동네 시세로 금융 계산 →
       </button>
     </div>
       {/* 하루 체험(elective) — 필수 관문에서 뺀 보조 액션. 형제 요소(버튼 안에 버튼 중첩 불가). */}

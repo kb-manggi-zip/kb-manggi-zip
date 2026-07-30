@@ -6,7 +6,7 @@ from app.tools import scoring, trades_store
 def test_weights_derived_from_survey():
     w = scoring.derive_weights()
     assert abs(sum(w.values()) - 1.0) < 0.01
-    assert w["commute"] == 0.463  # 0.561 / 1.191 (직주근접+교통편리 정규화)
+    assert w["commute"] == 0.405  # 0.306 / 0.755 (주거실태조사 <표 10> 직주근접 30.6 정규화)
     # 통계에서 '계산'됨(하드코딩 아님) 증명
     assert scoring.derive_weights({"a": 1, "b": 3}) == {"a": 0.25, "b": 0.75}
 

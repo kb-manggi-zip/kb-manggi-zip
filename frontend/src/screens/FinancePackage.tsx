@@ -44,7 +44,7 @@ function FinanceSkeleton({ color }: { color: string }) {
 
 export default function FinancePackage() {
   const { state, dispatch } = useApp();
-  const { selectedBranch, comparison, prevScreen } = state;
+  const { selectedBranch, comparison, prevScreen, selectedRegion } = state;
   const [products, setProducts] = useState<ProductsResponse | null>(null);
   const [toastVisible, setToastVisible] = useState(false);
   const [toastMsg, setToastMsg] = useState('');
@@ -59,6 +59,8 @@ export default function FinancePackage() {
   const color = BRANCH_COLORS[selectedBranch];
   const icon = BRANCH_ICONS[selectedBranch];
   const branchData = comparison?.branches.find(b => b.branch === selectedBranch);
+  // W4: 갈래 전환 시 이전 갈래에서 고른 동네가 남아 오표시되지 않도록, 현재 갈래의 동네일 때만 컨텍스트 노출
+  const regionCtx = selectedRegion && selectedRegion.branch === selectedBranch ? selectedRegion : null;
 
   function toast(msg: string) {
     setToastMsg(msg);
@@ -76,12 +78,49 @@ export default function FinancePackage() {
             실제 직전 화면(prevScreen)으로 돌아가고, 못 잡을 때만 기존 가정으로 폴백 */}
         <BackBtn onClick={() => dispatch({ type: 'NAVIGATE', screen: prevScreen ?? (selectedBranch === '갱신' ? 'SC-08' : 'SC-07') })} />
         <span className="text-xl">{icon}</span>
-        <h1 className="text-lg font-bold" style={{ color }}>
-          {selectedBranch} · KB 금융 패키지
-        </h1>
+        <div className="flex-1">
+          <h1 className="text-lg font-bold leading-tight" style={{ color }}>
+            {selectedBranch} · KB 금융 패키지
+          </h1>
+          {/* W3①: 동네에서 진입했으면 그 동네 시세 기준임을 명시 */}
+          {regionCtx && (
+            <p className="text-[11px]" style={{ color: COLORS.SUB }}>📍 {regionCtx.name.split(' ').pop()} 시세 기준</p>
+          )}
+        </div>
       </div>
 
       <div className="flex-1 overflow-y-auto px-5 py-5 space-y-4">
+        {/* W3②: 동네에서 진입 시 그 동네 시세 컨텍스트(이미 계산된 값 재사용 — 신규 계산 없음).
+            중위 시세·예산 여유=동네별 값(동네마다 다름), 대출·월 부담=고른 갈래 기준값. */}
+        {regionCtx && (
+          <div className="rounded-2xl border p-4" style={{ borderColor: color + '55', background: color + '0A' }}>
+            <p className="text-xs font-semibold" style={{ color }}>📍 {regionCtx.name.split(' ').pop()} · 이 동네 시세 기준</p>
+            <div className="grid grid-cols-2 gap-2 mt-2">
+              <div className="bg-card rounded-xl px-3 py-2">
+                <p className="text-[11px] text-muted-foreground">중위 시세</p>
+                <p className="font-bold text-sm mt-0.5">{formatAmount(regionCtx.midPrice)}</p>
+              </div>
+              <div className="bg-card rounded-xl px-3 py-2">
+                <p className="text-[11px] text-muted-foreground">예산 여유</p>
+                <p className="font-bold text-sm mt-0.5">{regionCtx.surplus >= 0 ? '+' : ''}{formatAmount(regionCtx.surplus)}</p>
+              </div>
+              {branchData && (
+                <div className="bg-card rounded-xl px-3 py-2">
+                  <p className="text-[11px] text-muted-foreground">필요 대출</p>
+                  <p className="font-bold text-sm mt-0.5">{formatAmount(branchData.loanAmount)}</p>
+                </div>
+              )}
+              {branchData && (
+                <div className="bg-card rounded-xl px-3 py-2">
+                  <p className="text-[11px] text-muted-foreground">예상 월 부담</p>
+                  <p className="font-bold text-sm mt-0.5">{formatAmount(branchData.monthlyBurden)}</p>
+                </div>
+              )}
+            </div>
+            <p className="text-[11px] mt-1.5" style={{ color: COLORS.SUB }}>* 중위 시세·예산 여유는 이 동네 실거래 기준, 대출·월 부담은 고른 {selectedBranch} 갈래 기준이에요.</p>
+          </div>
+        )}
+
         {/* 상품 사유는 백엔드 LLM seam(상품별 1콜) — 응답 전 빈 화면 대신 스켈레톤으로 '불러오는 중' 신호 */}
         {!products ? <FinanceSkeleton color={color} /> : <>
         {/* Q1: 상품은 자격 기준 — 동네와 무관함을 명시(동네 카드엔 상품 미표시, 여기 한 곳) */}
