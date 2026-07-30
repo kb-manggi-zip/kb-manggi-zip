@@ -87,7 +87,7 @@ export default function CompareTable() {
 
       <div className="relative flex items-center justify-between px-4 py-2">
         <BackBtn
-          onClick={() => dispatch({ type: "NAVIGATE", screen: "SC-02" })}
+          onClick={() => dispatch({ type: "NAVIGATE", screen: "SC-01" })}
         />
         <span
           className="absolute left-1/2 -translate-x-1/2 font-bold"
