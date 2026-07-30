@@ -89,11 +89,12 @@ export default function RegionList() {
       </div>
 
       <div className="flex-1 overflow-y-auto">
-        {/* 미니 지도 스트립 — 후보 동네들을 실제 좌표 마커로 */}
-        <KakaoMap
-          className="mx-5 mt-4"
-          pins={regions.map(r => ({ id: r.id, name: r.name.split(' ').pop() || r.name, lat: r.lat, lng: r.lng }))}
-        />
+        {/* AI 브리핑 */}
+        {briefText && (
+          <div className="mt-4">
+            <AiBriefing text={briefText} />
+          </div>
+        )}
 
         {/* 개인화 프로필 카드 — 완성 페르소나 → 조합된 리소스·근거 */}
         {persona && <PersonaCardView persona={persona} color={color} />}
@@ -108,12 +109,11 @@ export default function RegionList() {
           />
         )}
 
-        {/* AI 브리핑 */}
-        {briefText && (
-          <div className="mt-4">
-            <AiBriefing text={briefText} />
-          </div>
-        )}
+        {/* 미니 지도 스트립 — 후보 동네들을 실제 좌표 마커로 */}
+        <KakaoMap
+          className="mx-5 mt-4"
+          pins={regions.map(r => ({ id: r.id, name: r.name.split(' ').pop() || r.name, lat: r.lat, lng: r.lng }))}
+        />
 
         <div className="px-5 py-3 space-y-3">
           <h2 className="text-base font-bold text-foreground">동네 후보</h2>
