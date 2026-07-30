@@ -84,7 +84,7 @@ export default function CompareTable() {
       {/* 타이틀 — "세 가지 길" 제거 */}
       <div className="px-5 pb-2 flex items-center justify-between">
         <h1 className="text-xl font-bold" style={{ color: COLORS.KB_GRAY }}>
-          {name}님, 눌러앉을까 옮길까 살까?
+          {name}님, 갱신할까 이사할까 매매할까?
         </h1>
         <DdayChip dday={dday} />
       </div>
@@ -354,7 +354,7 @@ function BranchCardView({
           className="w-full h-11 rounded-full text-sm font-semibold border transition-all active:scale-95"
           style={{ borderColor: color, color, background: 'transparent' }}
         >
-          {branch.branch === '갱신' ? '눌러앉기 살펴보기 →' : branch.branch === '이사' ? '옮기기 살펴보기 →' : '사기 살펴보기 →'}
+          {branch.branch} 살펴보기 →
         </button>
       </div>
     </div>

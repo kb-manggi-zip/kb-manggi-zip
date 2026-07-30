@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useApp } from '../store';
-import { COLORS, BRANCH_COLORS, BRANCH_ICONS } from '../theme';
+import { COLORS, BRANCH_ICONS } from '../theme';
 import { MobileShell, PrimaryBtn, Toast } from '../components/ui';
 import AiBriefing from '../components/AiBriefing';
 import { formatDday, formatDate, formatNoticeDeadline, formatAmount, ddayText, daysUntil } from '../utils/format';
@@ -85,11 +85,6 @@ export default function HomeEntry() {
           className="rounded-3xl border border-border bg-card p-5 space-y-4 relative"
           style={{ boxShadow: '0 2px 12px rgba(0,0,0,0.07)' }}
         >
-          {/* 스티커 배지 */}
-          <div className="absolute top-4 right-4 text-xs font-medium px-2.5 py-1 rounded-full border border-border bg-muted text-muted-foreground">
-            결정은 나중에 해도 돼요 ☁️
-          </div>
-
           <div>
             {dday !== null ? (
               <>
@@ -107,7 +102,7 @@ export default function HomeEntry() {
               <>
                 <p className="text-xs text-muted-foreground mb-1">전월세 만기 결정 도우미</p>
                 <p className="text-xl font-bold" style={{ color: COLORS.KB_GRAY }}>
-                  갱신할까, 이사할까, 살까?
+                  갱신할까, 이사할까, 매매할까?
                 </p>
                 {/* 갈래 미니 라벨 */}
                 <div className="flex gap-3 mt-2">

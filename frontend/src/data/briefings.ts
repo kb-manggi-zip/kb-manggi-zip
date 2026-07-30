@@ -3,8 +3,7 @@ import { formatAmount } from '../utils/format';
 
 function lightest(c: CompareResponse): string {
   const sorted = [...c.branches].sort((a, b) => a.monthlyBurden - b.monthlyBurden);
-  const names: Record<string, string> = { 갱신: '눌러앉기', 이사: '옮기기', 매매: '사기' };
-  return names[sorted[0].branch] || sorted[0].branch;
+  return sorted[0].branch;
 }
 
 function buyMonthly(c: CompareResponse): string {
