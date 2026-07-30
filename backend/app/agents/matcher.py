@@ -21,15 +21,15 @@ from ..schemas import Branch, CompareResponse, ContractType, Product, ProductsRe
 PRODUCTS_DIR = BACKEND_ROOT / "data" / "kb_products"
 
 # 갈래 → 슬롯(product_id). 자격 필터 결과를 이 매핑으로 표현.
-# 이사(월세)는 보증금 담보 상품인 전세대출이 안 맞아서 별도 슬롯(_BRANCH_SLOTS_MOVE_MONTHLY)으로 분기.
+# 갱신·이사(월세)는 보증금 담보 상품인 전세대출이 안 맞아서 별도 슬롯(_BRANCH_SLOTS_MONTHLY)으로 분기.
 _BRANCH_SLOTS: dict[str, dict[str, str]] = {
     "갱신": {"mainLoan": "kb_jeonse", "guarantee": "return_guarantee", "extra": "buttimok_youth"},
     "이사": {"mainLoan": "kb_jeonse", "guarantee": "return_guarantee", "extra": "buttimok_youth"},
     "매매": {"mainLoan": "kb_mortgage", "guarantee": "fire_insurance", "extra": "kb_chungyak_loan"},
 }
-_BRANCH_SLOTS_MOVE_MONTHLY: dict[str, str] = {
+_BRANCH_SLOTS_MONTHLY: dict[str, str] = {
     "mainLoan": "wolse_loan"
-}  # 버팀목·반환보증은 전세 보증금 전제라 월세엔 제외
+}  # 버팀목·반환보증은 전세 보증금 전제라 월세엔 제외(갱신·이사 공통)
 
 
 @lru_cache
@@ -80,11 +80,11 @@ def run(
 
     ※ 자격(소득·나이·무주택) 정밀 필터는 finance가 필요하나 ProductsRequest엔 없음
       → 갈래 기반 매핑까지 구현. 개인화 필터는 스키마 확장 후(사람 결정) 연결.
-    contract_type: '이사' 갈래에서 전세/월세 구분(전세대출은 보증금 담보 상품이라 월세엔 안 맞음).
+    contract_type: '갱신'·'이사' 갈래에서 전세/월세 구분(전세대출은 보증금 담보 상품이라 월세엔 안 맞음).
     """
     products = load_products()
-    if branch == "이사" and contract_type == "월세":
-        slots = _BRANCH_SLOTS_MOVE_MONTHLY
+    if branch in ("갱신", "이사") and contract_type == "월세":
+        slots = _BRANCH_SLOTS_MONTHLY
     else:
         slots = _BRANCH_SLOTS.get(branch, _BRANCH_SLOTS["매매"])
 
