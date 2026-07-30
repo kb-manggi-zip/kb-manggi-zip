@@ -145,10 +145,14 @@ export const api = {
     );
   },
 
-  async regionsMonthly(housingType?: HousingType, preferredArea?: string, household?: string): Promise<Region[]> {
+  async regionsMonthly(housingType?: HousingType, preferredArea?: string, household?: string, note?: string, personaId?: string, noteAdjust?: Record<string, number>): Promise<Region[]> {
+    const hasAdjust = noteAdjust && Object.keys(noteAdjust).length > 0;
     const q = (housingType ? `&housingType=${housingType}` : '')
       + (preferredArea ? `&preferredArea=${encodeURIComponent(preferredArea)}` : '')
-      + (household ? `&household=${encodeURIComponent(household)}` : '');
+      + (household ? `&household=${encodeURIComponent(household)}` : '')
+      + (note ? `&note=${encodeURIComponent(note)}` : '')
+      + (hasAdjust ? `&adjust=${encodeURIComponent(JSON.stringify(noteAdjust))}` : '')
+      + (personaId ? `&personaId=${personaId}` : '');
     return localOrRemote(() => REGIONS_MONTHLY, `/api/regions?branch=이사-월세${q}`);
   },
 

@@ -5,7 +5,7 @@ import { COLORS } from '../theme';
 import { MobileShell, DdayBar, BackBtn, Disclaimer } from '../components/ui';
 import AiBriefing from '../components/AiBriefing';
 import { KakaoMap } from '../components/KakaoMap';
-import { api, briefings } from '../api/client';
+import { api, briefings, personaIdFor } from '../api/client';
 import { formatAmount } from '../utils/format';
 import { RegionCard, foldedCommonReasons, commonGuName } from './RegionList';
 import type { Region } from '../api/types';
@@ -17,9 +17,18 @@ export default function RegionListMonthly() {
   const [tab, setTab] = useState<Tab>('similar');
   const [regions, setRegions] = useState<Region[]>([]);
 
+  // W2: 월세 경로도 전세 카드와 동일하게 '확정된 개인 신호(noteAdjust)'를 순위에 반영(백엔드 기존 지원).
+  //     월세 화면엔 HITL 토글이 없으므로 이전 화면(SC-14 등)에서 확정된 noteAdjust만 존중.
+  const note = state.contract?.note ?? '';
+  const hasPersonalSignal = Object.keys(state.contract?.noteAdjust ?? {}).length > 0;
+
   useEffect(() => {
-    api.regionsMonthly(state.contract?.housingType, state.contract?.preferredArea, state.finance?.household).then(setRegions);
-  }, [state.contract?.housingType, state.contract?.preferredArea, state.finance?.household]);
+    api.regionsMonthly(
+      state.contract?.housingType, state.contract?.preferredArea, state.finance?.household,
+      hasPersonalSignal ? note : '', personaIdFor(state.contract, state.finance),
+      hasPersonalSignal ? state.contract?.noteAdjust : undefined,
+    ).then(setRegions);
+  }, [state.contract?.housingType, state.contract?.preferredArea, state.finance?.household, note, hasPersonalSignal]);
 
   function selectRegion(r: Region, screen: Screen) {
     dispatch({ type: 'SELECT_REGION', regionId: r.id, region: r });
@@ -81,6 +90,12 @@ export default function RegionListMonthly() {
       />
 
       <div className="flex-1 overflow-y-auto px-5 py-4 space-y-3">
+        {/* W2·P2/P6 패리티: 전세 카드와 동일한 '대략(또래 평균) → 정확(당신 반영)' 배너 */}
+        <div className="rounded-xl px-3 py-2 text-xs" style={{ background: hasPersonalSignal ? COLORS.MINT + '1f' : '#00000008' }}>
+          {hasPersonalSignal
+            ? <span style={{ color: COLORS.KB_GRAY }}>✓ <b>당신이 말한 것</b>을 반영해 순위를 좁혔어요{deemphasizeCommute ? ' (재택 → 통근 비중↓)' : ''}.</span>
+            : <span style={{ color: COLORS.SUB }}>지금은 <b>또래 평균(세그먼트) 기준</b>이에요 — 문진에서 더 알려주면 당신 기준으로 좁혀져요.</span>}
+        </div>
         {/* 구 폴백 동일값 접기(J4 패리티) */}
         {commonReasons.length > 0 && (
           <div className="rounded-2xl border p-3 text-xs" style={{ borderColor: COLORS.BLUE + '44', background: COLORS.BLUE + '0A' }}>
