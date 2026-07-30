@@ -4,6 +4,7 @@ import type { Screen } from '../store';
 import { COLORS } from '../theme';
 import { MobileShell, DdayBar, BackBtn, Disclaimer } from '../components/ui';
 import AiBriefing from '../components/AiBriefing';
+import { KakaoMap } from '../components/KakaoMap';
 import { api, briefings } from '../api/client';
 import { formatAmount } from '../utils/format';
 import { RegionCard, foldedCommonReasons, commonGuName } from './RegionList';
@@ -72,17 +73,12 @@ export default function RegionListMonthly() {
         </div>
       )}
 
-      {/* 미니 지도 */}
-      <div className="mx-5 mt-4 rounded-2xl overflow-hidden relative" style={{ height: 120, background: '#E8EDF5' }}>
-        <div className="absolute inset-0 flex items-center justify-center text-muted-foreground text-sm">
-          📍 지도 미리보기
-        </div>
-        {regions.map((r, i) => (
-          <div key={r.id} className="absolute text-xs font-bold" style={{ left: `${20 + i * 28}%`, top: `${30 + (i % 2) * 20}%`, color: COLORS.BLUE }}>
-            📍{r.name.split(' ').pop()}
-          </div>
-        ))}
-      </div>
+      {/* 미니 지도 — 후보 동네들을 실제 좌표 마커로 */}
+      <KakaoMap
+        className="mx-5 mt-4"
+        height={120}
+        pins={regions.map(r => ({ id: r.id, name: r.name.split(' ').pop() || r.name, lat: r.lat, lng: r.lng }))}
+      />
 
       <div className="flex-1 overflow-y-auto px-5 py-4 space-y-3">
         {/* 구 폴백 동일값 접기(J4 패리티) */}

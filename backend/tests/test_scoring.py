@@ -24,7 +24,9 @@ def test_axis_scores():
     assert scoring.score_commute(None) == 0.5
     assert scoring.score_preference(True) == 1.0
     assert scoring.score_preference(False) == 0.3
-    assert 0 <= scoring.score_consumption(300, True) <= 1
+    assert 0 <= scoring.score_consumption(300, None, None, True, False, False) <= 1
+    assert 0 <= scoring.score_consumption(300, 150, 20, True, True, True) <= 1
+    assert scoring.score_consumption(None, None, None, True, True, True) == 0.5
 
 
 def test_rank_reorders_by_commute_and_exposes_reason(tmp_path, monkeypatch):

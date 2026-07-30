@@ -76,12 +76,26 @@ def score_budget(price: int, budget: int) -> float:
     return _bell((budget - price) / budget, peak=0.10, width=0.20)
 
 
-def score_consumption(dining_cafe_count: Optional[int], values_food: bool) -> float:
-    """동네 외식·카페 밀집도(상권 실측) × 소비 성향. 성향이 아니면 밀집 가중을 낮춤."""
-    if not dining_cafe_count:
-        return 0.5
-    density = min(dining_cafe_count / 200, 1.0)  # 200곳↑ 만점
-    return density if values_food else 0.4 + 0.3 * density
+def score_consumption(
+    dining_cafe_count: Optional[int],
+    grocery_count: Optional[int],
+    leisure_count: Optional[int],
+    values_food: bool,
+    values_grocery: bool,
+    values_leisure: bool,
+) -> float:
+    """동네 외식·장보기·여가 밀집도(상권 실측, 있는 것만) × 각 소비 성향. 성향이 아니면 밀집 가중을 낮춤."""
+    parts = []
+    for count, pref in (
+        (dining_cafe_count, values_food),
+        (grocery_count, values_grocery),
+        (leisure_count, values_leisure),
+    ):
+        if not count:
+            continue
+        density = min(count / 200, 1.0)  # 200곳↑ 만점
+        parts.append(density if pref else 0.4 + 0.3 * density)
+    return sum(parts) / len(parts) if parts else 0.5
 
 
 def score_preference(in_preferred: Optional[bool]) -> float:
@@ -92,8 +106,8 @@ def score_preference(in_preferred: Optional[bool]) -> float:
 
 
 # ── 종합 스코어 + 근거 ────────────────────────────────────────────────────
-def _dc_count(region_id: str) -> Optional[int]:
-    vals = trades_store.read_region_facts(region_id).get("dining_cafe") or []
+def _facts_count(region_id: str, key: str) -> Optional[int]:
+    vals = trades_store.read_region_facts(region_id).get(key) or []
     # "음식점·카페 316곳 밀집" → 316
     import re
 
@@ -125,20 +139,33 @@ def score_region(region: dict, ctx: dict) -> dict:
             gu_used = True
     minutes = tr["minutes"] if tr else None
 
-    dc = _dc_count(rid)
-    if dc is None and gu_id:
-        dc = _dc_count(gu_id)
-        if dc:
-            gu_used = True
+    def _with_gu_fallback(key: str) -> Optional[int]:
+        nonlocal gu_used
+        v = _facts_count(rid, key)
+        if v is None and gu_id:
+            v = _facts_count(gu_id, key)
+            if v is not None:
+                gu_used = True
+        return v
+
+    dc = _with_gu_fallback("dining_cafe")
+    groc = _with_gu_fallback("grocery")
+    lei = _with_gu_fallback("leisure")
     # 실측 override(persona.scoring_ctx가 실어줌)가 있으면 그것을, 없으면 세그먼트 traits에서 판정.
     values_food = ctx.get("values_food")
     if values_food is None:
         values_food = any(k in " ".join(ctx.get("traits") or []) for k in ("카페", "외식", "배달"))
+    values_grocery = ctx.get("values_grocery")
+    if values_grocery is None:
+        values_grocery = any(k in " ".join(ctx.get("traits") or []) for k in ("장보기", "마트"))
+    values_leisure = ctx.get("values_leisure")
+    if values_leisure is None:
+        values_leisure = any(k in " ".join(ctx.get("traits") or []) for k in ("여가", "나들이", "취미"))
 
     axes = {
         "commute": score_commute(minutes),
         "budget": score_budget(region.get("midPrice", 0), budget),
-        "consumption": score_consumption(dc, values_food),
+        "consumption": score_consumption(dc, groc, lei, values_food, values_grocery, values_leisure),
         "preference": score_preference(ctx.get("in_preferred")),
     }
     total = round(sum(axes[k] * w[k] for k in axes), 3)
@@ -149,10 +176,17 @@ def score_region(region: dict, ctx: dict) -> dict:
         # 직장은 문진 입력이 아니라 '가구 세그먼트 대표 직장 가정' → 통근값 옆에 명시(아는 척 금지).
         cw = int(w["commute"] * 100)
         reasons.append(f"통근 {minutes}분{gu_tag} (가중치 {cw}%·조사상 최우선·세그먼트 대표 직장 기준)")
-    if dc:
+    if dc or groc or lei:
         # 적합도 프레임: '취향 추론'이 아니라 '자주 쓰는 곳이 가까워 생활 마찰이 적다'(G4).
+        parts_txt = []
+        if dc:
+            parts_txt.append(f"음식점·카페 {dc}곳")
+        if groc:
+            parts_txt.append(f"마트·편의점 {groc}곳")
+        if lei:
+            parts_txt.append(f"여가시설 {lei}곳")
         near_note = " — 자주 쓰는 곳이 가까운 동네" if values_food else ""
-        reasons.append(f"음식점·카페 {dc}곳{gu_tag}{near_note}")
+        reasons.append(f"{', '.join(parts_txt)}{gu_tag}{near_note}")
     if budget > 0 and region.get("surplus", 0) > 0:
         reasons.append("예산 여유 있음")
     return {"total": total, "reasons": reasons, "breakdown": {k: round(axes[k], 3) for k in axes}, "weights": w}
