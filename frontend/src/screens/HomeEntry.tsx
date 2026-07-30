@@ -204,13 +204,9 @@ export default function HomeEntry() {
           >
             {hasData ? "비교표 다시 보기 →" : "미리 계산해보기 →"}
           </PrimaryBtn>
-          <div className="rounded-xl bg-muted px-3 py-2.5 text-center">
-            <p className="text-xs text-muted-foreground">
-              지금 결정하지 않아도 괜찮아요 ☁️
-              <br />
-              미리 계산만 해두고, 나중에 골라도 돼요.
-            </p>
-          </div>
+          <p className="text-xs text-center text-muted-foreground">
+            미리 계산만 해두고 지금 결정하지 않아도 괜찮아요 ☁️
+          </p>
           {hasData && (
             <button
               onClick={() => {
