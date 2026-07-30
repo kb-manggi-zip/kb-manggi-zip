@@ -68,7 +68,7 @@ TZ=UTC npx tsx scripts/gen_fixtures.mjs  # engine 동치 fixtures 재생성 후 
 ### 디자인/포맷 관례
 - 색·브랜치 색/아이콘 토큰: `src/theme.ts`(`COLORS`, `BRANCH_COLORS`, `BRANCH_ICONS`). 공용 UI 프리미티브: `src/components/ui.tsx`(`MobileShell`(max-width 390 모바일), `PrimaryBtn` 등).
 - 금액 포맷은 유틸만 사용(직접 `toLocaleString` 금지): `formatAmount`/`formatMonthly` 등.
-  - ⚠️ **주의: `src/engine/format.ts`와 `src/utils/format.ts`가 현재 중복(거의 동일)이고, `engine/compare.ts`는 자체 `formatAmt`를 또 갖는다.** 새 코드는 한 소스로 통일하고, 이 중복을 임의로 리팩터링하기 전에 어느 것이 정본인지 확인할 것. (백엔드 `tools/format.py`는 이 두 변종을 `format_amt`/`format_amount`로 각각 이식했다.)
+  - `src/engine/format.ts`는 2026-07-30 삭제됨(어디서도 import 안 되던 죽은 중복 파일 — `src/utils/format.ts`가 정본). `engine/compare.ts`는 여전히 프론트/백엔드 동치 계약 때문에 자체 `formatAmt`를 따로 가진다(의도된 것, 통합 대상 아님). 백엔드 `tools/format.py`의 `format_amt`/`format_amount` 구분도 이 의도된 분리를 그대로 반영한 것.
 
 ### 백엔드 계층 (`backend/app/`)
 - **`schemas.py`는 프론트 `types.ts`의 1:1 이식.** 필드명·한글 리터럴·Optional 여부까지 계약. 바꿔야 풀리면 멈추고 보고.

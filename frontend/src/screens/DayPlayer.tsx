@@ -202,20 +202,6 @@ export default function DayPlayer() {
             >
               이 하루, 실현 가능한지 볼까요? →
             </button>
-            <div className="grid grid-cols-2 gap-3">
-              <button
-                onClick={() => dispatch({ type: 'NAVIGATE', screen: 'SC-03' })}
-                className="py-2.5 rounded-full text-sm font-semibold border border-white/50 text-white"
-              >
-                세 갈래 다시 보기
-              </button>
-              <button
-                onClick={() => dispatch({ type: 'NAVIGATE', screen: 'SC-09' })}
-                className="py-2.5 rounded-full text-sm font-semibold border border-white/50 text-white"
-              >
-                금융 알아보기
-              </button>
-            </div>
           </div>
         )}
       </div>

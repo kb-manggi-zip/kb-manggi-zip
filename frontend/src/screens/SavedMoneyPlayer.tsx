@@ -92,7 +92,7 @@ export default function SavedMoneyPlayer() {
             className="inline-flex items-center gap-1 text-xs font-semibold px-3 py-1 rounded-full"
             style={{ background: COLORS.MINT, color: '#fff' }}
           >
-            🏠 눌러앉기 · 갱신
+            🏠 갱신
           </span>
         </div>
 

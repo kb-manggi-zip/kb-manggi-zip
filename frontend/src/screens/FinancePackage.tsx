@@ -138,7 +138,7 @@ export default function FinancePackage() {
               <p className="text-sm text-muted-foreground">{products.guarantee.condition}</p>
               <p className="text-sm mt-2 text-foreground/80">{products.guarantee.recommendReason}</p>
             </div>
-            {officialProductUrl(products.guarantee.name) && (
+            {officialProductUrl(products.guarantee.name) && !/화재보험/.test(products.guarantee.name) && (
               <div className="px-5 pb-4">
                 <SecondaryBtn
                   onClick={() => {

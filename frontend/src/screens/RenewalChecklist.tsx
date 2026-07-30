@@ -3,8 +3,8 @@ import { useApp } from '../store';
 import { COLORS } from '../theme';
 import { MobileShell, DdayBar, BackBtn, PrimaryBtn, BasisChip, Disclaimer, Toast } from '../components/ui';
 import AiBriefing from '../components/AiBriefing';
-import { formatDate, formatNoticeDeadline, formatAmount, noticeText } from '../utils/format';
-import { NOTICE_DEADLINE_MONTHS, briefings, api } from '../api/client';
+import { formatDate, formatAmount, noticeText } from '../utils/format';
+import { briefings, api } from '../api/client';
 
 interface CheckItem {
   id: string;
@@ -47,7 +47,7 @@ function DraftSheet({ expiryDate, onClose }: { expiryDate: string; onClose: () =
 
   return (
     <div
-      className="fixed inset-0 z-50 flex flex-col justify-end"
+      className="absolute inset-0 z-50 flex flex-col justify-end"
       style={{ background: 'rgba(0,0,0,0.5)' }}
       onClick={e => e.target === e.currentTarget && onClose()}
     >
@@ -114,8 +114,9 @@ export default function RenewalChecklist() {
   const { state, dispatch } = useApp();
   const { contract, comparison } = state;
 
-  const noticeDeadline = contract ? formatNoticeDeadline(contract.expiryDate, NOTICE_DEADLINE_MONTHS) : new Date();
-  const noticeDaysLeft = Math.ceil((noticeDeadline.getTime() - Date.now()) / 86400000);
+  // 이 화면은 비교표 계산 이후에만 오므로 comparison의 단일 계산 결과를 그대로 씀 — 재계산 안 함.
+  const noticeDeadline = comparison ? new Date(comparison.noticeDeadline) : new Date();
+  const noticeDaysLeft = comparison?.noticeDaysLeft ?? 0;
   const isUrgent = noticeDaysLeft <= 14;
   const guaranteeMonthly = comparison?.branches.find(b => b.branch === '갱신')?.guaranteeMonthly || 0;
   const noticeDeadlineStr = formatDate(noticeDeadline);
@@ -167,7 +168,7 @@ export default function RenewalChecklist() {
       <div className="flex items-center gap-2 px-5 py-3 border-b-2" style={{ borderColor: COLORS.MINT }}>
         <BackBtn onClick={() => dispatch({ type: 'NAVIGATE', screen: 'SC-03' })} />
         <span className="text-lg">🏠</span>
-        <span className="font-bold" style={{ color: COLORS.MINT }}>눌러앉기 · 갱신 절차</span>
+        <span className="font-bold" style={{ color: COLORS.MINT }}>갱신 절차</span>
       </div>
 
       <div className="flex-1 overflow-y-auto">

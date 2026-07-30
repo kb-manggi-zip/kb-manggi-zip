@@ -48,7 +48,7 @@ export default function CalcLoading() {
         </div>
 
         <div className="text-center space-y-2">
-          <p className="text-lg font-bold text-foreground">눌러앉기·옮기기·사기, 세 경우를 계산하고 있어요</p>
+          <p className="text-lg font-bold text-foreground">갱신·이사·매매, 세 경우를 계산하고 있어요</p>
           <p className="text-sm text-muted-foreground">잠시만 기다려주세요</p>
         </div>
 

@@ -3,8 +3,14 @@ import { formatAmount } from '../utils/format';
 
 function lightest(c: CompareResponse): string {
   const sorted = [...c.branches].sort((a, b) => a.monthlyBurden - b.monthlyBurden);
-  const names: Record<string, string> = { 갱신: '눌러앉기', 이사: '옮기기', 매매: '사기' };
-  return names[sorted[0].branch] || sorted[0].branch;
+  return sorted[0].branch;
+}
+
+// 받침 유무에 따라 이/가 조사를 자동으로 고름(예: 갱신→갱신이, 이사→이사가).
+function withSubjectParticle(word: string): string {
+  const code = word.charCodeAt(word.length - 1) - 0xac00;
+  const hasBatchim = code >= 0 && code <= 11171 && code % 28 !== 0;
+  return `${word}${hasBatchim ? '이' : '가'}`;
 }
 
 function buyMonthly(c: CompareResponse): string {
@@ -41,8 +47,8 @@ export const briefings = {
   },
 
   compare: (c: CompareResponse, name: string): string =>
-    `${name}님, 세 경우를 계산했어요. 매달 부담만 보면 ${lightest(c)}가 가장 가볍지만, ` +
-    `사기의 월 ${buyMonthly(c)} 중 일부는 이자가 아니라 자산으로 쌓여요. ` +
+    `${name}님, 세 경우를 계산했어요. 매달 부담만 보면 ${withSubjectParticle(lightest(c))} 가장 가볍지만, ` +
+    `매매의 월 ${buyMonthly(c)} 중 일부는 이자가 아니라 자산으로 쌓여요. ` +
     `어느 쪽이 맞는지는 ${name}님의 계획에 달려 있어요.`,
 
   regions: (top: Region): string =>
@@ -52,7 +58,7 @@ export const briefings = {
       : `${top.name}부터 둘러보시겠어요?`),
 
   renewal: (noticeDate: string): string =>
-    `눌러앉기를 고르셨네요. 통보 기한(${noticeDate})까지 챙길 것 네 가지를 정리했어요.`,
+    `갱신을 고르셨네요. 통보 기한(${noticeDate})까지 챙길 것 네 가지를 정리했어요.`,
 
   revisit: (daysCloser: number): string =>
     `지난번 계산 이후 만기가 ${daysCloser}일 더 가까워졌어요.`,
@@ -61,7 +67,7 @@ export const briefings = {
     `${regionName}에서의 하루를 만들었어요.`,
 
   savedMoney: (): string =>
-    `눌러앉으면 아끼는 돈의 쓰임을 정리했어요.`,
+    `갱신하면 아끼는 돈의 쓰임을 정리했어요.`,
 
   finance: (branch: string, reason: string): string =>
     `${branch} 경로에 맞는 상품을 골랐어요. ${reason}`,

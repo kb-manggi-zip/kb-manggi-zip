@@ -55,6 +55,11 @@ export function formatNoticeDeadline(expiryDate: string, months: number): Date {
   return expiry;
 }
 
+// 오늘부터 date까지 남은 일수(음수 방어 없음 — 지난 날짜면 음수 반환).
+export function daysUntil(date: Date): number {
+  return Math.ceil((date.getTime() - Date.now()) / 86_400_000);
+}
+
 export function formatDate(date: Date): string {
   return `${date.getFullYear()}.${String(date.getMonth() + 1).padStart(2, '0')}.${String(date.getDate()).padStart(2, '0')}`;
 }

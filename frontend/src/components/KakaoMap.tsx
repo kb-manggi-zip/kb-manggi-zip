@@ -53,7 +53,7 @@ export function KakaoMap({
         if (cancelled || !ref.current) return;
         const { kakao } = window;
         const center = new kakao.maps.LatLng(pins[0].lat, pins[0].lng);
-        const map = new kakao.maps.Map(ref.current, { center, level: 6 });
+        const map = new kakao.maps.Map(ref.current, { center, level: 5 });
         const bounds = new kakao.maps.LatLngBounds();
         pins.forEach((p) => {
           const pos = new kakao.maps.LatLng(p.lat, p.lng);
@@ -75,7 +75,7 @@ export function KakaoMap({
         if (pins.length > 1) {
           map.setBounds(bounds);
           // 후보 동네가 가까이 모여있으면 너무 확대돼서 이름표가 겹침 — 최소 축소 레벨 보장(숫자 클수록 축소).
-          const MIN_LEVEL = 4;
+          const MIN_LEVEL = 3;
           if (map.getLevel() < MIN_LEVEL) map.setLevel(MIN_LEVEL);
         }
         setStatus("ready");

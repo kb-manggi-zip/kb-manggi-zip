@@ -125,7 +125,7 @@ export function SelectCard({ children, selected, onClick, className = '' }: {
   return (
     <button
       onClick={onClick}
-      className={`w-full text-left rounded-2xl p-4 border-2 transition-all duration-200 ${className}`}
+      className={`w-full h-full text-left rounded-2xl p-4 border-2 transition-all duration-200 flex flex-col justify-center ${className}`}
       style={{
         borderColor: selected ? COLORS.KB_YELLOW : COLORS.BORDER,
         background: selected ? COLORS.YELLOW_SURFACE : COLORS.CARD,

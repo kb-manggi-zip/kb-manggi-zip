@@ -121,7 +121,7 @@ export default function DecisionReportScreen() {
     <MobileShell>
       <DdayBar dday={rep?.dday} noticeDaysLeft={rep?.comparison.noticeDaysLeft} />
       <div className="flex items-center gap-2 px-5 py-2 border-b-2" style={{ borderColor: color }}>
-        <BackBtn onClick={() => dispatch({ type: 'NAVIGATE', screen: 'SC-11' })} />
+        <BackBtn onClick={() => dispatch({ type: 'NAVIGATE', screen: state.prevScreen ?? 'SC-11' })} />
         <span className="font-bold" style={{ color }}>만기 결정 리포트</span>
       </div>
 
@@ -300,7 +300,6 @@ export default function DecisionReportScreen() {
               )}
               <p className="text-[11px] mt-0.5" style={{ color: COLORS.SUB }}>* 자격·한도·금리는 정보 제공이며 실제 조건은 KB 심사에 따라요(권유 아님).</p>
 
-              <p className="text-sm mt-2">갱신 통보 기한 <b>{ddayText(rep.dday)}</b> · 기한일 {rep.noticeDeadline}</p>
               {/* 이사·매매면 그 동네 실매물을 KB부동산에서 이어보기(외부 링크·AI 큐레이션 아님) */}
               {rep.topRegion && (
                 <a
