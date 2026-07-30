@@ -14,7 +14,8 @@ const SEGMENT_LABEL: Record<string, string> = {
 // 2026-07-30: "교통편리·편의문화시설·공원녹지" 25.5%는 commute(순수 통근시간)가 아니라
 // consumption(상권·편의시설 밀집도 매칭)에 대응 — commute는 직주근접 30.6%만 남기고,
 // consumption 근사(0.24)를 확정값(0.255)으로 대체.
-const SURVEY = { commute: 0.306, consumption: 0.255, budget: 0.18, preference: 0.23 };
+// W1(2026-07-30): 4축 전부 주거실태조사 <표 10> 원문 응답률(commute 30.6 / consumption 25.5 / preference 부모자녀근접8.1+교육3.0=11.1 / budget 집값부담 8.3). backend scoring.py와 동일.
+const SURVEY = { commute: 0.306, consumption: 0.255, budget: 0.083, preference: 0.111 };
 const PERSONA_ADJUST: Record<string, Record<string, number>> = {
   '1인': { commute: 1.3 },
   '신혼': { budget: 1.3, commute: 1.15 },  // 표10·11 실측: 직주근접↑·편의묶음↓ → preference↑ 폐기, commute↑로 교체
