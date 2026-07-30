@@ -9,7 +9,7 @@ export type Screen =
 
 export interface AppState {
   screen: Screen;
-  prevScreen: Screen | null;   // 직전 화면 — 화면별 "뒤로가기" 하드코딩 대신 실제 이동 경로 기준으로
+  history: Screen[];   // 실제 이동 스택 — BACK이 여기서 pop(단순 prevScreen 한 칸으론 2단계 이상 뒤로가기가 깨짐)
   contract: ContractInfo | null;
   finance: FinanceInfo | null;
   comparison: CompareResponse | null;
@@ -23,6 +23,7 @@ export interface AppState {
 
 type Action =
   | { type: 'NAVIGATE'; screen: Screen }
+  | { type: 'BACK'; fallback?: Screen }   // 스택 비어있으면 fallback(없으면 SC-01)
   | { type: 'SET_CONTRACT'; contract: ContractInfo }
   | { type: 'SET_FINANCE'; finance: FinanceInfo }
   | { type: 'SET_COMPARISON'; comparison: CompareResponse; briefing?: string }
@@ -35,7 +36,7 @@ type Action =
 
 const INITIAL: AppState = {
   screen: 'SC-01',
-  prevScreen: null,
+  history: [],
   contract: null,
   finance: null,
   comparison: null,
@@ -49,7 +50,12 @@ const INITIAL: AppState = {
 
 function reducer(state: AppState, action: Action): AppState {
   switch (action.type) {
-    case 'NAVIGATE': return { ...state, prevScreen: state.screen, screen: action.screen };
+    case 'NAVIGATE': return { ...state, history: [...state.history, state.screen], screen: action.screen };
+    case 'BACK': {
+      const history = state.history.slice(0, -1);
+      const prev = state.history[state.history.length - 1];
+      return { ...state, history, screen: prev ?? action.fallback ?? 'SC-01' };
+    }
     case 'SET_CONTRACT': return { ...state, contract: action.contract };
     case 'SET_FINANCE': return { ...state, finance: action.finance };
     case 'SET_COMPARISON': return { ...state, comparison: action.comparison, briefing: action.briefing ?? null };
@@ -73,7 +79,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     if (saved) {
       try {
         const parsed = JSON.parse(saved);
-        dispatch({ type: 'RESTORE', state: { ...parsed, screen: 'SC-01' } });
+        dispatch({ type: 'RESTORE', state: { ...parsed, screen: 'SC-01', history: [] } });
       } catch {}
     }
   }, []);

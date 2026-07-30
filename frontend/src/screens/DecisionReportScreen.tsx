@@ -121,7 +121,7 @@ export default function DecisionReportScreen() {
     <MobileShell>
       <DdayBar dday={rep?.dday} noticeDaysLeft={rep?.comparison.noticeDaysLeft} />
       <div className="flex items-center gap-2 px-5 py-2 border-b-2" style={{ borderColor: color }}>
-        <BackBtn onClick={() => dispatch({ type: 'NAVIGATE', screen: state.prevScreen ?? 'SC-11' })} />
+        <BackBtn onClick={() => dispatch({ type: 'BACK', fallback: 'SC-11' })} />
         <span className="font-bold" style={{ color }}>만기 결정 리포트</span>
       </div>
 

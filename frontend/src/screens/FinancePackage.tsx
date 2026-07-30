@@ -44,13 +44,13 @@ function FinanceSkeleton({ color }: { color: string }) {
 
 export default function FinancePackage() {
   const { state, dispatch } = useApp();
-  const { selectedBranch, comparison, prevScreen } = state;
+  const { selectedBranch, comparison, contract } = state;
   const [products, setProducts] = useState<ProductsResponse | null>(null);
 
   useEffect(() => {
     if (!selectedBranch || !comparison) return;
-    api.products(selectedBranch, comparison).then(setProducts);
-  }, [selectedBranch, comparison]);
+    api.products(selectedBranch, comparison, contract ?? undefined).then(setProducts);
+  }, [selectedBranch, comparison, contract]);
 
   if (!selectedBranch) return null;
 
@@ -64,9 +64,8 @@ export default function FinancePackage() {
 
       {/* 갈래 헤더 */}
       <div className="px-5 py-3 flex items-center gap-2" style={{ background: color + '22', borderBottom: `2px solid ${color}` }}>
-        {/* 동네 선택에서 바로 오는 경로(SC-04/05)가 생겨 "항상 SC-07/SC-08에서 왔다"는 가정이 깨짐 —
-            실제 직전 화면(prevScreen)으로 돌아가고, 못 잡을 때만 기존 가정으로 폴백 */}
-        <BackBtn onClick={() => dispatch({ type: 'NAVIGATE', screen: prevScreen ?? (selectedBranch === '갱신' ? 'SC-08' : 'SC-07') })} />
+        {/* 실제 이동 스택(history)에서 pop — 어디서 왔든 정확히 그 화면으로 돌아감 */}
+        <BackBtn onClick={() => dispatch({ type: 'BACK', fallback: selectedBranch === '갱신' ? 'SC-08' : 'SC-07' })} />
         <span className="text-xl">{icon}</span>
         <h1 className="text-lg font-bold" style={{ color }}>
           {selectedBranch} · KB 금융 패키지
@@ -138,18 +137,6 @@ export default function FinancePackage() {
               <p className="text-sm text-muted-foreground">{products.guarantee.condition}</p>
               <p className="text-sm mt-2 text-foreground/80">{products.guarantee.recommendReason}</p>
             </div>
-            {officialProductUrl(products.guarantee.name) && !/화재보험/.test(products.guarantee.name) && (
-              <div className="px-5 pb-4">
-                <SecondaryBtn
-                  onClick={() => {
-                    window.open(officialProductUrl(products.guarantee!.name)!, '_blank', 'noopener,noreferrer');
-                  }}
-                  className="h-10 text-sm"
-                >
-                  공식 페이지에서 자세히 →
-                </SecondaryBtn>
-              </div>
-            )}
           </div>
         )}
 
@@ -170,9 +157,16 @@ export default function FinancePackage() {
       </div>
 
       <div className="px-5 pb-8 pt-3 space-y-3">
-        <PrimaryBtn onClick={() => products && dispatch({ type: 'NAVIGATE', screen: 'SC-10' })} disabled={!products}>
-          상담 예약하기
+        {/* 금융상품은 동네와 무관해 여기서 먼저 보여줌 — 다음은 갈래별 실제 진행 화면(갱신 절차 / 동네 후보) */}
+        <PrimaryBtn
+          onClick={() => products && dispatch({ type: 'NAVIGATE', screen: selectedBranch === '갱신' ? 'SC-06' : 'SC-04' })}
+          disabled={!products}
+        >
+          {selectedBranch === '갱신' ? '갱신 절차 보러가기 →' : '동네 후보 보러가기 →'}
         </PrimaryBtn>
+        <SecondaryBtn onClick={() => products && dispatch({ type: 'NAVIGATE', screen: 'SC-10' })} disabled={!products}>
+          바로 상담 예약하기
+        </SecondaryBtn>
         <button
           onClick={() => dispatch({ type: 'NAVIGATE', screen: 'SC-11' })}
           className="w-full text-sm text-muted-foreground underline py-2"

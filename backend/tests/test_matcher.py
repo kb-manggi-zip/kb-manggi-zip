@@ -35,6 +35,16 @@ def test_renew_and_move_use_jeonse():
         assert r.guarantee and "반환보증" in r.guarantee.name
 
 
+def test_move_monthly_uses_wolse_loan():
+    # 이사(월세)는 전세대출(보증금 담보 상품)이 안 맞아서 별도 상품으로 분기(2026-07-30).
+    r = matcher.run("이사", contract_type="월세")
+    assert r.mainLoan.name == "주거안정 월세대출"
+    assert r.guarantee is None  # 전세보증금 반환보증은 월세 계약엔 전제가 안 맞아 제외
+    # 전세(기본값)는 기존 그대로 전세대출 유지
+    r_jeonse = matcher.run("이사", contract_type="전세")
+    assert r_jeonse.mainLoan.name == "KB 전세자금대출"
+
+
 def test_reason_is_grounded_fallback():
     # LLM 비활성 → recommendReason == 문서의 reason (지어내기 없음)
     r = matcher.run("매매")

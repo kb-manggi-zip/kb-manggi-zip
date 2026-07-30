@@ -166,7 +166,7 @@ export default function RenewalChecklist() {
       <DdayBar dday={comparison?.dday} noticeDaysLeft={comparison?.noticeDaysLeft} />
 
       <div className="flex items-center gap-2 px-5 py-3 border-b-2" style={{ borderColor: COLORS.MINT }}>
-        <BackBtn onClick={() => dispatch({ type: 'NAVIGATE', screen: 'SC-03' })} />
+        <BackBtn onClick={() => dispatch({ type: 'BACK', fallback: 'SC-09' })} />
         <span className="text-lg">🏠</span>
         <span className="font-bold" style={{ color: COLORS.MINT }}>갱신 절차</span>
       </div>

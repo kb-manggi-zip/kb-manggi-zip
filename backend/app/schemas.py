@@ -315,8 +315,9 @@ class HitlRequest(BaseModel):
 
 class ProductsRequest(BaseModel):
     branch: Branch
-    # client.ts는 {branch}만 보냄. comparison은 향후 확장용(Optional).
+    # comparison은 향후 확장용(Optional). contract는 이사 갈래 전세/월세 상품 분기용(2026-07-30 추가).
     comparison: Optional[CompareResponse] = None
+    contract: Optional[ContractInfo] = None
 
 
 class AnalyzeResponse(BaseModel):

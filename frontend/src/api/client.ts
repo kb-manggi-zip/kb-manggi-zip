@@ -2,7 +2,7 @@ import { compare } from '../engine/compare';
 import { localClarify, localPersona, localValidateProfile } from '../engine/persona';
 import { REGIONS_BUY, REGIONS_MOVE, REGIONS_MONTHLY } from '../data/regions';
 import { SCENES_MOVE, SCENES_BUY, SCENES_STAY, SCENES_BY_REGION, SAVED_MONEY_CARDS } from '../data/scenes';
-import { PRODUCTS_RENEWAL, PRODUCTS_MOVE, PRODUCTS_BUY } from '../data/products';
+import { PRODUCTS_RENEWAL, PRODUCTS_MOVE, PRODUCTS_MOVE_MONTHLY, PRODUCTS_BUY } from '../data/products';
 import { PERSONAS } from '../data/personas';
 import { briefings } from '../data/briefings';
 import { RULES } from '../engine/rules';
@@ -186,11 +186,13 @@ export const api = {
     }
   },
 
-  async products(branch: Branch, _comparison: CompareResponse): Promise<ProductsResponse> {
+  async products(branch: Branch, _comparison: CompareResponse, contract?: ContractInfo): Promise<ProductsResponse> {
     return localOrRemote(
-      () => branch === '갱신' ? PRODUCTS_RENEWAL : branch === '이사' ? PRODUCTS_MOVE : PRODUCTS_BUY,
+      () => branch === '갱신' ? PRODUCTS_RENEWAL
+        : branch === '이사' ? (contract?.type === '월세' ? PRODUCTS_MOVE_MONTHLY : PRODUCTS_MOVE)
+        : PRODUCTS_BUY,
       '/api/products',
-      { method: 'POST', body: JSON.stringify({ branch }) }
+      { method: 'POST', body: JSON.stringify({ branch, contract }) }
     );
   },
 

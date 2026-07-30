@@ -133,7 +133,7 @@ export default function RegionList() {
         style={{ borderColor: color }}
       >
         <BackBtn
-          onClick={() => dispatch({ type: "NAVIGATE", screen: "SC-03" })}
+          onClick={() => dispatch({ type: "BACK", fallback: "SC-09" })}
         />
         <span className="text-lg">{icon}</span>
         <span className="font-bold" style={{ color }}>
@@ -209,7 +209,7 @@ export default function RegionList() {
               key={r.id}
               region={r}
               color={color}
-              onSelect={() => selectRegion(r, "SC-09")}
+              onSelect={() => selectRegion(r, "SC-13")}
               onExperience={() => selectRegion(r, "SC-07")}
               deemphasizeCommute={deemphasizeCommute}
               hiddenReasons={commonReasons}
@@ -653,7 +653,7 @@ export function RegionCard({
           className="mt-2 w-full flex items-center justify-center gap-1 text-xs font-semibold py-2 rounded-xl active:scale-[0.98] transition-transform"
           style={{ background: COLORS.KB_YELLOW, color: COLORS.TEXT }}
         >
-          이 동네로 금융 알아보기 →
+          이 동네로 정하기 →
         </button>
       </div>
       {/* 하루 체험(elective) — 필수 관문에서 뺀 보조 액션. 형제 요소(버튼 안에 버튼 중첩 불가). */}
