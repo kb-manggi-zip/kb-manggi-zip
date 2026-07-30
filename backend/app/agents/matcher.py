@@ -53,7 +53,7 @@ def _reason(pd: dict, branch: str) -> str:
     fallback_text = pd.get("reason", "조건을 확인해 보세요")
     return generate(
         system=(
-            "아래 상품 문서를 근거로, 이 갈래에 왜 조건이 맞는지 1~2문장으로 서술한다. "
+            "아래 상품 문서를 근거로, 이 갈래에 왜 조건이 맞는지 1~2문장 대화체(해요체)로 쓴다. "
             "숫자·요율·상품명은 문서에 있는 것만 인용한다. 추천·가입 권유·단정 표현은 쓰지 않는다."
         ),
         user=f"갈래={branch}\n상품={pd['name']}\n조건={pd.get('condition', '')}\n문서:\n{pd.get('_body', '')}",
