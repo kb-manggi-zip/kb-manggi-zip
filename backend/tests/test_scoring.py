@@ -6,14 +6,14 @@ from app.tools import scoring, trades_store
 def test_weights_derived_from_survey():
     w = scoring.derive_weights()
     assert abs(sum(w.values()) - 1.0) < 0.01
-    assert w["commute"] == 0.463  # 0.561 / 1.191 (직주근접+교통편리 정규화)
+    assert w["commute"] == 0.315  # 0.306 / 0.971 (직주근접 단독, 교통편리 묶음은 consumption으로 이전)
     # 통계에서 '계산'됨(하드코딩 아님) 증명
     assert scoring.derive_weights({"a": 1, "b": 3}) == {"a": 0.25, "b": 0.75}
 
 
 def test_persona_weights_differ_with_evidence():
     y = scoring.weights_for("1인")  # 청년의삶: 통근 39.2% 1위 → commute↑
-    n = scoring.weights_for("신혼")  # 주거실태: 주택구입·정주 → budget·preference↑
+    n = scoring.weights_for("신혼")  # 주거실태 표36(주택구입자금) → budget↑ / 표10·11 실측 → commute↑
     assert y["commute"] > n["commute"]
     assert n["budget"] > y["budget"]
 
