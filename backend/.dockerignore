@@ -7,5 +7,6 @@ venv/
 cache/*
 !cache/.gitkeep
 *.db
+!data/trades.demo.db
 .git/
 tests/

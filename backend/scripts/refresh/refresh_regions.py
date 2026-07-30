@@ -25,9 +25,11 @@ import time
 from datetime import datetime
 from pathlib import Path
 
+import yaml
+
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]))  # backend/
 
-from app.core.config import settings  # noqa: E402
+from app.core.config import BACKEND_ROOT, settings  # noqa: E402
 from app.tools import trades_store  # noqa: E402
 
 log = logging.getLogger("refresh_regions")
@@ -35,19 +37,31 @@ log = logging.getLogger("refresh_regions")
 RADIUS = 500  # m
 SERVICE = "반경상가"  # SmallShop → /storeListInRadius
 
-# 데모 9개 지역 (프론트 src/data/regions.ts 의 Region.id ↔ 동·좌표)
-#   6구 밖(서대문 홍제동)도 있어 enrich.yaml(6구)로는 부족 → 여기 명시.
-DEMO_REGIONS = [
-    ("mapo", "합정동", 37.5498, 126.9137),
-    ("eunpyeong", "녹번동", 37.6059, 126.9286),
-    ("dobong", "창동", 37.6533, 127.0473),
-    ("seongbuk", "길음동", 37.6038, 127.0193),
-    ("nowon", "상계동", 37.6550, 127.0631),
-    ("jungnang", "면목동", 37.5780, 127.0924),
-    ("mapo-m", "망원동", 37.5561, 126.9026),
+
+# enrich.yaml(6구 80동)이 커버 못 하는 2곳 — 하루시뮬(scenes.ts SCENES_BY_REGION) 전용 가상 포인트.
+#   seodaemun-m(홍제동): 서대문구라 애초에 6구 밖. seongbuk-m(보문동): 실제 umd_name이 "보문동1/3/4/6가"로
+#   쪼개져 있어 "보문동"이라는 이름 자체가 실거래엔 없음 — 하루시뮬 데모용으로만 쓰는 대표 좌표.
+_EXTRA_REGIONS = [
     ("seodaemun-m", "홍제동", 37.5893, 126.9392),
     ("seongbuk-m", "보문동", 37.5893, 127.0192),
 ]
+
+
+def _load_demo_regions() -> list[tuple[str, str, float, float]]:
+    """data/region_enrich.yaml의 동 전체(80개, 좌표 이미 확보) + 위 2개 예외를 (region_id, umd_name, lat, lng)로.
+
+    기존 9개 동(합정동·녹번동 등) 중 7개는 enrich.yaml에 커스텀 id(mapo, mapo-m 등)가 이미 박혀있어
+    그대로 유지됨 — molit.py::aggregate_to_regions가 Region.id를 enrich[umd]['id']로 채우므로
+    (없으면 umd_name 폴백) 여기서도 같은 id를 써야 실제 Region과 매칭된다.
+    """
+    path = BACKEND_ROOT / "data" / "region_enrich.yaml"
+    with open(path, encoding="utf-8") as f:
+        data = yaml.safe_load(f) or {}
+    loaded = [(v["id"], umd, v["lat"], v["lng"]) for umd, v in data.items() if v.get("lat") and v.get("lng")]
+    return loaded + _EXTRA_REGIONS
+
+
+DEMO_REGIONS = _load_demo_regions()
 
 
 def classify(lcls: str) -> str | None:
@@ -104,7 +118,7 @@ def inspect_one() -> None:
         sys.exit(1)
     from PublicDataReader import SmallShop
 
-    _, name, lat, lng = DEMO_REGIONS[6]  # 망원동
+    _, name, lat, lng = next(r for r in DEMO_REGIONS if r[1] == "망원동")
     df = SmallShop(key).get_data(service_name=SERVICE, radius=RADIUS, cx=lng, cy=lat, translate=False)
     print(f"[{name}] 응답 컬럼:", list(df.columns))
     print("샘플 1행:", df.iloc[0].to_dict() if not df.empty else "(0건)")
