@@ -90,6 +90,7 @@ def _facts_block(region_id: str | None) -> str:
         ("grocery", "장보기"),
         ("dining_cafe", "카페·먹거리"),
         ("leisure", "여가"),
+        ("academy", "학원"),
     ):
         if f.get(key):
             lines.append(f"- {label}: {', '.join(f[key])}")
@@ -237,6 +238,7 @@ def _facts_used(ctx: dict) -> list[dict]:
         ("dining_cafe", "상권(소상공인API)"),
         ("grocery", "상권(소상공인API)"),
         ("leisure", "상권(소상공인API)"),
+        ("academy", "상권(소상공인API)"),
     ):
         if f.get(key):
             out.append({"type": src, "field": key, "value": f[key][:2]})

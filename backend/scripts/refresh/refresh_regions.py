@@ -9,7 +9,11 @@
   · grocery     ← '소매'      (마트·편의점·종합소매)
   · dining_cafe ← '음식'      (한식·카페·제과 등 전부)
   · leisure     ← '여가/스포츠/관광/오락'
+  · academy     ← '교육'      (실제 API 대분류명, 학원 등 사설 교육기관 — 2026-07-30 추가)
 결과: trades_store.region_facts (region_id, field, value_json, count, source, collected_at)
+
+※ academy는 측정 능력만 추가한 것 — "학원 N곳"을 narrator facts로 노출할 뿐, PERSONA_ADJUST["자녀"]
+   가중치 근거는 아니다(자녀가구가 학원 밀집을 더 중시한다는 통계는 아직 없음, 선행연구_근거체계_총괄표.md §7 참고).
 
 ※ 필드명(indsLclsNm 등)은 PublicDataReader.SmallShop '반경상가' columns에서 확인(추측 아님).
    대분류 명칭은 substring 매칭(명칭 변형에 견고). 실행 후 개수가 상식적인지 눈으로 확인할 것.
@@ -54,6 +58,8 @@ def classify(lcls: str) -> str | None:
         return "dining_cafe"
     if any(k in lcls for k in ("여가", "스포츠", "관광", "오락")):
         return "leisure"
+    if "교육" in lcls:
+        return "academy"
     return None
 
 
@@ -85,6 +91,8 @@ def to_facts(counts: dict) -> dict:
         out["dining_cafe"] = ([f"음식점·카페 {n}곳" + (" 밀집" if n >= 30 else "")], n)
     if counts.get("leisure"):
         out["leisure"] = ([f"여가시설 {counts['leisure']}곳"], counts["leisure"])
+    if counts.get("academy"):
+        out["academy"] = ([f"학원 {counts['academy']}곳"], counts["academy"])
     return out
 
 

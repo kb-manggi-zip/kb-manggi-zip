@@ -26,6 +26,7 @@ def test_classify_by_대분류():
     assert r.classify("음식") == "dining_cafe"
     assert r.classify("관광/여가/오락") == "leisure"
     assert r.classify("스포츠") == "leisure"
+    assert r.classify("교육") == "academy"
     assert r.classify("부동산") is None
 
 
@@ -34,18 +35,20 @@ def test_count_dedup_and_to_facts():
     r = _refresh()
     df = pd.DataFrame(
         {
-            "bizesId": ["1", "2", "2", "3", "9"],  # bizesId 2 중복
-            "indsLclsNm": ["음식", "음식", "음식", "소매", "부동산"],
+            "bizesId": ["1", "2", "2", "3", "4", "9"],  # bizesId 2 중복
+            "indsLclsNm": ["음식", "음식", "음식", "소매", "교육", "부동산"],
         }
     )
     counts = r.count_by_field(df)
     assert counts["dining_cafe"] == 2  # 중복 제거 후 음식 2
     assert counts["grocery"] == 1
+    assert counts["academy"] == 1
     assert "leisure" not in counts
 
-    facts = r.to_facts({"dining_cafe": 45, "grocery": 3, "leisure": 0})
+    facts = r.to_facts({"dining_cafe": 45, "grocery": 3, "leisure": 0, "academy": 12})
     assert "밀집" in facts["dining_cafe"][0][0]  # 45 >= 30 → 밀집
     assert facts["grocery"][1] == 3
+    assert facts["academy"] == (["학원 12곳"], 12)
     assert "leisure" not in facts  # 0이면 생략
 
 
