@@ -261,14 +261,15 @@ def simulate(req: SimulateRequest, session_id: str | None = Depends(get_session_
 
 
 @observe(name="products")
-def _run_products(branch: str, comparison) -> ProductsResponse:
-    return matcher.run(branch, comparison)
+def _run_products(branch: str, comparison, contract_type: str | None = None) -> ProductsResponse:
+    return matcher.run(branch, comparison, contract_type)
 
 
 @router.post("/products", response_model=ProductsResponse)
 def products(req: ProductsRequest, session_id: str | None = Depends(get_session_id)) -> ProductsResponse:
     with session_scope(session_id):
-        return _run_products(req.branch, req.comparison)
+        contract_type = req.contract.type if req.contract else None
+        return _run_products(req.branch, req.comparison, contract_type)
 
 
 @observe(name="briefing")

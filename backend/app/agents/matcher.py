@@ -16,16 +16,20 @@ import yaml
 
 from ..core.config import BACKEND_ROOT
 from ..core.llm import generate
-from ..schemas import Branch, CompareResponse, Product, ProductsResponse
+from ..schemas import Branch, CompareResponse, ContractType, Product, ProductsResponse
 
 PRODUCTS_DIR = BACKEND_ROOT / "data" / "kb_products"
 
 # 갈래 → 슬롯(product_id). 자격 필터 결과를 이 매핑으로 표현.
+# 이사(월세)는 보증금 담보 상품인 전세대출이 안 맞아서 별도 슬롯(_BRANCH_SLOTS_MOVE_MONTHLY)으로 분기.
 _BRANCH_SLOTS: dict[str, dict[str, str]] = {
     "갱신": {"mainLoan": "kb_jeonse", "guarantee": "return_guarantee", "extra": "buttimok_youth"},
     "이사": {"mainLoan": "kb_jeonse", "guarantee": "return_guarantee", "extra": "buttimok_youth"},
     "매매": {"mainLoan": "kb_mortgage", "guarantee": "fire_insurance", "extra": "kb_chungyak_loan"},
 }
+_BRANCH_SLOTS_MOVE_MONTHLY: dict[str, str] = {
+    "mainLoan": "wolse_loan"
+}  # 버팀목·반환보증은 전세 보증금 전제라 월세엔 제외
 
 
 @lru_cache
@@ -67,14 +71,22 @@ def _to_product(pd: dict, branch: str) -> Product:
     )
 
 
-def run(branch: Branch, comparison: CompareResponse | None = None) -> ProductsResponse:
+def run(
+    branch: Branch,
+    comparison: CompareResponse | None = None,
+    contract_type: ContractType | None = None,
+) -> ProductsResponse:
     """갈래별 KB '대출+보장' 패키지. 상품 문서 기반 + LLM 사유(seam).
 
     ※ 자격(소득·나이·무주택) 정밀 필터는 finance가 필요하나 ProductsRequest엔 없음
       → 갈래 기반 매핑까지 구현. 개인화 필터는 스키마 확장 후(사람 결정) 연결.
+    contract_type: '이사' 갈래에서 전세/월세 구분(전세대출은 보증금 담보 상품이라 월세엔 안 맞음).
     """
     products = load_products()
-    slots = _BRANCH_SLOTS.get(branch, _BRANCH_SLOTS["매매"])
+    if branch == "이사" and contract_type == "월세":
+        slots = _BRANCH_SLOTS_MOVE_MONTHLY
+    else:
+        slots = _BRANCH_SLOTS.get(branch, _BRANCH_SLOTS["매매"])
 
     resp = ProductsResponse(branch=branch, mainLoan=_to_product(products[slots["mainLoan"]], branch))
     if products.get(slots.get("guarantee", "")):
