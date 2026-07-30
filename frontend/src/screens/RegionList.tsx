@@ -397,10 +397,9 @@ function ClarifyBanner({
   onSkip: () => void;
 }) {
   const signals = clarify.noteSignals ?? [];
-  const conflicts = clarify.conflicts ?? [];
-  const questions = (clarify.questions ?? []).filter(
-    (q) => !conflicts.includes(q)
-  );
+  // questions는 백엔드가 conflicts를 이미 포함해 구성함(LLM 있으면 자연문장으로 대체, 없으면 그대로 복사)
+  // + 통근 등 추가질문. conflicts를 따로 또 보여주면 같은 모순이 문구만 다르게 중복 표시된다.
+  const questions = clarify.questions ?? [];
   return (
     <div
       className="mx-5 mt-3 rounded-2xl border p-3.5 space-y-2"
@@ -479,9 +478,9 @@ function ClarifyBanner({
       )}
 
       {/* 확인만 필요한 항목(모순·추가질문) — 반영 대상 아님 */}
-      {(conflicts.length > 0 || questions.length > 0) && (
+      {questions.length > 0 && (
         <div className="space-y-1 pt-1 border-t border-border/60">
-          {[...conflicts, ...questions].map((q, i) => (
+          {questions.map((q, i) => (
             <p
               key={i}
               className="text-xs leading-snug"
@@ -622,7 +621,9 @@ export function RegionCard({
         {/* 개인화 신호도 차별 팩트도 없으면(예: 카페 데이터 없는 동네) 빈 줄만 남기지 않고 아예 생략 */}
         {(leadSignal || summaryFacts) && (
           <p className="text-xs font-medium pt-1" style={{ color }}>
-            {leadSignal ? `${leadSignal} 당신에게` : "이 동네"}
+            {leadSignal
+              ? `${leadSignal}${leadSignal.endsWith("편") ? "인" : ""} 당신에게`
+              : "이 동네"}
             {summaryFacts && ` — ${summaryFacts}`}
           </p>
         )}
