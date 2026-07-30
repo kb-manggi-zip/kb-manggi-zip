@@ -1,7 +1,7 @@
 # 프로젝트 현황 & 로드맵 (한눈에)
 
 > KB 만기상담소 — 전월세 만기 D-90, 3갈래(갱신·이사·매매) 비교 에이전트. (갱신: 2026-07-27)
-> 전체 그림=`docs/서비스_E2E_아키텍처.md`(정본) · 코드 gap=`backend/STUBS.md` · 규정값 검증=`RESEARCH.md` · API=`docs/API.md` · 발표=`docs/발표_골든패스_시나리오.md`
+> 전체 그림=`docs/아키텍처.md`(정본) · 코드 gap=`backend/STUBS.md` · 규정값 검증=`RESEARCH.md` · API=`docs/API.md` · 발표=`docs/서비스_흐름.md`
 
 ## 지금 이 서비스가 도는 방식 (한 줄씩)
 - **계산(심장)**: `tools/compare.py` — 3갈래 결정론 계산(rules YAML × 공식, 규제3겹·디딤돌·HUG·취득세구간). 프론트 `engine/compare.ts`와 **오차 0 동치**. LLM 무개입.
@@ -11,7 +11,7 @@
 - **동네 추천**: 예산 0단계 하드필터 + **선호지역**(구) + **개인화 스코어**(통계근거 가중합, `tools/scoring.py`, note 보정 반영) → top3 + "왜 추천?" 근거.
 - **발품(차별점)**: `narrator` — 소비 프로필 + **상권 실집계(소상공인API)** + **통근 실측(ODsay)** + **국토부 실거래 사례** → 개인화 하루 서사(LLM).
 - **에이전트**: `/api/analyze` = LangGraph 6노드 `intake → clarify → compare → route → persona → narrate`. Langfuse 한 trace(세션 그룹핑).
-- **개인화**: 명확화·스코어 가중치·발품 프레임 전부 **통계/실데이터 근거 + 화면 노출**(블랙박스 아님). 파이프라인 상세: `docs/개인화_파이프라인.md`.
+- **개인화**: 명확화·스코어 가중치·발품 프레임 전부 **통계/실데이터 근거 + 화면 노출**(블랙박스 아님). 파이프라인 상세: `docs/개인화_설계.md`.
 - **Trust Layer**: 숫자=코드 · verify 가드레일(권유·환각 차단) · 근거·출처 노출 · **Langfuse 관측**(6노드 span에 input/output/metadata — 규칙 스냅샷·가중치 조정 전→후·발품 facts·verify 결과 + **HITL 확정 이벤트**).
 
 ## ✅ 완료
@@ -24,8 +24,8 @@
 | **규정값 검증 반영** (lending/policy/guarantee, 2026-07-20 대조) | ✅ |
 | 인프라: Docker/compose · CI(pytest·ruff·build) · 55 tests green | ✅ |
 
-## ⬜ 다음 (우선순위)  — 상세 로드맵: `docs/에이전트_설계_로드맵.md` · 데모: `docs/발표_골든패스_시나리오.md`
-1. **📊 발표 준비** — 골든패스(P2 매매/P3 이사) 리허설 + Langfuse 4노드 캡처. [발표_골든패스_시나리오.md]
+## ⬜ 다음 (우선순위)  — 상세 로드맵: `docs/에이전트_설계.md` · 데모: `docs/서비스_흐름.md`
+1. **📊 발표 준비** — 골든패스(P2 매매/P3 이사) 리허설 + Langfuse 4노드 캡처. [서비스_흐름.md]
 2. **🔑 실측 키 넣으면 자동완성**(선택) — `ODSAY_API_KEY`→통근 실측, `SBIZ_API_KEY`는 이미 수집됨. [API_키_발급_가이드.md]
 3. **오피스텔 rule set**(범위 확장) — 로드맵 §6. (연립다세대 HUG `other` 요율은 2026-07-27 HUG 공식 페이지 대조 완료 ✅)
 
