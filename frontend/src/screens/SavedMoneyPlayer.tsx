@@ -117,22 +117,15 @@ export default function SavedMoneyPlayer() {
 
         {/* 하단 */}
         {isLast ? (
-          <div className="px-6 pb-10 space-y-3" onClick={e => e.stopPropagation()}>
-            <div className="grid grid-cols-2 gap-3">
-              <button
-                onClick={() => dispatch({ type: 'NAVIGATE', screen: 'SC-03' })}
-                className="py-3 rounded-full text-sm font-semibold border border-white/30 text-white"
-              >
-                세 갈래 다시 보기
-              </button>
-              <button
-                onClick={() => dispatch({ type: 'NAVIGATE', screen: 'SC-09' })}
-                className="py-3 rounded-full text-sm font-semibold text-foreground"
-                style={{ background: COLORS.KB_YELLOW }}
-              >
-                금융 알아보기
-              </button>
-            </div>
+          <div className="px-6 pb-10" onClick={e => e.stopPropagation()}>
+            {/* 이사/매매의 동네 선택처럼, 갱신도 여기서 바로 결정 리포트로(금융상품은 SC-09에서 이미 봤음) */}
+            <button
+              onClick={() => dispatch({ type: 'NAVIGATE', screen: 'SC-13' })}
+              className="w-full py-3 rounded-full text-sm font-bold text-foreground"
+              style={{ background: COLORS.KB_YELLOW }}
+            >
+              결정 리포트 보러가기 →
+            </button>
           </div>
         ) : (
           <p className="text-center text-white/30 text-xs pb-8">

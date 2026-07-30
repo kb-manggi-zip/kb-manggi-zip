@@ -1,6 +1,7 @@
 import React, { useState, useRef } from "react";
 import { toPng } from "html-to-image";
 import { useApp } from "../store";
+import type { Screen } from "../store";
 import { COLORS, BRANCH_COLORS, BRANCH_ICONS } from "../theme";
 import {
   MobileShell,
@@ -72,10 +73,10 @@ export default function CompareTable() {
     }
   }
 
-  function selectBranch(branch: Branch) {
+  // 뎁스가 깊어지지 않게, 갈래 카드에서 "금융상품"과 "다음 단계"를 사용자가 직접 선택.
+  function selectBranchTo(branch: Branch, screen: Screen) {
     dispatch({ type: "SELECT_BRANCH", branch });
-    if (branch === "갱신") dispatch({ type: "NAVIGATE", screen: "SC-06" });
-    else dispatch({ type: "NAVIGATE", screen: "SC-04" });
+    dispatch({ type: "NAVIGATE", screen });
   }
 
   return (
@@ -175,7 +176,8 @@ export default function CompareTable() {
             monthlyToDeposit={comparison.monthlyToDeposit}
             firstHome={finance?.firstHome}
             assumptions={assumptions}
-            onSelect={() => selectBranch(b.branch)}
+            onSelectFinance={() => selectBranchTo(b.branch, "SC-09")}
+            onSelectNext={() => selectBranchTo(b.branch, b.branch === "갱신" ? "SC-06" : "SC-04")}
           />
         ))}
       </div>
@@ -339,14 +341,16 @@ function BranchCardView({
   monthlyToDeposit,
   firstHome,
   assumptions,
-  onSelect,
+  onSelectFinance,
+  onSelectNext,
 }: {
   branch: BranchResult;
   contractType: string;
   monthlyToDeposit: number;
   firstHome?: FirstHome;
   assumptions: string[];
-  onSelect: () => void;
+  onSelectFinance: () => void;
+  onSelectNext: () => void;
 }) {
   const color = BRANCH_COLORS[branch.branch];
   const icon = BRANCH_ICONS[branch.branch];
@@ -519,13 +523,20 @@ function BranchCardView({
         </Accordion>
       </div>
 
-      <div className="px-5 pb-5">
+      <div className="px-5 pb-5 grid grid-cols-2 gap-2">
         <button
-          onClick={onSelect}
-          className="w-full h-11 rounded-full text-sm font-semibold border transition-all active:scale-95"
+          onClick={onSelectFinance}
+          className="h-11 rounded-full text-sm font-semibold border transition-all active:scale-95"
           style={{ borderColor: color, color, background: "transparent" }}
         >
-          {branch.branch} 살펴보기 →
+          금융상품 보기 →
+        </button>
+        <button
+          onClick={onSelectNext}
+          className="h-11 rounded-full text-sm font-semibold transition-all active:scale-95"
+          style={{ background: color, color: "#fff" }}
+        >
+          {branch.branch === "갱신" ? "갱신 절차 보기 →" : "동네 후보 보기 →"}
         </button>
       </div>
     </div>

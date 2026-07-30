@@ -17,7 +17,7 @@ function timeGradient(time: string): string {
 
 export default function DayPlayer() {
   const { state, dispatch } = useApp();
-  const { selectedBranch, selectedRegionId, selectedRegion, finance, comparison, prevScreen } = state;
+  const { selectedBranch, selectedRegionId, selectedRegion, finance, comparison } = state;
   const [scenes, setScenes] = useState<Scene[]>([]);
   const [monthlyCost, setMonthlyCost] = useState(0);
   const [lifestyle, setLifestyle] = useState('');
@@ -124,7 +124,7 @@ export default function DayPlayer() {
         {/* 갈래 칩 */}
         <div className="flex items-center gap-2">
           <button
-            onClick={e => { e.stopPropagation(); dispatch({ type: 'NAVIGATE', screen: prevScreen ?? 'SC-04' }); }}
+            onClick={e => { e.stopPropagation(); dispatch({ type: 'BACK', fallback: 'SC-04' }); }}
             className="text-white text-sm opacity-70 pr-2"
           >
             ←

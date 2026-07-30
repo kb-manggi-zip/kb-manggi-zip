@@ -34,6 +34,18 @@ export const PRODUCTS_MOVE: ProductsResponse = {
   },
 };
 
+// 이사(월세) — 전세대출은 보증금 담보 상품이라 월세 계약엔 안 맞아서 별도 상품.
+// STUB: 실제 KB 취급 페이지·한도·금리 미확인(사람 검증 대상). backend/data/kb_products/wolse_loan.md와 동기화.
+export const PRODUCTS_MOVE_MONTHLY: ProductsResponse = {
+  branch: '이사',
+  mainLoan: {
+    name: '주거안정 월세대출',
+    condition: '월세 계약자 대상, 매월 월세액 한도 내 대출(전세대출과 별도 상품)',
+    recommendReason: '전세대출이 아니라 월세 자체를 매달 대출해주는 상품이라 월세 계약엔 이게 맞아요',
+    basis: '주택도시기금 정책상품 기준',
+  },
+};
+
 export const PRODUCTS_BUY: ProductsResponse = {
   branch: '매매',
   mainLoan: {

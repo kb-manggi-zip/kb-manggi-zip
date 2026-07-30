@@ -36,7 +36,7 @@ export default function RegionListMonthly() {
       <DdayBar dday={state.comparison?.dday} noticeDaysLeft={state.comparison?.noticeDaysLeft} />
 
       <div className="flex items-center gap-2 px-5 py-2 border-b-2" style={{ borderColor: COLORS.BLUE }}>
-        <BackBtn onClick={() => dispatch({ type: 'NAVIGATE', screen: 'SC-03' })} />
+        <BackBtn onClick={() => dispatch({ type: 'BACK', fallback: 'SC-09' })} />
         <span className="text-lg">🚚</span>
         <span className="font-bold" style={{ color: COLORS.BLUE }}>이사 · 월세 동네 후보</span>
       </div>
@@ -96,7 +96,7 @@ export default function RegionListMonthly() {
             key={r.id}
             region={r}
             color={COLORS.BLUE}
-            onSelect={() => selectRegion(r, 'SC-09')}
+            onSelect={() => selectRegion(r, 'SC-13')}
             onExperience={() => selectRegion(r, 'SC-07')}
             deemphasizeCommute={deemphasizeCommute}
             hiddenReasons={commonReasons}
