@@ -12,12 +12,7 @@ import {
   Toast,
 } from "../components/ui";
 import AiBriefing from "../components/AiBriefing";
-import {
-  formatAmount,
-  formatMonthly,
-  formatDate,
-  ddayText,
-} from "../utils/format";
+import { formatAmount, formatMonthly, ddayText } from "../utils/format";
 import { briefings } from "../api/client";
 import type { BranchResult, Branch, FirstHome } from "../api/types";
 
@@ -125,36 +120,6 @@ export default function CompareTable() {
           )}
         </div>
       </div>
-
-      {noticeDaysLeft !== null && noticeDaysLeft <= 30 && (
-        <div
-          className="mx-5 mb-3 px-4 py-2.5 rounded-xl text-xs font-semibold flex items-center gap-1.5"
-          style={{ background: "#5C5147", color: "#FFE9C7" }}
-        >
-          {noticeDaysLeft < 0 ? (
-            <span>
-              통보기한이 지났어요 —{" "}
-              <span style={{ color: "#FF8A70" }}>묵시적 갱신</span> 가능성이
-              있어요. 임대인과 확인하세요.
-            </span>
-          ) : (
-            <span>
-              갱신 의사 통보기한{" "}
-              <b style={{ color: COLORS.KB_YELLOW }}>D-{noticeDaysLeft}</b> ·{" "}
-              <span style={{ color: "#FF8A70" }}>
-                {formatDate(new Date(noticeDeadline))}
-              </span>
-              까지
-            </span>
-          )}
-          <span
-            className="ml-auto cursor-help select-none"
-            title="만기 6~2개월 전까지 갱신 여부를 알려야 해요 (주택임대차보호법 제6조의3)"
-          >
-            ⓘ
-          </span>
-        </div>
-      )}
 
       {/* AI 브리핑 */}
       <AiBriefing text={briefText} />
