@@ -141,8 +141,14 @@ export function compare(contract: ContractInfo, finance: FinanceInfo): CompareRe
     feature: '가장 가볍고 익숙함',
   };
 
-  // === 이사 (전세대출 한도 = 보증금 80%, 최고 2.22억) ===
-  const extra = Math.min(Math.round(deposit * 0.80), jeonseCap);
+  // === 이사 (전세대출 한도 = 보증금 80% 또는 소득 기반(DSR) 여력 중 큰 쪽, 최고 2.22억) ===
+  // 보증금만 보면 저축은 적어도 월세를 꾸준히 내온 사람(소득 있음)의 상환여력을 놓친다.
+  // 매매 갈래와 같은 DSR 개념(소득×DSR상한)을 재사용 — 전세대출은 이자만 내므로(원리금 아님)
+  // 연금현가(pvAnnuity) 대신 이자만 계산을 역산(대출액 = 월이자×12÷금리)한다.
+  const depositBasedExtra = Math.round(deposit * 0.80);
+  const moveMonthlyCapacity = annualIncome * dsrCap / 12;
+  const incomeBasedExtra = Math.round(moveMonthlyCapacity * 12 / jeonseRate);
+  const extra = Math.min(Math.max(depositBasedExtra, incomeBasedExtra), jeonseCap);
   const moveBudget = deposit + extra;
   const moveInterest = Math.round(extra * jeonseRate / 12);
   const moveGuarMonthly = Math.round(moveBudget * guaranteeRate(moveBudget, hugType) / 12);
@@ -158,7 +164,7 @@ export function compare(contract: ContractInfo, finance: FinanceInfo): CompareRe
     monthlyBurden: moveInterest + moveGuarMonthly,
     risks: ['새 보증금 잠김', '이사 과정 일회성 비용'],
     cares: ['새 계약 시 전세보증금 반환보증 확인', `일회성 비용 약 ${formatAmt(moveOneTime)}`],
-    basis: ['전세대출 한도 80%', '실거래 기준'],
+    basis: [incomeBasedExtra > depositBasedExtra ? '전세대출 한도 소득 기준(DSR)' : '전세대출 한도 보증금 80%', '실거래 기준'],
     feature: '환경을 바꿀 기회',
   };
 
@@ -204,6 +210,7 @@ export function compare(contract: ContractInfo, finance: FinanceInfo): CompareRe
   const assumptions = [
     '이 금액은 사전 가늠이며, 실제 대출 심사 결과와 다를 수 있어요',
     '전세대출 금리 HF 공시 평균 3.89%',
+    '이사 시 전세대출 한도는 보증금 80% 또는 소득 기준(DSR) 여력 중 큰 쪽으로 계산해요',
     '규제지역 LTV 40% (생애최초 70%)',
     'KB 주택구입 대출 한도 3억 (2026.7~)',
     '스트레스 DSR 수도권 3.0% (한도 산정에만 적용)',
