@@ -99,7 +99,7 @@ export default function HomeEntry() {
                     {ddayText(dday)}
                   </span>
                   <span className="text-sm text-muted-foreground">
-                    {formatDate(new Date(contract!.expiryDate))} 만기
+                    {formatDate(new Date(contract!.expiryDate))}
                   </span>
                 </div>
               </>
@@ -107,7 +107,7 @@ export default function HomeEntry() {
               <>
                 <p className="text-xs text-muted-foreground mb-1">전월세 만기 결정 도우미</p>
                 <p className="text-xl font-bold" style={{ color: COLORS.KB_GRAY }}>
-                  눌러앉을까, 옮길까, 살까?
+                  갱신할까, 이사할까, 살까?
                 </p>
                 {/* 갈래 미니 라벨 */}
                 <div className="flex gap-3 mt-2">
@@ -119,7 +119,6 @@ export default function HomeEntry() {
                 </div>
               </>
             )}
-            <p className="text-sm text-muted-foreground mt-1">만기 전에 미리 계산해봐요</p>
           </div>
 
           {/* D-day 타임라인 바 */}
@@ -145,7 +144,7 @@ export default function HomeEntry() {
                   className="text-xs font-semibold px-3 py-1.5 rounded-xl text-white text-center"
                   style={{ background: COLORS.CORAL }}
                 >
-                  ⚠️ {noticeDaysLeft < 0 ? '갱신 통보기한이 지났어요' : `갱신 의사 통보기한 D-${noticeDaysLeft}`}
+                  ⚠️ {noticeDaysLeft < 0 ? '통보기한이 지났어요' : `통보기한 D-${noticeDaysLeft}`}
                 </div>
               )}
             </div>
