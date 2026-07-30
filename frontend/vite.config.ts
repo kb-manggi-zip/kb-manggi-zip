@@ -1,4 +1,4 @@
-import { defineConfig } from 'vite'
+import { defineConfig, loadEnv } from 'vite'
 import path from 'path'
 import tailwindcss from '@tailwindcss/vite'
 import react from '@vitejs/plugin-react'
@@ -16,27 +16,34 @@ function figmaAssetResolver() {
   }
 }
 
-export default defineConfig({
-  // 배포 시 백엔드 연결 플래그를 빌드타임에 주입(셸/Vercel env → 클라이언트).
-  // Vite가 셸 VITE_* 를 import.meta.env로 자동 노출하지 않는 케이스를 확실히 커버.
-  define: {
-    'import.meta.env.VITE_REMOTE': JSON.stringify(process.env.VITE_REMOTE ?? ''),
-    'import.meta.env.VITE_API_URL': JSON.stringify(process.env.VITE_API_URL ?? ''),
-  },
-  plugins: [
-    figmaAssetResolver(),
-    // The React and Tailwind plugins are both required for Make, even if
-    // Tailwind is not being actively used – do not remove them
-    react(),
-    tailwindcss(),
-  ],
-  resolve: {
-    alias: {
-      // Alias @ to the src directory
-      '@': path.resolve(__dirname, './src'),
-    },
-  },
+export default defineConfig(({ mode }) => {
+  // loadEnv reads .env* files AND lets already-exported shell/Vercel env vars
+  // take precedence — do NOT read raw process.env here, it skips .env files
+  // entirely and silently blanks VITE_API_URL in local dev.
+  const env = loadEnv(mode, process.cwd(), '')
 
-  // File types to support raw imports. Never add .css, .tsx, or .ts files to this.
-  assetsInclude: ['**/*.svg', '**/*.csv'],
+  return {
+    // 배포 시 백엔드 연결 플래그를 빌드타임에 주입(셸/Vercel env → 클라이언트).
+    // Vite가 셸 VITE_* 를 import.meta.env로 자동 노출하지 않는 케이스를 확실히 커버.
+    define: {
+      'import.meta.env.VITE_REMOTE': JSON.stringify(env.VITE_REMOTE ?? ''),
+      'import.meta.env.VITE_API_URL': JSON.stringify(env.VITE_API_URL ?? ''),
+    },
+    plugins: [
+      figmaAssetResolver(),
+      // The React and Tailwind plugins are both required for Make, even if
+      // Tailwind is not being actively used – do not remove them
+      react(),
+      tailwindcss(),
+    ],
+    resolve: {
+      alias: {
+        // Alias @ to the src directory
+        '@': path.resolve(__dirname, './src'),
+      },
+    },
+
+    // File types to support raw imports. Never add .css, .tsx, or .ts files to this.
+    assetsInclude: ['**/*.svg', '**/*.csv'],
+  }
 })
