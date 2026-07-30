@@ -3,8 +3,8 @@ import { useApp } from '../store';
 import { COLORS, BRANCH_COLORS, BRANCH_ICONS } from '../theme';
 import { MobileShell, PrimaryBtn, Toast } from '../components/ui';
 import AiBriefing from '../components/AiBriefing';
-import { formatDday, formatDate, formatNoticeDeadline, formatAmount, ddayText } from '../utils/format';
-import { PERSONAS, briefings } from '../api/client';
+import { formatDday, formatDate, formatNoticeDeadline, formatAmount, ddayText, daysUntil } from '../utils/format';
+import { NOTICE_DEADLINE_MONTHS, PERSONAS, briefings } from '../api/client';
 
 const TAB_TOAST_MSG = "이 데모에서는 '추천' 탭의 만기 도우미를 소개해요 🙂";
 // 골든패스 프리셋 노출 여부 — 기본 노출(데모 빌드가 곧 배포본). VITE_HIDE_DEMO=1이면 숨김.
@@ -16,9 +16,12 @@ export default function HomeEntry() {
   const { contract, comparison } = state;
   const [toast, setToast] = useState<string | null>(null);
 
-  const dday = contract ? formatDday(contract.expiryDate) : null;
-  const noticeDeadline = contract ? formatNoticeDeadline(contract.expiryDate, 2) : null;
-  const noticeDaysLeft = noticeDeadline ? Math.ceil((noticeDeadline.getTime() - Date.now()) / 86400000) : null;
+  // comparison(단일 계산 결과)이 있으면 그걸 그대로 쓰고, 계산 전(프리셋만 채운 직후 등)엔 로컬로 추정.
+  const dday = comparison?.dday ?? (contract ? formatDday(contract.expiryDate) : null);
+  const noticeDeadline = comparison
+    ? new Date(comparison.noticeDeadline)
+    : contract ? formatNoticeDeadline(contract.expiryDate, NOTICE_DEADLINE_MONTHS) : null;
+  const noticeDaysLeft = comparison?.noticeDaysLeft ?? (noticeDeadline ? daysUntil(noticeDeadline) : null);
   const isUrgent = noticeDaysLeft !== null && noticeDaysLeft <= 14;
   const hasData = contract !== null;
 

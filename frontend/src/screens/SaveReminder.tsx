@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { useApp } from '../store';
 import { COLORS, BRANCH_COLORS, BRANCH_ICONS } from '../theme';
 import { MobileShell, DdayBar, PrimaryBtn, Disclaimer } from '../components/ui';
-import { formatAmount, formatDate, formatDday, ddayText } from '../utils/format';
+import { formatAmount, formatDate, ddayText } from '../utils/format';
 
 export default function SaveReminder() {
   const { state, dispatch } = useApp();
@@ -10,7 +10,8 @@ export default function SaveReminder() {
   const [checked, setChecked] = useState(false);
 
   const hasReservation = !!reservationDate;
-  const dday = contract ? formatDday(contract.expiryDate) : null;
+  // 이 화면은 비교표 계산 이후에만 오므로 comparison.dday(단일 계산 결과)를 그대로 씀 — 재계산 안 함.
+  const dday = comparison?.dday ?? null;
 
   const reminderDate = contract
     ? new Date(new Date(contract.expiryDate).getTime() - 14 * 86400000)

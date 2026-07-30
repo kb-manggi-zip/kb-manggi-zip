@@ -3,8 +3,8 @@ import { useApp } from '../store';
 import { COLORS } from '../theme';
 import { MobileShell, DdayBar, BackBtn, PrimaryBtn, BasisChip, Disclaimer, Toast } from '../components/ui';
 import AiBriefing from '../components/AiBriefing';
-import { formatDate, formatNoticeDeadline, formatAmount, noticeText } from '../utils/format';
-import { NOTICE_DEADLINE_MONTHS, briefings, api } from '../api/client';
+import { formatDate, formatAmount, noticeText } from '../utils/format';
+import { briefings, api } from '../api/client';
 
 interface CheckItem {
   id: string;
@@ -114,8 +114,9 @@ export default function RenewalChecklist() {
   const { state, dispatch } = useApp();
   const { contract, comparison } = state;
 
-  const noticeDeadline = contract ? formatNoticeDeadline(contract.expiryDate, NOTICE_DEADLINE_MONTHS) : new Date();
-  const noticeDaysLeft = Math.ceil((noticeDeadline.getTime() - Date.now()) / 86400000);
+  // 이 화면은 비교표 계산 이후에만 오므로 comparison의 단일 계산 결과를 그대로 씀 — 재계산 안 함.
+  const noticeDeadline = comparison ? new Date(comparison.noticeDeadline) : new Date();
+  const noticeDaysLeft = comparison?.noticeDaysLeft ?? 0;
   const isUrgent = noticeDaysLeft <= 14;
   const guaranteeMonthly = comparison?.branches.find(b => b.branch === '갱신')?.guaranteeMonthly || 0;
   const noticeDeadlineStr = formatDate(noticeDeadline);
