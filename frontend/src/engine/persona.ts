@@ -2,6 +2,7 @@
 // 백엔드 app/agents/clarify.py · app/tools/persona.py 의 참조 구현을 옮긴 것.
 // (숫자 로직의 정본은 백엔드. 여기는 로컬 데모 백업 — DB 불필요·순수.)
 import type { ClarifyResult, ConflictItem, PersonaProfile, ContractInfo, FinanceInfo } from '../api/types';
+import { dirMult, dirSign, AXIS_CLAMP } from './axisAdjust';
 
 const AXIS_LABEL: Record<string, string> = {
   commute: '통근', consumption: '생활·소비', budget: '예산 여유', preference: '선호지역',
@@ -23,19 +24,20 @@ const PERSONA_ADJUST: Record<string, Record<string, number>> = {
 };
 
 // 자유입력 키워드 → 축별 배수 (창작 금지 — 정해진 축만)
-const NOTE_MAP: Array<{ keys: string[]; label: string; boost: Record<string, number> }> = [
-  { keys: ['재택', '집에서', '집 주변', '동네에서', '근처에서'], label: '재택·동네생활 중시 → 통근 가중치 절반·생활편의↑', boost: { commute: 0.5, consumption: 1.3 } },
-  { keys: ['자차', '차로', '운전', '차 있'], label: '자차 이동 → 통근시간 민감도↓', boost: { commute: 0.7 } },
-  { keys: ['도보', '걸어', '걸어서'], label: '도보 생활권 선호 → 선호지역 근접↑', boost: { preference: 1.2 } },
-  { keys: ['카페', '외식', '맛집', '배달', '먹'], label: '외식·카페 소비 성향 → 상권 매치↑', boost: { consumption: 1.3 } },
-  { keys: ['조용', '한적', '정주', '오래 살'], label: '정주·생활환경 중시 → 선호지역↑', boost: { preference: 1.2 } },
-  { keys: ['통근', '출퇴근', '회사', '직장', '가까운 데'], label: '통근 최소화 우선 → 통근↑', boost: { commute: 1.3 } },
-  { keys: ['반려동물', '강아지', '고양이', '반려견', '반려묘'], label: '반려동물 — 산책·생활공간 중시 → 선호지역↑·생활편의↑', boost: { preference: 1.2, consumption: 1.2 } },
-  { keys: ['학교', '학군', '등하교', '등하원'], label: '자녀 학군 근접 중시 → 선호지역↑', boost: { preference: 1.3 } },
-  { keys: ['부모님', '부모님 근처', '가족 근처'], label: '가족 근접 선호 → 선호지역↑', boost: { preference: 1.3 } },
-  { keys: ['지하철', '전철', '역 가까', '역세권'], label: '대중교통 접근 중시 → 통근 편의↑', boost: { commute: 1.2 } },
-  { keys: ['번화가', '시내', '상권 좋', '핫플'], label: '번화가·상권 선호 → 상권 매치↑', boost: { consumption: 1.3 } },
-  { keys: ['한적한 동네', '공원', '산책로', '자연'], label: '쾌적·정주 환경 선호 → 선호지역↑', boost: { preference: 1.2 } },
+// boost = {축: 방향}(닫힌 enum). 크기는 axis_adjust.yaml(dirMult)에서. backend _NOTE_MAP과 동일.
+const NOTE_MAP: Array<{ keys: string[]; label: string; boost: Record<string, string> }> = [
+  { keys: ['재택', '집에서', '집 주변', '동네에서', '근처에서'], label: '재택·동네생활 중시 → 통근 거의 고려 안 함·생활편의↑', boost: { commute: 'strong_down', consumption: 'up' } },
+  { keys: ['자차', '차로', '운전', '차 있'], label: '자차 이동 → 통근시간 민감도↓', boost: { commute: 'down' } },
+  { keys: ['도보', '걸어', '걸어서'], label: '도보 생활권 선호 → 선호지역 근접↑', boost: { preference: 'up' } },
+  { keys: ['카페', '외식', '맛집', '배달', '먹'], label: '외식·카페 소비 성향 → 상권 매치↑', boost: { consumption: 'up' } },
+  { keys: ['조용', '한적', '정주', '오래 살'], label: '정주·생활환경 중시 → 선호지역↑', boost: { preference: 'up' } },
+  { keys: ['통근', '출퇴근', '회사', '직장', '가까운 데'], label: '통근 최소화 우선 → 통근↑', boost: { commute: 'up' } },
+  { keys: ['반려동물', '강아지', '고양이', '반려견', '반려묘'], label: '반려동물 — 산책·생활공간 중시 → 선호지역↑·생활편의↑', boost: { preference: 'up', consumption: 'up' } },
+  { keys: ['학교', '학군', '등하교', '등하원'], label: '자녀 학군 근접 중시 → 선호지역↑', boost: { preference: 'up' } },
+  { keys: ['부모님', '부모님 근처', '가족 근처'], label: '가족 근접 선호 → 선호지역↑', boost: { preference: 'up' } },
+  { keys: ['지하철', '전철', '역 가까', '역세권'], label: '대중교통 접근 중시 → 통근 편의↑', boost: { commute: 'up' } },
+  { keys: ['번화가', '시내', '상권 좋', '핫플'], label: '번화가·상권 선호 → 상권 매치↑', boost: { consumption: 'up' } },
+  { keys: ['한적한 동네', '공원', '산책로', '자연'], label: '쾌적·정주 환경 선호 → 선호지역↑', boost: { preference: 'up' } },
 ];
 const HOUSEHOLD_HINTS: Record<string, string[]> = {
   '자녀': ['아이', '자녀', '학군', '육아', '등원', '등하교', '학교', '어린이집'],
@@ -62,10 +64,23 @@ function noteSignals(note: string) {
   for (const { keys, label, boost: b } of NOTE_MAP) {
     if (keys.some(k => note.includes(k))) {
       labels.push(label);
-      for (const [k, v] of Object.entries(b)) boost[k] = (boost[k] ?? 1) * v;
+      for (const [k, v] of Object.entries(b)) boost[k] = (boost[k] ?? 1) * dirMult(v); // 방향→yaml 배수
     }
   }
   return { labels, boost };
+}
+
+// 폴백 경로의 축별 '방향'(weightAdjust). 같은 축 여러 신호면 더 강한 방향. backend note_directions 미러.
+function noteDirections(note: string): Record<string, string> {
+  const out: Record<string, string> = {};
+  for (const { keys, boost } of NOTE_MAP) {
+    if (keys.some(k => note.includes(k))) {
+      for (const [axis, dir] of Object.entries(boost)) {
+        if (!(axis in out) || Math.abs(dirMult(dir) - 1) > Math.abs(dirMult(out[axis]) - 1)) out[axis] = dir;
+      }
+    }
+  }
+  return out;
 }
 
 // 작업 A·B: 갱신 인상률 '제안' + 상담 사정 보존 (백엔드 clarify.py와 동일 규칙). 숫자는 계산 직행 금지.
@@ -126,8 +141,8 @@ function intraNoteConflict(note: string): boolean {
   const dirs: Record<string, Set<number>> = {};
   for (const { keys, boost } of NOTE_MAP) {
     if (keys.some(k => note.includes(k))) {
-      for (const [axis, mult] of Object.entries(boost)) {
-        const d = mult > 1.05 ? 1 : mult < 0.95 ? -1 : 0;
+      for (const [axis, dir] of Object.entries(boost)) {
+        const d = dirSign(dir);
         if (d) (dirs[axis] ??= new Set()).add(d);
       }
     }
@@ -140,13 +155,19 @@ function householdConflict(household: string, note: string): boolean {
   return Object.entries(HOUSEHOLD_HINTS).some(([seg, keys]) => seg !== household && keys.some(k => note.includes(k)));
 }
 
-function noteWeights(household: string, note: string, adjust?: Record<string, number>): Record<string, number> {
+function noteWeights(household: string, note: string, adjust?: Record<string, string>): Record<string, number> {
   const adj = PERSONA_ADJUST[household] ?? {};
   let w = Object.fromEntries(Object.entries(SURVEY).map(([k, v]) => [k, v * (adj[k] ?? 1)]));
   w = normalize(w);
-  // 확정 adjust 우선. 미확정 입력에 상충(축 내부 상충 or 가구 불일치)이 있으면 반영 보류(B1, 조용한 상쇄 금지).
+  // 확정 adjust(방향) 우선 → yaml 배수+클램프. 미확정 상충이면 반영 보류(B1). 곱셈·정규화는 그대로.
   const held = !!note && (intraNoteConflict(note) || householdConflict(household, note));
-  const boost = adjust && Object.keys(adjust).length ? adjust : (held ? {} : noteSignals(note).boost);
+  let boost: Record<string, number>;
+  if (adjust && Object.keys(adjust).length) {
+    boost = Object.fromEntries(Object.entries(adjust).map(([k, d]) =>
+      [k, Math.max(AXIS_CLAMP.min, Math.min(AXIS_CLAMP.max, dirMult(String(d))))]));
+  } else {
+    boost = held ? {} : noteSignals(note).boost; // 폴백도 dirMult로 변환된 배수
+  }
   w = Object.fromEntries(Object.entries(w).map(([k, v]) => [k, v * (boost[k] ?? 1)]));
   return normalize(w);
 }
@@ -174,8 +195,8 @@ export function localClarify(contract: ContractInfo, finance: FinanceInfo, prior
   const dirs: Record<string, Set<number>> = {};
   for (const { keys, boost } of NOTE_MAP) {
     if (keys.some(k => note.includes(k))) {
-      for (const [axis, mult] of Object.entries(boost)) {
-        const d = mult > 1.05 ? 1 : mult < 0.95 ? -1 : 0;
+      for (const [axis, dir] of Object.entries(boost)) {
+        const d = dirSign(dir);
         if (d) (dirs[axis] ??= new Set()).add(d);
       }
     }
@@ -195,7 +216,8 @@ export function localClarify(contract: ContractInfo, finance: FinanceInfo, prior
     }
   }
   const questions = [...conflicts];
-  const weightAdjust = sig.boost;
+  const weightAdjust = noteDirections(note); // 방향(닫힌 enum) — 크기는 yaml
+
   if (['통근', '출퇴근', '회사', '직장'].some(k => note.includes(k)))
     questions.push('통근 발품 정확도를 높이려면 주 근무지를 알려주세요 (지금은 가구 유형 기준 대표 직장으로 가정).');
   const sit = extractSituations(note);
@@ -243,11 +265,11 @@ export function localValidateProfile(
       items.push({ type: 'intra', optionA: n, optionB: '', allowBoth: true, question: `'${n}' 안에 서로 반대되는 내용이 있어요.` });
 
   const held = items.length > 0;
-  const boost = held ? {} : noteSignals(notes.join(' ')).boost;
+  const weightAdjust = held ? {} : noteDirections(notes.join(' ')); // 방향(닫힌 enum) — 크기는 yaml
   const w = noteWeights(household, held ? '' : notes.join(' '));
   return {
     persona: SEGMENT_LABEL[household] ?? '임차 가구',
-    weightAdjust: boost,
+    weightAdjust,
     held,
     mode: 'rule',
     priorities: Object.entries(w).sort((a, b) => b[1] - a[1]).map(([k]) => AXIS_LABEL[k]),

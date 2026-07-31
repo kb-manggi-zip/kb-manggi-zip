@@ -1,0 +1,11 @@
+# 4축 조정 배수 결정표 — 방향은 사용자 진술(1위 증거), 크기는 보수적 설계값.
+# LLM은 방향(strong_up|up|down|strong_down)만 분류하고, 이 표가 배수를 고정한다(재현성).
+# 분위수·이산선택모형 검증은 로드맵(선택 로그 축적 후). checked_at null 이면 로드 시 경고.
+version: 1
+checked_at: "2026-08-01"
+directions:
+  strong_up: { multiplier: 1.8 }
+  up: { multiplier: 1.4 }
+  down: { multiplier: 0.6 }
+  strong_down: { multiplier: 0.3 }
+clamp: { min: 0.3, max: 2.0 } # 기존 범위 유지

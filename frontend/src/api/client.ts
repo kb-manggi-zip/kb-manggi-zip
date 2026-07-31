@@ -28,6 +28,7 @@ export function renewalBranchHints(situations: string[], daysLeft: number): Reco
   return resolveRenewal(situations, daysLeft).branchHints;
 }
 export type { BranchKey, BranchHintItem } from '../engine/renewalCases';
+export { dirSign } from '../engine/axisAdjust'; // 방향 부호(+1/−1) — 카드 '더/덜' 문구용
 // 갱신 상황 id → 안내/근거(결정표 원문). 화면이 engine 직접 import 없이 카드에 표시.
 export const RENEWAL_SITUATION_INFO: Record<string, { guidance: string; citation: string }> =
   Object.fromEntries(RENEWAL_CASES.map(c => [c.id, { guidance: c.guidance, citation: c.citation }]));

@@ -114,7 +114,7 @@ def test_contradictory_note_held_from_ranking():
     held = clarify.note_weights("1인", "재택근무해요 통근해요")  # 상충, 미확정(adjust 없음)
     assert held == base, "상충 미확정 입력은 base 가중치 그대로(보류)"
     # 사용자가 HITL로 확정(adjust 전달)하면 그때는 반영
-    applied = clarify.note_weights("1인", "재택근무해요 통근해요", adjust={"commute": 0.5})
+    applied = clarify.note_weights("1인", "재택근무해요 통근해요", adjust={"commute": "strong_down"})
     assert applied != base
 
 
@@ -156,21 +156,29 @@ def test_llm_path_used_when_active_and_valid(monkeypatch):
     assert r["noteSignals"] == ["재택 언급 → 통근 비중 낮춤"]
 
 
-def test_llm_out_of_axis_falls_back_to_keyword(monkeypatch):
-    # 축 밖 키(foo) → 제약 위반 → 키워드 폴백
-    _force_llm(monkeypatch, json.dumps({"interpretation": ["x"], "weight_adjustments": {"foo": 1.5}, "question": ""}))
-    r = clarify.clarify({}, {"household": "1인"}, note="카페 자주 가요")
-    kw = clarify.note_signals("카페 자주 가요")["labels"]
-    assert r["noteSignals"] == kw  # 폴백 경로 라벨과 동일
-
-
-def test_llm_bad_multiplier_falls_back(monkeypatch):
-    # 배수 범위(0.3~2.0) 위반 → 폴백
+def test_llm_out_of_axis_discarded_per_axis(monkeypatch):
+    # 축 밖 키(foo) → 그 축만 폐기, 유효 축은 유지(전체 폴백 아님)
     _force_llm(
-        monkeypatch, json.dumps({"interpretation": ["x"], "weight_adjustments": {"commute": 9.0}, "question": ""})
+        monkeypatch,
+        json.dumps(
+            {"interpretation": ["x"], "weight_adjustments": {"foo": "up", "commute": "strong_down"}, "question": ""}
+        ),
     )
     r = clarify.clarify({}, {"household": "1인"}, note="카페 자주 가요")
-    assert r["noteSignals"] == clarify.note_signals("카페 자주 가요")["labels"]
+    assert r["weightAdjust"] == {"commute": "strong_down"}  # foo 폐기, commute 유지
+    assert r["noteSignals"] == ["x"]  # LLM 경로 유지(폴백 아님)
+
+
+def test_llm_non_direction_value_discarded(monkeypatch):
+    # 방향 아닌 값(숫자·미정의 문자열) → 그 축만 폐기
+    _force_llm(
+        monkeypatch,
+        json.dumps(
+            {"interpretation": ["x"], "weight_adjustments": {"commute": 9.0, "preference": "up"}, "question": ""}
+        ),
+    )
+    r = clarify.clarify({}, {"household": "1인"}, note="카페 자주 가요")
+    assert r["weightAdjust"] == {"preference": "up"}  # 9.0 폐기, up 유지
 
 
 def test_llm_garbage_output_falls_back(monkeypatch):
