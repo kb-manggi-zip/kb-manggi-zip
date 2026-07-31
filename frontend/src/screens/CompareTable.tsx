@@ -14,7 +14,7 @@ import {
 } from "../components/ui";
 import AiBriefing from "../components/AiBriefing";
 import { formatAmount, formatMonthly, ddayText } from "../utils/format";
-import { briefings } from "../api/client";
+import { briefings, RENEWAL_CONVERSION_RATE } from "../api/client";
 import type { BranchResult, Branch, FirstHome } from "../api/types";
 
 export default function CompareTable() {
@@ -178,6 +178,7 @@ export default function CompareTable() {
             renewalAskPct={contract.renewalAskPct ?? null}
             deposit={contract.deposit}
             monthlyRent={contract.monthlyRent}
+            conversionAmount={contract.conversionAmount ?? null}
             assumptions={assumptions}
             onSelectFinance={() => selectBranchTo(b.branch, "SC-09")}
             onSelectNext={() => selectBranchTo(b.branch, b.branch === "갱신" ? "SC-06" : "SC-04")}
@@ -346,6 +347,7 @@ function BranchCardView({
   renewalAskPct,
   deposit,
   monthlyRent,
+  conversionAmount,
   assumptions,
   onSelectFinance,
   onSelectNext,
@@ -357,6 +359,7 @@ function BranchCardView({
   renewalAskPct?: number | null;
   deposit: number;
   monthlyRent: number;
+  conversionAmount?: number | null;
   assumptions: string[];
   onSelectFinance: () => void;
   onSelectNext: () => void;
@@ -468,6 +471,26 @@ function BranchCardView({
           </div>
         );
       })()}
+
+      {/* 전세→월세 전환 산식(§7-2). 감액분 × 전환율 ÷ 12 = 월세 증가분. 표시용 재계산 — compare와 동일 값 */}
+      {branch.branch === "갱신" && contractType === "전세" && conversionAmount ? (() => {
+        const reduction = Math.min(conversionAmount, deposit);
+        const convMonthly = Math.round(reduction * RENEWAL_CONVERSION_RATE / 12);
+        const pct = (RENEWAL_CONVERSION_RATE * 100).toLocaleString(undefined, { maximumFractionDigits: 2 });
+        const man = (v: number) => `${Math.round(v / 10_000).toLocaleString()}만`;
+        return (
+          <div className="mx-5 mt-3 px-3 py-2 rounded-lg" style={{ background: COLORS.YELLOW_SURFACE }}>
+            <p className="text-[11px] font-medium" style={{ color: COLORS.KB_GRAY }}>보증금 {man(reduction)} → 월세 전환 시</p>
+            <p className="text-[11px]" style={{ color: COLORS.KB_GRAY }}>
+              {man(reduction)} × {pct}% ÷ 12 = 월 {convMonthly.toLocaleString()}원
+            </p>
+            <p className="text-[11px]" style={{ color: COLORS.KB_GRAY }}>
+              → 전환 후: 보증금 {man(branch.depositOrPrice)} · 월세 {man(convMonthly)}
+            </p>
+            <p className="text-[10px] mt-0.5" style={{ color: COLORS.SUB }}>근거: 주택임대차보호법 제7조의2 (전환율 상한 {pct}%)</p>
+          </div>
+        );
+      })() : null}
 
       {/* 대출 한도가 실제로 바뀔 수 있는 정보라 접지 않고 항상 보이게 유지 */}
       {branch.branch === "매매" && firstHome === "모름" && (

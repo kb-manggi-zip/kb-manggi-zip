@@ -104,6 +104,23 @@ function extractSituations(note: string): { situations: string[]; evidence: Reco
   return { situations, evidence };
 }
 
+// 전환 감액분 추출(오프라인) — backend clarify.extract_conversion_amount 미러. 원 단위.
+const CONVERSION_CTX = ['월세로 돌리', '전세를 월세', '월세로 바꾸', '월세로 전환', '전환'];
+function extractConversionAmount(note: string): number | null {
+  if (!note || !CONVERSION_CTX.some(k => note.includes(k))) return null;
+  let won = 0;
+  const eok = note.match(/(\d+(?:\.\d+)?)\s*억/);
+  if (eok) won += Math.round(parseFloat(eok[1]) * 100_000_000);
+  if (note.includes('천')) {
+    const cheon = note.match(/(\d+)\s*천\s*만?/);
+    if (cheon) won += parseInt(cheon[1], 10) * 10_000_000;
+  } else {
+    const man = note.match(/(\d+)\s*만/);
+    if (man) won += parseInt(man[1], 10) * 10_000;
+  }
+  return won > 0 ? won : null;
+}
+
 // 한 입력 안에 같은 축을 높이는+낮추는 표현이 함께 있으면 상충(예: 재택+통근).
 function intraNoteConflict(note: string): boolean {
   const dirs: Record<string, Set<number>> = {};
@@ -182,7 +199,7 @@ export function localClarify(contract: ContractInfo, finance: FinanceInfo, prior
   if (['통근', '출퇴근', '회사', '직장'].some(k => note.includes(k)))
     questions.push('통근 발품 정확도를 높이려면 주 근무지를 알려주세요 (지금은 가구 유형 기준 대표 직장으로 가정).');
   const sit = extractSituations(note);
-  return { persona: SEGMENT_LABEL[household] ?? '임차 가구', weightAdjust, held: conflicts.length > 0, priorities, conflicts, questions, noteSignals: sig.labels, renewalAskPct: extractRenewalPct(note), consultNote: extractConsultNote(note), renewalSituations: sit.situations as ClarifyResult['renewalSituations'], situationEvidence: sit.evidence };
+  return { persona: SEGMENT_LABEL[household] ?? '임차 가구', weightAdjust, held: conflicts.length > 0, priorities, conflicts, questions, noteSignals: sig.labels, renewalAskPct: extractRenewalPct(note), consultNote: extractConsultNote(note), renewalSituations: sit.situations as ClarifyResult['renewalSituations'], situationEvidence: sit.evidence, conversionAmount: extractConversionAmount(note) };
 }
 
 // SC-14 최종 프로필 종합검증(로컬) — 키워드 '간이 검증'(mode=rule). 백엔드 LLM 없을 때의 폴백.

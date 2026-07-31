@@ -74,6 +74,21 @@ const cases = [
     contract: { type: '전세', deposit: 250000000, monthlyRent: 0, expiryDate: '2026-09-30', renewalUsed: '미사용', renewalSituations: ['landlord_self_occupancy'] },
     finance: { annualIncome: 50000000, ownCapital: 20000000, household: '신혼', firstHome: '모름', under35: true },
   },
+  {
+    name: 'S-conv 전세→월세 전환 1억(§7-2)',
+    contract: { type: '전세', deposit: 320000000, monthlyRent: 0, expiryDate: '2026-11-30', renewalUsed: '미사용', renewalSituations: ['jeonse_to_monthly'], conversionAmount: 100000000 },
+    finance: { annualIncome: 40000000, ownCapital: 30000000, household: '1인', firstHome: '모름', under35: true },
+  },
+  {
+    name: 'S-conv+cap0 통보경과+전환 동시(독립 적용)',
+    contract: { type: '전세', deposit: 320000000, monthlyRent: 0, expiryDate: '2026-05-30', renewalUsed: '미사용', renewalSituations: ['notice_deadline_passed', 'jeonse_to_monthly'], conversionAmount: 100000000 },
+    finance: { annualIncome: 40000000, ownCapital: 30000000, household: '1인', firstHome: '모름', under35: true },
+  },
+  {
+    name: 'S-conv 미입력 전환상황만(안내만·숫자불변)',
+    contract: { type: '전세', deposit: 320000000, monthlyRent: 0, expiryDate: '2026-11-30', renewalUsed: '미사용', renewalSituations: ['jeonse_to_monthly'] },
+    finance: { annualIncome: 40000000, ownCapital: 30000000, household: '1인', firstHome: '모름', under35: true },
+  },
 ];
 
 const out = {

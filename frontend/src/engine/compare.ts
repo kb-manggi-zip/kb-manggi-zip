@@ -117,20 +117,30 @@ export function compare(contract: ContractInfo, finance: FinanceInfo): CompareRe
   const effectiveCap = (askPct != null)
     ? (resCap == null ? askPct / 100 : Math.min(askPct / 100, resCap / 100))
     : (resCap == null ? 0 : resCap / 100);
-  const newDeposit = type === '전세' ? Math.round(deposit * (1 + effectiveCap)) : deposit;
-  const newMonthly = type === '월세' ? Math.round(monthlyRent * (1 + effectiveCap)) : 0;
+  let newDeposit = type === '전세' ? Math.round(deposit * (1 + effectiveCap)) : deposit;
+  let newMonthly = type === '월세' ? Math.round(monthlyRent * (1 + effectiveCap)) : 0;
+  // 보증금→월세 전환(§7-2, cap과 독립). apply_conversion_cap + 감액분 입력 있을 때만. 전세 방향. 미입력이면 불변.
+  let convReduction = 0;
+  if (resolution.effects.applyConversionCap && contract.conversionAmount && type === '전세') {
+    convReduction = Math.min(contract.conversionAmount, newDeposit);
+    const convMonthly = Math.round(convReduction * renewal.conversionRate / 12);
+    newDeposit = newDeposit - convReduction;
+    newMonthly = newMonthly + convMonthly;
+  }
   const depositGap = Math.max(0, newDeposit - deposit);
   const renewalLoanInterest = Math.round(depositGap * jeonseRate / 12);
   const renewalGuarMonthly = Math.round(deposit * guaranteeRate(deposit, hugType) / 12);
   const renewalMonthlyBurden = type === '전세'
-    ? renewalLoanInterest + renewalGuarMonthly
+    ? renewalLoanInterest + renewalGuarMonthly + newMonthly
     : newMonthly + renewalGuarMonthly;
   const monthlyToDeposit = type === '월세' ? Math.round(monthlyRent * 12 / renewal.conversionRate) : 0;
 
   // 통보기한 경과 → 동일 조건 묵시적 갱신(인상 0%) 원칙(주임법 §6). compare.py와 오차 0 유지.
   const noticePassed = noticeDaysLeft < 0;
   const renewalHeadline = type === '전세'
-    ? (newDeposit !== deposit ? `보증금 ${formatAmt(deposit)} → ${formatAmt(newDeposit)} (합의 인상 시)` : `보증금 ${formatAmt(deposit)} 그대로`)
+    ? (convReduction > 0
+        ? `보증금 ${formatAmt(newDeposit)} + 월세 ${Math.round(newMonthly / 10000)}만 (전환)`
+        : newDeposit !== deposit ? `보증금 ${formatAmt(deposit)} → ${formatAmt(newDeposit)} (합의 인상 시)` : `보증금 ${formatAmt(deposit)} 그대로`)
     : `월세 ${Math.round(newMonthly / 10000)}만으로 연장`;
   let renewalBasis = noticePassed ? ['통보기한 경과 → 동일 조건 갱신 원칙(주임법 §6)', '법정 상한 5%', 'HUG 공시 요율'] : ['법정 상한 5%', 'HUG 공시 요율'];
   let renewalUncertainty: string | undefined = noticePassed

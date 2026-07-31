@@ -240,6 +240,29 @@ def extract_situations(note: str) -> tuple[list, dict]:
     return situations, evidence
 
 
+_CONVERSION_CTX = ("월세로 돌리", "전세를 월세", "월세로 바꾸", "월세로 전환", "전환")
+
+
+def extract_conversion_amount(note: str) -> Optional[int]:
+    """자유입력에서 '보증금을 월세로 돌리려는 감액분'을 원 단위로 추출(전환 맥락일 때만).
+    '1억'=1e8, '1억5천'=1.5e8, '5천만'=5e7, '3000만'=3e7. 없으면 None. LLM 프리필의 오프라인 폴백."""
+    if not note or not any(k in note for k in _CONVERSION_CTX):
+        return None
+    won = 0
+    m = re.search(r"(\d+(?:\.\d+)?)\s*억", note)
+    if m:
+        won += int(round(float(m.group(1)) * 100_000_000))
+    if "천" in note:
+        m = re.search(r"(\d+)\s*천\s*만?", note)  # '5천만'·'억 5천' → 천만 단위
+        if m:
+            won += int(m.group(1)) * 10_000_000
+    else:
+        m = re.search(r"(\d+)\s*만", note)
+        if m:
+            won += int(m.group(1)) * 10_000
+    return won if won > 0 else None
+
+
 def note_values_food(note: str) -> Optional[bool]:
     """자유입력에서 카페·외식 소비 성향 직접 감지 → score_consumption의 values_food 판정.
 
@@ -319,8 +342,11 @@ _CLARIFY_SYSTEM = (
     "term_change(계약기간 변경 요구), simple_increase(단순 % 인상 합의), unknown(갱신 사정이나 위로 분류 불가).\n"
     "- situation_evidence: {상황 id: 그 분류의 근거가 된 사용자 원문 구절}. "
     "**그대로 인용**(요약 금지). 분류한 상황만.\n"
+    "- conversion_amount: 보증금을 월세로 돌리려는 금액이 있으면 원 단위 정수로"
+    "(예 '1억'=100000000, '5천만'=50000000). 없으면 null. ★입력에 근거해서만.\n"
     '출력은 오직 JSON 하나: {"interpretation": [..], "weight_adjustments": {..}, "question": "..", '
-    '"renewal_ask_pct": null, "consult_note": "", "renewal_situations": [], "situation_evidence": {}}'
+    '"renewal_ask_pct": null, "consult_note": "", "renewal_situations": [], "situation_evidence": {}, '
+    '"conversion_amount": null}'
 )
 
 
@@ -368,6 +394,8 @@ def _llm_interpret(note: str, household: Optional[str], conflict_facts: list[str
         if isinstance(raw_ev, dict)
         else {}
     )
+    conv = data.get("conversion_amount")
+    conv_amt = int(conv) if isinstance(conv, (int, float)) and not isinstance(conv, bool) and conv > 0 else None
     return {
         "labels": [str(x) for x in interp],
         "boost": {k: float(v) for k, v in wa.items()},
@@ -376,6 +404,7 @@ def _llm_interpret(note: str, household: Optional[str], conflict_facts: list[str
         "consultNote": str(data.get("consult_note") or "").strip(),  # 원문 인용(요약 금지 프롬프트로 강제)
         "renewalSituations": situations,  # 닫힌 enum 분류(밖 값 폐기)
         "situationEvidence": evidence,  # 상황 id → 원문 구절
+        "conversionAmount": conv_amt,  # 보증금→월세 전환 감액분(원) 제안
     }
 
 
@@ -442,6 +471,7 @@ def clarify(
         labels, boost, llm_question = llm["labels"], llm["boost"], llm["question"]
         ask_pct, consult = llm["renewalAskPct"], llm["consultNote"]
         situations, evidence = llm["renewalSituations"], llm["situationEvidence"]
+        conv_amt = llm["conversionAmount"]
     else:
         # 폴백(LLM 비활성/실패): 키워드·정규식으로 오프라인 완주. LLM이 없을 때만.
         sig = note_signals(note)
@@ -449,6 +479,7 @@ def clarify(
         ask_pct, consult = extract_renewal_pct(note), extract_consult_note(note)
         sit_list, evidence = extract_situations(note)
         situations = [s.value for s in sit_list]  # enum → str(계약 일관)
+        conv_amt = extract_conversion_amount(note)
 
     # weightAdjust = 이 입력의 '적용 boost'(축 제약). 사용자가 HITL로 확정하면 이게 랭킹에 실린다(결정론·재현가능).
     # priorities도 같은 boost로 → 화면 우선순위 = 실제 동네 랭킹.
@@ -474,6 +505,7 @@ def clarify(
         "consultNote": consult,  # LLM이 고른 원문 사정(폴백은 키워드) — 상담 전달
         "renewalSituations": situations,  # 닫힌 enum 분류 '제안'(확정 전 계산 미반영)
         "situationEvidence": evidence,  # 상황 id → 원문 구절(그대로)
+        "conversionAmount": conv_amt,  # 보증금→월세 전환 감액분(원) '제안'(프리필용)
     }
     if len(_CLARIFY_CACHE) >= _CLARIFY_CACHE_MAX:
         _CLARIFY_CACHE.clear()
