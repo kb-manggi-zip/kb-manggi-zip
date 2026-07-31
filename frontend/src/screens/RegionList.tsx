@@ -91,12 +91,16 @@ export default function RegionList() {
     applyNote && Object.keys(state.contract?.noteAdjust ?? {}).length > 0;
 
   // L3 미니 리포트 리드 신호 — 확정 신호만(실측>진술>세그먼트), 출처 규칙 유지. 보류 신호는 persona에 없음.
+  // 같은 출처 안에서도 "많이 쓰는" 신호를 우선한다 — "적게 쓰는" 신호는 summaryLine에서 어차피 팩트를
+  // 안 붙이므로(밀집도가 추천 근거가 안 됨), 배열 순서상 앞에 있단 이유로 "적게" 신호가 먼저 뽑혀
+  // "많이" 신호(실제로 보여줄 수 있는)를 가려버리던 문제 수정(2026-07-31).
   const leadSignal = (() => {
     const sig = persona?.consumptionSignals ?? [];
-    const pick =
-      sig.find((s) => s.source === "실측") ??
-      sig.find((s) => s.source === "진술") ??
-      sig.find((s) => s.source === "세그먼트");
+    const pickFrom = (source: string) => {
+      const inSource = sig.filter((s) => s.source === source);
+      return inSource.find((s) => s.label.includes("많이 쓰는")) ?? inSource[0];
+    };
+    const pick = pickFrom("실측") ?? pickFrom("진술") ?? pickFrom("세그먼트");
     return pick?.label;
   })();
 
@@ -539,13 +543,14 @@ export function RegionCard({
   // L3: 미니 리포트 요약 1줄 — {소비 신호} 당신에게 — {동네 차별 팩트}. leadSignal은 페르소나 공통값(모든
   // 카드에 동일 재사용)이라, 그 동네만의 차별 팩트가 실제로 있을 때만 문장을 보여준다 — 팩트 없이
   // leadSignal만 있으면(모든 카드에 똑같은 문장만 반복) 아예 생략한다(버그, 2026-07-31 수정).
-  // leadSignal의 카테고리(카페/장보기/여가)에 매칭 + '많이 쓰는' 방향일 때만 해당 팩트를 찾는다 —
+  // leadSignal의 카테고리(카페·배달·식비/쇼핑/여가 — rules/consumption_baseline.yaml의 5개 실측
+  // 카테고리 중 밀집도로 대응 가능한 3그룹)에 매칭 + '많이 쓰는' 방향일 때만 해당 팩트를 찾는다 —
   // 예전엔 항상 카페 팩트를 붙여 "카페 적게 쓰는 편인 당신에게 — 카페 244곳" 같은 모순이 났었음.
   const summaryLine = (() => {
     if (!leadSignal || !leadSignal.includes("많이 쓰는")) return null;
     const pattern = /카페|배달|식비|외식|맛집/.test(leadSignal)
       ? /음식점·카페 \d+곳/
-      : /장보기|마트|시장/.test(leadSignal)
+      : /쇼핑|장보기|마트|시장/.test(leadSignal)
         ? /마트·편의점 \d+곳/
         : /여가|취미|운동|산책|나들이/.test(leadSignal)
           ? /여가시설 \d+곳/
