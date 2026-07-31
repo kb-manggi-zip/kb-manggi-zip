@@ -18,7 +18,9 @@
 """
 
 import json
+import logging
 import re
+from functools import lru_cache
 from typing import Optional
 
 from ..core.config import settings
@@ -26,6 +28,7 @@ from ..core.llm import generate
 from ..schemas import RenewalSituation
 from ..tools import scoring
 
+log = logging.getLogger("clarify")
 _SITUATION_VALUES = {e.value for e in RenewalSituation}  # 닫힌 enum — LLM 출력 검증용
 
 # 스코어 축 → 사람 라벨 (화면·우선순위 표기용)
@@ -36,6 +39,32 @@ AXIS_LABEL = {
     "preference": "선호지역",
 }
 _AXES = set(AXIS_LABEL)
+
+
+# ── 방향(닫힌 enum) → 배수: 크기는 rules/axis_adjust.yaml 고정(LLM 생성 금지, 재현성) ──
+@lru_cache(maxsize=1)
+def _axis_adjust_cfg() -> dict:
+    from ..core.rules import read_yaml
+
+    doc = read_yaml("axis_adjust.yaml")
+    if doc.get("checked_at") in (None, "", "null"):
+        log.warning("axis_adjust.yaml 미검증(checked_at 없음)")
+    return doc
+
+
+def dir_mult(direction: str) -> float:
+    """방향 → 배수(yaml). 알 수 없는 값이면 1.0(변화 없음)."""
+    entry = (_axis_adjust_cfg().get("directions") or {}).get(str(direction))
+    return float(entry["multiplier"]) if entry else 1.0
+
+
+def dir_sign(direction: str) -> int:
+    """방향 부호: up류=+1, down류=-1, 그 외 0."""
+    d = str(direction)
+    return 1 if d in ("up", "strong_up") else (-1 if d in ("down", "strong_down") else 0)
+
+
+_DIRECTIONS = {"strong_up", "up", "down", "strong_down"}  # LLM 출력 검증용(닫힌 집합)
 
 # 가구 세그먼트 → 표시 라벨
 SEGMENT_LABEL = {
@@ -56,30 +85,31 @@ _LEISURE_KEYWORDS = ("여가", "취미", "운동", "산책", "나들이")
 
 # 자유입력 키워드 → (반영 라벨, 축별 가중치 배수). **정해진 항목만** — 폴백 경로 규칙.
 # 배수는 '감'이 아니라 방향만(↑/↓) 부여하는 보정 — 재정규화되므로 절대크기 아닌 상대조정.
+# 폴백 키워드 → 축 '방향'(닫힌 enum). 크기는 axis_adjust.yaml에서 dir_mult로 변환(LLM 경로와 동일 배수 테이블).
 _NOTE_MAP: list[tuple[tuple[str, ...], str, dict]] = [
     (
         ("재택", "집에서", "집 주변", "동네에서", "근처에서"),
-        "재택·동네생활 중시 → 통근 가중치 절반·생활편의↑",
-        {"commute": 0.5, "consumption": 1.3},
+        "재택·동네생활 중시 → 통근 거의 고려 안 함·생활편의↑",
+        {"commute": "strong_down", "consumption": "up"},
     ),
-    (("자차", "차로", "운전", "차 있"), "자차 이동 → 통근시간 민감도↓", {"commute": 0.7}),
-    (("도보", "걸어", "걸어서"), "도보 생활권 선호 → 선호지역 근접↑", {"preference": 1.2}),
-    (_CAFE_KEYWORDS, "외식·카페 소비 성향 → 상권 매치↑", {"consumption": 1.3}),
-    (("조용", "한적", "정주", "오래 살"), "정주·생활환경 중시 → 선호지역↑", {"preference": 1.2}),
-    (("통근", "출퇴근", "회사", "직장", "가까운 데"), "통근 최소화 우선 → 통근↑", {"commute": 1.3}),
+    (("자차", "차로", "운전", "차 있"), "자차 이동 → 통근시간 민감도↓", {"commute": "down"}),
+    (("도보", "걸어", "걸어서"), "도보 생활권 선호 → 선호지역 근접↑", {"preference": "up"}),
+    (_CAFE_KEYWORDS, "외식·카페 소비 성향 → 상권 매치↑", {"consumption": "up"}),
+    (("조용", "한적", "정주", "오래 살"), "정주·생활환경 중시 → 선호지역↑", {"preference": "up"}),
+    (("통근", "출퇴근", "회사", "직장", "가까운 데"), "통근 최소화 우선 → 통근↑", {"commute": "up"}),
     (
         ("반려동물", "강아지", "고양이", "반려견", "반려묘"),
         "반려동물 — 산책·생활공간 중시 → 선호지역↑·생활편의↑",
-        {"preference": 1.2, "consumption": 1.2},
+        {"preference": "up", "consumption": "up"},
     ),
-    (("학교", "학군", "등하교", "등하원"), "자녀 학군 근접 중시 → 선호지역↑", {"preference": 1.3}),
-    (("부모님", "부모님 근처", "가족 근처"), "가족 근접 선호 → 선호지역↑", {"preference": 1.3}),
+    (("학교", "학군", "등하교", "등하원"), "자녀 학군 근접 중시 → 선호지역↑", {"preference": "up"}),
+    (("부모님", "부모님 근처", "가족 근처"), "가족 근접 선호 → 선호지역↑", {"preference": "up"}),
     # LLM-off 폴백 품질용 확장(방향 명확한 것만)
-    (("지하철", "전철", "역 가까", "역세권"), "대중교통 접근 중시 → 통근 편의↑", {"commute": 1.2}),
-    (("번화가", "시내", "상권 좋", "핫플"), "번화가·상권 선호 → 상권 매치↑", {"consumption": 1.3}),
-    (("한적한 동네", "공원", "산책로", "자연"), "쾌적·정주 환경 선호 → 선호지역↑", {"preference": 1.2}),
-    (_GROCERY_KEYWORDS, "장보기 성향 → 생활상권 매치↑", {"consumption": 1.3}),
-    (_LEISURE_KEYWORDS, "여가 활동 선호 → 생활상권 매치↑", {"consumption": 1.3}),
+    (("지하철", "전철", "역 가까", "역세권"), "대중교통 접근 중시 → 통근 편의↑", {"commute": "up"}),
+    (("번화가", "시내", "상권 좋", "핫플"), "번화가·상권 선호 → 상권 매치↑", {"consumption": "up"}),
+    (("한적한 동네", "공원", "산책로", "자연"), "쾌적·정주 환경 선호 → 선호지역↑", {"preference": "up"}),
+    (_GROCERY_KEYWORDS, "장보기 성향 → 생활상권 매치↑", {"consumption": "up"}),
+    (_LEISURE_KEYWORDS, "여가 활동 선호 → 생활상권 매치↑", {"consumption": "up"}),
 ]
 
 # 자유입력이 특정 가구를 시사하는데 폼 선택과 다르면 모순(되묻기). 창작 아닌 사실 대조.
@@ -106,8 +136,8 @@ def _intra_note_contradiction(note: str) -> list[str]:
     dirs: dict[str, set] = {}
     for keys, _label, b in _NOTE_MAP:
         if any(k in note for k in keys):
-            for axis, mult in b.items():
-                d = 1 if mult > 1.05 else (-1 if mult < 0.95 else 0)
+            for axis, direction in b.items():
+                d = dir_sign(direction)
                 if d:
                     dirs.setdefault(axis, set()).add(d)
     out = []
@@ -144,9 +174,22 @@ def note_signals(note: str) -> dict:
     for keys, label, b in _NOTE_MAP:
         if any(k in note for k in keys):
             labels.append(label)
-            for axis, mult in b.items():
-                boost[axis] = boost.get(axis, 1.0) * mult
+            for axis, direction in b.items():
+                boost[axis] = boost.get(axis, 1.0) * dir_mult(direction)  # 방향→yaml 배수(LLM 경로와 동일 테이블)
     return {"labels": labels, "boost": boost}
+
+
+def note_directions(note: str) -> dict:
+    """폴백 경로의 축별 '방향'(weightAdjust 형태). 같은 축 여러 신호면 더 강한 방향 유지.
+    LLM 경로와 동일하게 '방향'을 산출 → 확정 시 note_weights가 같은 yaml 배수로 변환."""
+    note = note or ""
+    out: dict[str, str] = {}
+    for keys, _label, b in _NOTE_MAP:
+        if any(k in note for k in keys):
+            for axis, direction in b.items():
+                if axis not in out or abs(dir_mult(direction) - 1) > abs(dir_mult(out[axis]) - 1):
+                    out[axis] = direction
+    return out
 
 
 # ── 갱신 인상률 파싱 + 상담 사정 보존 (작업 A·B) ──────────────────────────────
@@ -312,11 +355,15 @@ def note_weights(household: Optional[str], note: str, adjust: Optional[dict] = N
     boost가 조용히 랭킹을 흔드는 걸 막는다. 사용자가 HITL로 확정(adjust 전달)하면 그때 반영.
     """
     if adjust:
-        boost = adjust
+        # 확정된 '방향'(AxisDirection) → yaml 고정 배수 + 클램프. 곱셈·정규화는 _apply_boost 그대로.
+        cfg = _axis_adjust_cfg()
+        clamp = cfg.get("clamp") or {"min": 0.3, "max": 2.0}
+        lo, hi = float(clamp["min"]), float(clamp["max"])
+        boost = {ax: max(lo, min(hi, dir_mult(d))) for ax, d in adjust.items()}
     elif note and (_intra_note_contradiction(note) or _household_conflict(household, note)):
         boost = {}  # 미해결 상충 → 반영 보류(조용한 상쇄 금지). base 가중치 그대로.
     else:
-        boost = note_signals(note)["boost"]
+        boost = note_signals(note)["boost"]  # 폴백도 dir_mult로 변환된 배수(LLM 경로와 동일)
     return _apply_boost(scoring.weights_for(household), boost)
 
 
@@ -325,8 +372,11 @@ _CLARIFY_SYSTEM = (
     "너는 주거상담 문진 보조다. 사용자의 자유입력 한 문장을 읽고 '주거 선택 가중치 축'에 대한 "
     "영향만 판단해 JSON으로 답한다. 규칙(반드시 준수):\n"
     "- 축은 정확히 이 넷만: commute(통근), consumption(생활·소비), budget(예산), preference(선호지역).\n"
-    "- weight_adjustments는 {축: 배수}, 배수는 0.3~2.0 실수(1.0=변화없음, <1 낮춤, >1 높임). 해당 없으면 빈 객체.\n"
-    "- 새 축·새 항목·구체 숫자(금액/개수)를 창작하지 마라.\n"
+    "- weight_adjustments는 {축: 방향}. 방향은 정확히 이 넷 중 하나(★배수 숫자 금지): "
+    "strong_up(매우 중요), up(더 중요), down(덜 중요), strong_down(거의 고려 안 함). 해당 없으면 빈 객체.\n"
+    '  예: \'재택근무예요\'→{"commute":"strong_down"}, \'아이 학교가 중요해요\'→{"preference":"up"}, '
+    '\'매일 통근해요\'→{"commute":"up"}.\n'
+    "- 새 축·새 항목·구체 숫자(금액/개수/배수)를 창작하지 마라. 방향은 위 4종 목록 밖 값 금지.\n"
     "- interpretation은 반영 이유를 한국어 짧은 구절 배열로(없으면 빈 배열).\n"
     "- question은 '감지된 모순'이 주어졌을 때만 그 사실에 근거한 자연스러운 되묻기 한 문장, 없으면 빈 문자열.\n"
     "- renewal_ask_pct: 집주인이 요구한 갱신 인상률을 **입력에서 읽어** 정수 %로(예 '두 배로'=100, '7% 올려'=7). "
@@ -376,10 +426,9 @@ def _llm_interpret(note: str, household: Optional[str], conflict_facts: list[str
     interp = data.get("interpretation") or []
     if not isinstance(wa, dict) or not isinstance(interp, list):
         return None
-    # 제약 검증: 축 밖 키 또는 범위 밖 배수 → 위반 → 폴백(창작 차단)
-    for k, v in wa.items():
-        if k not in _AXES or not isinstance(v, (int, float)) or isinstance(v, bool) or not (0.3 <= float(v) <= 2.0):
-            return None
+    # 방향 검증: 축이 4개 안 + 방향이 닫힌 enum인 것만 채택.
+    # 밖 값은 '그 축만' 폐기(전체 폴백 아님, 갱신 상황 규약과 동일).
+    directions = {k: v for k, v in wa.items() if k in _AXES and isinstance(v, str) and v in _DIRECTIONS}
     # 인상률: LLM이 읽은 정수만 채택(0~100). 범위 밖·타입 이상 → None(계산 미반영, HITL 제안 없음).
     ask = data.get("renewal_ask_pct")
     ask_pct = int(ask) if isinstance(ask, (int, float)) and not isinstance(ask, bool) and 0 < ask <= 100 else None
@@ -398,7 +447,7 @@ def _llm_interpret(note: str, household: Optional[str], conflict_facts: list[str
     conv_amt = int(conv) if isinstance(conv, (int, float)) and not isinstance(conv, bool) and conv > 0 else None
     return {
         "labels": [str(x) for x in interp],
-        "boost": {k: float(v) for k, v in wa.items()},
+        "boost": directions,  # {축: 방향}(닫힌 enum). 크기는 note_weights가 yaml에서 변환
         "question": str(data.get("question") or "").strip(),
         "renewalAskPct": ask_pct,
         "consultNote": str(data.get("consult_note") or "").strip(),  # 원문 인용(요약 금지 프롬프트로 강제)
@@ -467,23 +516,25 @@ def clarify(
     # 2) 신호 라벨 + 적용 boost = LLM(축 제약) 우선, 실패/비활성 시 키워드.
     llm = _llm_interpret(note, household, conflicts) if (note and settings.llm_active) else None
     if llm is not None:
-        # LLM primary: 자연어를 읽어 4축 배수·인상률·상담 사정을 뽑는다(에이전트의 본질).
-        labels, boost, llm_question = llm["labels"], llm["boost"], llm["question"]
+        # LLM primary: 자연어를 읽어 4축 '방향'·인상률·상담 사정을 뽑는다(크기는 yaml 고정).
+        labels, boost, llm_question = llm["labels"], llm["boost"], llm["question"]  # boost = {축: 방향}
         ask_pct, consult = llm["renewalAskPct"], llm["consultNote"]
         situations, evidence = llm["renewalSituations"], llm["situationEvidence"]
         conv_amt = llm["conversionAmount"]
     else:
-        # 폴백(LLM 비활성/실패): 키워드·정규식으로 오프라인 완주. LLM이 없을 때만.
+        # 폴백(LLM 비활성/실패): 키워드로 오프라인 완주. 방향도 동일 산출(LLM 경로와 같은 배수 테이블).
         sig = note_signals(note)
-        labels, boost, llm_question = sig["labels"], sig["boost"], ""
+        labels, llm_question = sig["labels"], ""
+        boost = note_directions(note)  # {축: 방향} — LLM 경로와 형식·테이블 동일
         ask_pct, consult = extract_renewal_pct(note), extract_consult_note(note)
         sit_list, evidence = extract_situations(note)
         situations = [s.value for s in sit_list]  # enum → str(계약 일관)
         conv_amt = extract_conversion_amount(note)
 
-    # weightAdjust = 이 입력의 '적용 boost'(축 제약). 사용자가 HITL로 확정하면 이게 랭킹에 실린다(결정론·재현가능).
-    # priorities도 같은 boost로 → 화면 우선순위 = 실제 동네 랭킹.
-    w = _apply_boost(scoring.weights_for(household), boost)
+    # weightAdjust = 이 입력의 '방향'(닫힌 enum). HITL 확정 시 랭킹에 실린다(결정론·재현가능).
+    # priorities는 방향→yaml 배수로 변환해 산출 → 화면 우선순위 = 실제 동네 랭킹.
+    boost_mult = {ax: dir_mult(d) for ax, d in boost.items()}
+    w = _apply_boost(scoring.weights_for(household), boost_mult)
     priorities = [AXIS_LABEL[k] for k, _ in sorted(w.items(), key=lambda kv: -kv[1])]
 
     # 3) 되묻기: 감지는 결정론, 문구만 LLM(감지된 모순이 있을 때만 자연 문장으로 대체)
@@ -495,7 +546,7 @@ def clarify(
 
     result = {
         "persona": segment_label(household),
-        "weightAdjust": boost,  # 확정 시 랭킹에 실릴 축별 배수(HITL 확정분만 반영)
+        "weightAdjust": boost,  # 확정 시 랭킹에 실릴 축별 '방향'(HITL 확정분만 반영, 크기는 yaml)
         "held": bool(conflicts),  # 상충 미해결 → 자동 반영 보류(UI '확인 대기'). 확정 전엔 랭킹 미반영.
         "priorities": priorities,
         "conflicts": conflicts,
@@ -689,9 +740,11 @@ def validate_profile(
     conflict_items = _household_conflict_items(notes, household_for_conflict, accepted) + axis_items
     held = bool(conflict_items)
 
-    # 확정(상충 없음) 시에만 해석 boost 반영 — '둘 다'로 확인된 상쇄는 사용자가 확인한 것이라 그대로 둔다.
-    boost = {} if held else note_signals(" ".join(notes))["boost"]
-    w = _apply_boost(scoring.weights_for(household), boost)
+    # 확정(상충 없음) 시에만 해석 반영 — '둘 다'로 확인된 상쇄는 사용자가 확인한 것이라 그대로 둔다.
+    # weightAdjust = 결정론 '방향'(키워드). 크기는 note_weights가 yaml에서 변환 → 재현 가능.
+    boost = {} if held else note_directions(" ".join(notes))
+    boost_mult = {ax: dir_mult(d) for ax, d in boost.items()}
+    w = _apply_boost(scoring.weights_for(household), boost_mult)
     return {
         "persona": segment_label(household),
         "weightAdjust": boost,

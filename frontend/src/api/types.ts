@@ -5,6 +5,8 @@ export type HousingType = '아파트' | '연립다세대'; // 국토부 API prop
 export type Household = '1인' | '신혼' | '자녀';
 export type FirstHome = '예' | '아니오' | '모름';
 export type Branch = '갱신' | '이사' | '매매';
+// 4축 조정 방향(4종, 닫힘) — 백엔드 AxisDirection과 1:1. 크기(배수)는 axis_adjust.yaml 고정
+export type AxisDirection = 'strong_up' | 'up' | 'down' | 'strong_down';
 // 갱신 상황 enum (7개, 닫힘) — 백엔드 RenewalSituation과 1:1. 목록 밖 값 금지
 export type RenewalSituation =
   | 'notice_deadline_passed' | 'renewal_right_exhausted' | 'jeonse_to_monthly'
@@ -19,7 +21,7 @@ export interface ContractInfo {
   housingType?: HousingType; // HUG 보증료 요율만 좌우(세금·대출은 둘 다 주택 동일). 기본 아파트
   preferredArea?: string; // 선호지역 구명(예 '마포구') — 동네 후보를 그 구에서 우선. 빈값=전체
   note?: string; // 문진 말미 자유입력(선택) — 명확화 노드가 세그먼트·우선순위 축으로 제약 해석
-  noteAdjust?: Record<string, number>; // HITL 확정된 축별 배수(자연어 해석 확정분) — 있으면 랭킹이 이걸 씀
+  noteAdjust?: Record<string, AxisDirection>; // HITL 확정된 축별 '방향'(크기는 yaml) — 있으면 랭킹이 이걸 씀
   renewalAskPct?: number | null; // 집주인이 요구한 갱신 인상률(%). 확정분만 — null이면 기존 5% 상한 동작 불변
   consultNote?: string; // 계산 불가한 사정(원문) — 상담사에게 전달. LLM 요약·재작성 금지
   renewalSituations?: RenewalSituation[]; // HITL 확정된 갱신 상황. 빈 배열이면 기존 동작 불변(resolver simple_increase 기본)
@@ -143,7 +145,7 @@ export interface DraftNoticeResponse {
 // 명확화(판단 노드) 결과 — 자연어/폼값을 제약된 축으로 해석 + 모순 되묻기(닫힌 루프)
 export interface ClarifyResult {
   persona: string;         // 확정 세그먼트 라벨
-  weightAdjust?: Record<string, number>; // 이 입력의 적용 boost(HITL 확정 시 랭킹에 실림)
+  weightAdjust?: Record<string, AxisDirection>; // 이 입력의 축별 '방향'(닫힌 enum) — HITL 확정 시 랭킹에 실림
   held?: boolean;          // 상충 미해결 → 자동 반영 보류('확인 대기'). 확정 전 랭킹 미반영
   mode?: 'ai' | 'rule';    // 검증 경로: ai(LLM 의미검증) | rule(키워드 간이검증, 폴백)
   priorities: string[];    // 우선순위 축 라벨 순서

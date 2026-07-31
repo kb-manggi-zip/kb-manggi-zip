@@ -4,8 +4,8 @@ import { COLORS } from '../theme';
 import { MobileShell, PrimaryBtn, DdayBar } from '../components/ui';
 import { formatAmount } from '../utils/format';
 import { eunNeun, eulReul } from '../utils/josa';
-import { api, RENEWAL_SITUATION_INFO } from '../api/client';
-import type { PersonaProfile, ClarifyResult } from '../api/types';
+import { api, RENEWAL_SITUATION_INFO, dirSign } from '../api/client';
+import type { PersonaProfile, ClarifyResult, AxisDirection } from '../api/types';
 
 function householdLabel(h: string) {
   return h === '1인' ? '1인 가구' : h === '신혼' ? '신혼 가구' : '자녀 가구';
@@ -24,10 +24,10 @@ function isExtended(note: string, axis: string): boolean {
   return axis === 'consumption' && RETAK_RE.test(note);
 }
 // 카드 문구 = 축 + 방향만(원문 인용은 그룹 헤더에 1회만, 카드 반복 인용 금지).
-//   방향(더/덜)은 배수 부호에서 파생 — 배수>1 '더', <1 '덜'(하드코딩 아님). 조사는 받침 따라 자동.
-function cardRationale(note: string, axis: string, mult: number): string {
+//   더/덜은 방향 부호에서 파생(up류='더', down류='덜'). strong 여부는 화면에 안 드러냄(기존 원칙).
+function cardRationale(note: string, axis: string, direction: string): string {
   if (isExtended(note, axis)) return '재택이면 동네에서 보내는 시간이 길어서, 동네 생활·편의를 더 볼까요?';
-  const dir = mult > 1 ? '더' : '덜';
+  const dir = dirSign(direction) > 0 ? '더' : '덜';
   const label = AXIS_UI[axis]?.label ?? axis;
   return `${label}${eunNeun(label)} ${dir} 중요하게 볼게요.`;
 }
@@ -77,8 +77,8 @@ export default function ProfileConfirm() {
 
   // ── C: 축별 제안 카드 파생(1카드=1축). 직접 추론 먼저, 확장 추론(재택→동네환경)은 접어서 뒤로 ──
   const note = contract.note ?? '';
-  const adjust: Record<string, number> = (!held && validation?.weightAdjust) || {};
-  const axisCards = Object.entries(adjust).map(([axis, mult]) => ({ axis, mult, ext: isExtended(note, axis) }));
+  const adjust: Record<string, string> = (!held && validation?.weightAdjust) || {};
+  const axisCards = Object.entries(adjust).map(([axis, direction]) => ({ axis, direction, ext: isExtended(note, axis) }));
   const directCards = axisCards.filter(c => !c.ext);
   const extCards = axisCards.filter(c => c.ext);
   const renewalPct = validation?.renewalAskPct ?? null;
@@ -106,8 +106,8 @@ export default function ProfileConfirm() {
 
   // HITL 확정: '승인한 축만' noteAdjust에 실린다(거절·확인대기는 미반영). 승인→noteAdjust→랭킹 흐름은 그대로.
   function applyAndCompare() {
-    const noteAdjust: Record<string, number> = {};
-    axisCards.forEach(({ axis, mult }) => { if (approved.has(axis)) noteAdjust[axis] = mult; });
+    const noteAdjust: Record<string, AxisDirection> = {};
+    axisCards.forEach(({ axis, direction }) => { if (approved.has(axis)) noteAdjust[axis] = direction as AxisDirection; });
     const patch: typeof contract = {
       ...contract!,
       noteAdjust,
@@ -230,7 +230,7 @@ export default function ProfileConfirm() {
                 {/* 직접 추론 카드 */}
                 {directCards.map(c => (
                   <ProposalCard key={c.axis} icon={AXIS_UI[c.axis]?.icon ?? '•'} title={AXIS_UI[c.axis]?.label ?? c.axis}
-                    rationale={cardRationale(note, c.axis, c.mult)} state={cardState(c.axis)}
+                    rationale={cardRationale(note, c.axis, c.direction)} state={cardState(c.axis)}
                     onApprove={() => approve(c.axis)} onReject={() => reject(c.axis)} onUndo={() => undo(c.axis)} />
                 ))}
                 {/* 확장 추론 — 접기(펼쳐서 개별 승인해야 반영, '모두 반영'에 안 걸림) */}
@@ -238,7 +238,7 @@ export default function ProfileConfirm() {
                   showExt ? (
                     extCards.map(c => (
                       <ProposalCard key={c.axis} icon={AXIS_UI[c.axis]?.icon ?? '•'} title={AXIS_UI[c.axis]?.label ?? c.axis}
-                        rationale={cardRationale(note, c.axis, c.mult)} state={cardState(c.axis)} extended
+                        rationale={cardRationale(note, c.axis, c.direction)} state={cardState(c.axis)} extended
                         onApprove={() => approve(c.axis)} onReject={() => reject(c.axis)} onUndo={() => undo(c.axis)} />
                     ))
                   ) : (

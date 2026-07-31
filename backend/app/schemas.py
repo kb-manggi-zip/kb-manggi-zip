@@ -28,6 +28,14 @@ from typing import Literal, Optional
 from pydantic import BaseModel
 
 
+# ── 4축 조정 방향 enum (4종, 닫힘) — LLM은 방향만 분류, 크기(배수)는 rules/axis_adjust.yaml 고정 ──
+class AxisDirection(str, Enum):
+    strong_up = "strong_up"  # 매우 중요 (배수 yaml)
+    up = "up"  # 더 중요
+    down = "down"  # 덜 중요
+    strong_down = "strong_down"  # 거의 고려 안 함
+
+
 # ── 갱신 상황 enum (7개, 닫힘) — 자유입력을 AI가 이 목록으로만 분류. 목록 밖 값 생성 금지 ──
 class RenewalSituation(str, Enum):
     notice_deadline_passed = "notice_deadline_passed"  # 통보기한 경과 → 묵시적 갱신(cap 0)
@@ -61,7 +69,7 @@ class ContractInfo(BaseModel):
     housingType: HousingType = "아파트"  # HUG 보증료 요율만 좌우(세금·대출은 둘 다 주택 동일)
     preferredArea: str = ""  # 선호지역 구명(예 "마포구") — 동네 후보를 그 구에서 우선. 빈값=6구 전체
     note: str = ""  # 문진 말미 자유입력(선택) — 명확화 노드가 세그먼트·우선순위 항목으로 제약 해석
-    noteAdjust: dict = {}  # HITL로 확정된 축별 배수(자연어 해석 확정분). 있으면 랭킹이 이걸 씀(결정론)
+    noteAdjust: dict = {}  # HITL 확정된 축별 '방향'(AxisDirection). persona가 yaml 배수로 변환(결정론)
     renewalAskPct: Optional[int] = None  # 집주인이 요구한 갱신 인상률(%). 확정분만 — None이면 기존 5% 상한 동작 불변
     consultNote: str = ""  # 계산 불가한 사정(원문 그대로) — 상담사에게 전달. LLM 요약·재작성 금지
     renewalSituations: list[
@@ -157,7 +165,7 @@ class ClarifyResult(BaseModel):
     """
 
     persona: str  # 확정 세그먼트 라벨 (예 "1인 청년 임차")
-    weightAdjust: dict = {}  # 이 입력의 적용 boost(축별 배수) — HITL 확정 시 랭킹에 실림
+    weightAdjust: dict[str, AxisDirection] = {}  # 축별 '방향'(닫힌 enum) — 크기는 yaml 고정. HITL 확정 시 랭킹에 실림
     held: bool = False  # 상충 미해결 → 자동 반영 보류('확인 대기'). 확정 전 랭킹 미반영
     mode: str = "rule"  # 검증 경로: 'ai'(LLM 의미검증) | 'rule'(키워드 간이검증, 폴백)
     priorities: list[str]  # 우선순위 축 라벨 순서 (스코어 가중치 상위)
