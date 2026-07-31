@@ -22,7 +22,7 @@
 | B3 LangGraph(compare/regions/analyze) + Langfuse(부모 span 그룹화) | ✅ |
 | B4 실 Claude 연동 · verify 재생성 루프 · SSE · 개인화 가이드 · matcher RAG | ✅ |
 | **규정값 검증 반영** (lending/policy/guarantee, 2026-07-20 대조) | ✅ |
-| 인프라: Docker/compose · CI(pytest·ruff·build) · 55 tests green | ✅ |
+| 인프라: Docker/compose · CI(pytest·ruff·build) · 190 tests green | ✅ |
 
 ## ⬜ 다음 (우선순위)  — 상세 로드맵: `docs/에이전트_설계.md` · 데모: `docs/서비스_흐름.md`
 1. **📊 발표 준비** — 골든패스(P2 매매/P3 이사) 리허설 + Langfuse 4노드 캡처. [서비스_흐름.md]
