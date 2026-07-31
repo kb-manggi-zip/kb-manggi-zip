@@ -539,13 +539,21 @@ export function RegionCard({
   // L3: 미니 리포트 요약 1줄 — {소비 신호} 당신에게 — {동네 차별 팩트}. 구 폴백 공통값은 차별 팩트 아님 → 제외.
   // 예산 여유도 뱃지와 중복이라 제외 — 뱃지에 없는 다른 차별 정보(카페밀집도 등)만 문장에 담는다.
   // 카드에 이미 나와있는 중위가·실거래건수는 폴백으로 다시 안 쓴다 — 차별 팩트(카페 등) 없으면 빈 문자열.
+  // leadSignal의 카테고리(카페/장보기/여가)에 매칭되는 팩트만 붙인다 — 예전엔 항상 카페 팩트를
+  // 붙여서 "카페 적게 쓰는 편인 당신에게 — 카페 244곳" 같은 모순 문장이 나왔음(버그, 2026-07-31 수정).
+  // '적게 쓰는' 신호는 밀집도가 추천 근거가 아니므로 애초에 팩트를 안 붙인다.
   const summaryFacts = (() => {
+    if (!leadSignal || !leadSignal.includes("많이 쓰는")) return "";
+    const pattern = /카페|배달|식비|외식|맛집/.test(leadSignal)
+      ? /음식점·카페 \d+곳/
+      : /장보기|마트|시장/.test(leadSignal)
+        ? /마트·편의점 \d+곳/
+        : /여가|취미|운동|산책|나들이/.test(leadSignal)
+          ? /여가시설 \d+곳/
+          : null;
+    if (!pattern) return "";
     const distinct = cardReasons.filter((r) => !r.includes("구 기준"));
-    return (
-      distinct
-        .map((r) => (r.match(/음식점·카페 \d+곳/) || [])[0])
-        .find(Boolean) ?? ""
-    );
+    return distinct.map((r) => (r.match(pattern) || [])[0]).find(Boolean) ?? "";
   })();
   // 통근이 접히지 않았을 때만(동별 실측) 칩 레벨에 표시 + 대표 직장 기준 각주
   const commuteFolded = hiddenReasons.some((r) => r.includes("통근"));
