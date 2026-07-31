@@ -169,7 +169,7 @@ LangGraph 6노드를 한 번에 실행(intake→clarify→compare→route→pers
 최종 프로필에서 입력 간 모순을 전체 맥락으로 검증(HITL 되묻기). 응답에 `conflictItems`(상충 두 신호 + 되묻는 질문). 키 없으면 규칙 기반 간이 검증.
 
 ## POST /api/persona
-세그먼트+실측(mydata)+진술을 증거 위계로 조합한 `PersonaProfile`(weights·consumptionSignals, 각 항목 출처 태그). 결정론.
+또래 평균 + 실측(mydata) + 본인 말을 겹쳐 조합한 `PersonaProfile`(weights·consumptionSignals, 각 항목에 출처 태그). 결정론.
 
 ## POST /api/report
 위 산출물을 조합한 만기 결정 리포트(`DecisionReport`): 상황·3갈래 채점·왜 이 동네·하루·지출 여력(⑤)·다음 액션(⑥). 지출 분석은 T2SQL(가드레일 7종, 실패 시 표준집계 폴백).
