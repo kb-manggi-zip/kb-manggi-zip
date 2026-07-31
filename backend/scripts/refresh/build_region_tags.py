@@ -5,7 +5,7 @@
 
 전부 "80개 동 중 상위 25%" 상대 기준으로 통일(2026-07-31, 절대 임계값 방식에서 변경):
   1) 상권형 태그(SBIZ 반경상가 카운트, trades_store.region_facts) — 카운트 상위 25%(3분위 이상).
-     카페거리 / 마트·편의점 밀집 / 여가시설 밀집 / 학원가
+     음식점·카페 밀집 / 마트·편의점 밀집 / 여가시설 밀집 / 학원가
   2) 위치형 태그(카카오맵 Local API, app/tools/kakao.py) — 최근접 지점까지 거리 상위 25%(1분위 이하, 가장 가까운 쪽).
      "역세권"은 실제로 흔한 표현(반경 500m=도보10분이 일반적 정의)이라 절대기준으로 하면 서울 6개구에선
      변별력이 없어짐(64%가 해당) → 상대기준으로 바꾸며 원래 뜻과 구분해 "초역세권"으로 명명.
@@ -32,7 +32,7 @@ from app.tools import kakao, trades_store  # noqa: E402
 log = logging.getLogger("build_region_tags")
 
 SBIZ_TAGS = [
-    ("dining_cafe", "카페거리"),
+    ("dining_cafe", "음식점·카페 밀집"),
     ("grocery", "마트·편의점 밀집"),
     ("leisure", "여가시설 밀집"),
     ("academy", "학원가"),
