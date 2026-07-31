@@ -65,6 +65,10 @@ export default function ContractInput() {
   );
   const [expiryDate, setExpiryDate] = useState(state.contract?.expiryDate || '');
   const [renewalUsed, setRenewalUsed] = useState<RenewalUsed>(state.contract?.renewalUsed || '미사용');
+  // 집주인이 요구한 인상률(선택). 빈값=미입력(null) → 기존 5% 상한 동작 불변. 자유입력으로도 잡히지만 여기서 직접 입력도 가능.
+  const [renewalAskPct, setRenewalAskPct] = useState<string>(
+    state.contract?.renewalAskPct != null ? String(state.contract.renewalAskPct) : ''
+  );
   const [housingType, setHousingType] = useState<HousingType>(state.contract?.housingType || '아파트');
   const [preferredArea, setPreferredArea] = useState<string>(state.contract?.preferredArea || '');
   const [note, setNote] = useState<string>('');
@@ -135,6 +139,7 @@ export default function ContractInput() {
         preferredArea,
         note: notes.join(' · '),
         noteAdjust: {},  // 확정 전엔 비움 — SC-14에서 검증 후 HITL 확정 시 채워짐(B1·J2)
+        renewalAskPct: renewalAskPct.trim() !== '' ? parseInt(renewalAskPct, 10) : null,  // 미입력=null → 5% 상한 불변
       },
     });
     dispatch({
@@ -344,6 +349,24 @@ export default function ContractInput() {
                 괜찮아요, 두 경우 모두 계산해드릴게요 😊
               </div>
             )}
+            {/* 집주인 요구 인상률(선택) — 비우면 법정 5% 상한으로 계산 */}
+            <div className="mt-5">
+              <p className="text-sm font-semibold mb-1">집주인이 인상률을 말했나요? <span className="text-xs font-normal text-muted-foreground">(선택)</span></p>
+              <p className="text-xs text-muted-foreground mb-2">비워두면 법정 상한 5%로 계산해요. 상한을 넘겨 부르면 5% 기준으로 다시 계산해드려요.</p>
+              <div className="flex items-center gap-2">
+                <input
+                  type="number"
+                  inputMode="numeric"
+                  min={0}
+                  max={100}
+                  value={renewalAskPct}
+                  onChange={e => setRenewalAskPct(e.target.value)}
+                  placeholder="예: 7"
+                  className="w-24 px-3 py-2 rounded-xl border border-border bg-card text-foreground text-center"
+                />
+                <span className="text-sm text-muted-foreground">% 올려달래요</span>
+              </div>
+            </div>
           </StepView>
         )}
 
