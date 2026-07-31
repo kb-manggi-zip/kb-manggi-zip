@@ -49,6 +49,8 @@ class ContractInfo(BaseModel):
     preferredArea: str = ""  # 선호지역 구명(예 "마포구") — 동네 후보를 그 구에서 우선. 빈값=6구 전체
     note: str = ""  # 문진 말미 자유입력(선택) — 명확화 노드가 세그먼트·우선순위 항목으로 제약 해석
     noteAdjust: dict = {}  # HITL로 확정된 축별 배수(자연어 해석 확정분). 있으면 랭킹이 이걸 씀(결정론)
+    renewalAskPct: Optional[int] = None  # 집주인이 요구한 갱신 인상률(%). 확정분만 — None이면 기존 5% 상한 동작 불변
+    consultNote: str = ""  # 계산 불가한 사정(원문 그대로) — 상담사에게 전달. LLM 요약·재작성 금지
 
 
 class FinanceInfo(BaseModel):
@@ -146,6 +148,8 @@ class ClarifyResult(BaseModel):
     conflictItems: list[ConflictItem] = []  # 인라인 해소용 구조(K1/K4)
     questions: list[str] = []  # 되물을 질문(닫힌 루프)
     noteSignals: list[str] = []  # 자유입력에서 뽑아낸 제약된 신호(반영 내역)
+    renewalAskPct: Optional[int] = None  # 자유입력에서 추출한 갱신 인상률 '제안'(%). 확정 전엔 계산 미반영
+    consultNote: str = ""  # 4축·인상률로 해석 못한 갱신·주거 사정(원문). 상담 전달용 — 요약 금지
 
 
 class PersonaProfile(BaseModel):

@@ -68,6 +68,21 @@ function noteSignals(note: string) {
   return { labels, boost };
 }
 
+// 작업 A·B: 갱신 인상률 '제안' + 상담 사정 보존 (백엔드 clarify.py와 동일 규칙). 숫자는 계산 직행 금지.
+function extractRenewalPct(note: string): number | null {
+  if (!note) return null;
+  if (!['올려', '올리', '올랐', '올렸', '올릴', '인상'].some(k => note.includes(k))) return null;
+  const m = note.match(/(\d{1,2})(?:\.\d)?\s*(?:%|퍼센트|프로)/);
+  if (!m) return null;
+  const v = parseInt(m[1], 10);
+  return v > 0 && v <= 100 ? v : null;
+}
+const CONSULT_KEYS = ['갱신요구권', '갱신권', '실거주', '실입주', '직접 살', '수리', '보수', '누수', '곰팡이', '특약', '보증금 반환', '돌려주', '재계약', '명도', '퇴거', '갱신 거절', '거절당', '소송', '내용증명', '연락이 안', '안 해줘', '안해줘'];
+function extractConsultNote(note: string): string {
+  if (!note) return '';
+  return note.split(/\s*·\s*|[\n。]|(?<=[다요])\s+/).map(s => s.trim()).filter(s => s && CONSULT_KEYS.some(k => s.includes(k))).join(' · ');
+}
+
 // 한 입력 안에 같은 축을 높이는+낮추는 표현이 함께 있으면 상충(예: 재택+통근).
 function intraNoteConflict(note: string): boolean {
   const dirs: Record<string, Set<number>> = {};
@@ -145,7 +160,7 @@ export function localClarify(contract: ContractInfo, finance: FinanceInfo, prior
   const weightAdjust = sig.boost;
   if (['통근', '출퇴근', '회사', '직장'].some(k => note.includes(k)))
     questions.push('통근 발품 정확도를 높이려면 주 근무지를 알려주세요 (지금은 가구 유형 기준 대표 직장으로 가정).');
-  return { persona: SEGMENT_LABEL[household] ?? '임차 가구', weightAdjust, held: conflicts.length > 0, priorities, conflicts, questions, noteSignals: sig.labels };
+  return { persona: SEGMENT_LABEL[household] ?? '임차 가구', weightAdjust, held: conflicts.length > 0, priorities, conflicts, questions, noteSignals: sig.labels, renewalAskPct: extractRenewalPct(note), consultNote: extractConsultNote(note) };
 }
 
 // SC-14 최종 프로필 종합검증(로컬) — 키워드 '간이 검증'(mode=rule). 백엔드 LLM 없을 때의 폴백.

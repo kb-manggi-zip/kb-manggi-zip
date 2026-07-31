@@ -107,8 +107,11 @@ export function compare(contract: ContractInfo, finance: FinanceInfo): CompareRe
   const jeonseRate = bt.eligible ? bt.rate : jeonseKb;
 
   // === 갱신 ===
-  const newDeposit = type === '전세' ? Math.round(deposit * (1 + renewal.increaseCap)) : deposit;
-  const newMonthly = type === '월세' ? Math.round(monthlyRent * (1 + renewal.increaseCap)) : 0;
+  // 집주인 요구 인상률(확정분) 있으면 min(요구%, 5%)로 — 기존 상한 로직 재사용. null이면 5% 그대로(불변).
+  const askPct = contract.renewalAskPct;
+  const effectiveCap = (askPct != null) ? Math.min(askPct / 100, renewal.increaseCap) : renewal.increaseCap;
+  const newDeposit = type === '전세' ? Math.round(deposit * (1 + effectiveCap)) : deposit;
+  const newMonthly = type === '월세' ? Math.round(monthlyRent * (1 + effectiveCap)) : 0;
   const depositGap = Math.max(0, newDeposit - deposit);
   const renewalLoanInterest = Math.round(depositGap * jeonseRate / 12);
   const renewalGuarMonthly = Math.round(deposit * guaranteeRate(deposit, hugType) / 12);
@@ -135,9 +138,11 @@ export function compare(contract: ContractInfo, finance: FinanceInfo): CompareRe
     basis: noticePassed ? ['통보기한 경과 → 동일 조건 갱신 원칙(주임법 §6)', '법정 상한 5%', 'HUG 공시 요율'] : ['법정 상한 5%', 'HUG 공시 요율'],
     uncertainty: noticePassed
       ? '통보기한이 지나 임대인이 통보하지 않았다면 동일 조건 묵시적 갱신(인상 0%)이 원칙이에요. 아래 금액은 합의 인상 시 5% 상한 기준입니다.'
-      : renewalUsed === '모름'
-        ? '갱신권 미사용 시 5% 상한 적용 / 이미 사용 시 협의 필요'
-        : renewalUsed === '사용' ? '이미 사용해 법정 갱신은 어려울 수 있어요' : undefined,
+      : askPct != null
+        ? (askPct <= 5 ? `요구하신 ${askPct}%는 법정 상한(5%) 이내예요.` : `요구 ${askPct}%는 법정 상한을 넘어요 — 상한(5%) 기준으로 계산했어요.`)
+        : renewalUsed === '모름'
+          ? '갱신권 미사용 시 5% 상한 적용 / 이미 사용 시 협의 필요'
+          : renewalUsed === '사용' ? '이미 사용해 법정 갱신은 어려울 수 있어요' : undefined,
     feature: '가장 가볍고 익숙함',
   };
 
