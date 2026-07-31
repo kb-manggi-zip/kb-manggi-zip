@@ -300,6 +300,24 @@ def read_region_facts(region_id: str, *, db_path: Optional[str] = None) -> dict:
     return {field: json.loads(vj) for field, vj in rows}
 
 
+def read_region_fact_counts(region_id: str, *, db_path: Optional[str] = None) -> dict:
+    """region_id → {field: count(정수)} (DB 없거나 없으면 {}).
+
+    value_json은 사람이 읽는 문장(예: "반경 500m 내 마트·편의점 186곳")이라 문장 안 숫자를
+    정규식으로 다시 뽑으면 500(반경) 같은 무관한 숫자를 잘못 집을 수 있음 — 저장 시 이미 확보한
+    정수 count 컬럼을 직접 읽는다(2026-07-31, scoring.py의 정규식 오독 버그 수정 계기로 추가).
+    """
+    path = db_path or resolve_db_path(write=False)
+    if not path or not Path(path).exists():
+        return {}
+    conn = connect(path)
+    try:
+        rows = conn.execute("SELECT field, count FROM region_facts WHERE region_id=?", (region_id,)).fetchall()
+    finally:
+        conn.close()
+    return {field: n for field, n in rows}
+
+
 def write_region_transit(
     region_id: str, workplace: str, minutes: int, transfers, estimated: bool, *, db_path: Optional[str] = None
 ) -> None:

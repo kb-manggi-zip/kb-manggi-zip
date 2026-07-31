@@ -118,12 +118,9 @@ def score_preference(in_preferred: Optional[bool]) -> float:
 
 # ── 종합 스코어 + 근거 ────────────────────────────────────────────────────
 def _facts_count(region_id: str, key: str) -> Optional[int]:
-    vals = trades_store.read_region_facts(region_id).get(key) or []
-    # "음식점·카페 316곳 밀집" → 316
-    import re
-
-    m = re.search(r"(\d+)", vals[0]) if vals else None
-    return int(m.group(1)) if m else None
+    # DB의 정수 count 컬럼을 직접 읽는다 — value_json 문장을 정규식으로 재파싱하면
+    # grocery="반경 500m 내 마트·편의점 N곳"처럼 무관한 숫자(500)를 먼저 집는 버그가 있었음(2026-07-31 수정).
+    return trades_store.read_region_fact_counts(region_id).get(key)
 
 
 def score_region(region: dict, ctx: dict) -> dict:
