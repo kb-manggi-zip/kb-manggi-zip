@@ -1,0 +1,52 @@
+# 갱신 상황 결정표 — resolver가 이 표만 읽어 조합(if-else 트리 금지, 선언적).
+# guidance/citation은 원문 그대로 출력(재작성·요약 금지). checked_at: null 이면 로드 시 검증 경고.
+# unknown 은 결정표에 없음 — 계산 미반영 + consultNote 경로로만 흐른다.
+version: 1
+cases:
+  - id: notice_deadline_passed
+    priority: 100
+    requires: { noticeDaysLeft: "< 0" }
+    effect: { cap_pct: 0 }
+    guidance: "통보기한이 지나 임대인이 통보하지 않았다면 동일 조건 묵시적 갱신(인상 0%)이 원칙이에요."
+    citation: "주택임대차보호법 제6조"
+    checked_at: "2026-07-31"
+
+  - id: renewal_right_exhausted
+    priority: 90
+    requires: {}
+    effect: { cap_pct: null, warn: true }
+    guidance: "갱신요구권을 이미 사용했다면 5% 상한이 적용되지 않을 수 있어요. 조건은 임대인과의 합의에 따라요."
+    citation: "주택임대차보호법 제6조의3 제1항"
+    checked_at: "2026-07-31"
+
+  - id: jeonse_to_monthly
+    priority: 80
+    requires: {}
+    effect: { apply_conversion_cap: true }
+    guidance: "전세를 월세로 바꾸자는 요구에는 전월세전환율 상한이 적용돼요."
+    citation: "주택임대차보호법 제7조의2"
+    checked_at: "2026-07-31"
+
+  - id: landlord_self_occupancy
+    priority: 70
+    requires: {}
+    effect: {}
+    guidance: "임대인 본인이나 직계존비속의 실거주는 갱신 거절 사유에 해당할 수 있어요. 실제 거주하지 않으면 손해배상 청구가 가능해요."
+    citation: "주택임대차보호법 제6조의3 제1항 제8호, 제5항"
+    checked_at: "2026-07-31"
+
+  - id: term_change
+    priority: 60
+    requires: {}
+    effect: {}
+    guidance: "계약기간 변경은 법정 사항이 아니라 합의 사항이에요. 최소 2년은 임차인이 주장할 수 있어요."
+    citation: "주택임대차보호법 제4조"
+    checked_at: "2026-07-31"
+
+  - id: simple_increase
+    priority: 10
+    requires: {}
+    effect: { cap_pct: 5 }
+    guidance: "합의로 올리는 경우 법정 상한은 5%예요."
+    citation: "주택임대차보호법 제7조"
+    checked_at: "2026-07-31"

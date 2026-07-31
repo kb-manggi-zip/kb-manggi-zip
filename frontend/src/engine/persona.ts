@@ -83,6 +83,27 @@ function extractConsultNote(note: string): string {
   return note.split(/\s*·\s*|[\n。]|(?<=[다요])\s+/).map(s => s.trim()).filter(s => s && CONSULT_KEYS.some(k => s.includes(k))).join(' · ');
 }
 
+// 갱신 상황 키워드 폴백(오프라인) — backend clarify.extract_situations 미러. unknown 포함.
+const SITUATION_KEYWORDS: [string, string[]][] = [
+  ['notice_deadline_passed', ['통보 없었', '통보가 없', '통보 안 ', '통보를 안', '묵시적']],
+  ['renewal_right_exhausted', ['이미 갱신', '한 번 썼', '갱신권 썼', '갱신요구권 사용', '갱신권 사용', '이미 사용']],
+  ['jeonse_to_monthly', ['월세로 돌리', '전세를 월세', '월세로 바꾸', '월세로 전환', '반전세']],
+  ['landlord_self_occupancy', ['실거주', '실입주', '직접 살', '본인이 들어', '직계']],
+  ['term_change', ['계약기간', '기간을 바꾸', '기간 변경', '1년만', '2년으로']],
+];
+function extractSituations(note: string): { situations: string[]; evidence: Record<string, string> } {
+  const situations: string[] = [];
+  const evidence: Record<string, string> = {};
+  if (!note) return { situations, evidence };
+  for (const sent of note.split(/\s*·\s*|[\n。]|(?<=[다요])\s+/).map(s => s.trim()).filter(Boolean)) {
+    let matched: string | null = null;
+    for (const [sid, keys] of SITUATION_KEYWORDS) { if (keys.some(k => sent.includes(k))) { matched = sid; break; } }
+    if (matched === null && CONSULT_KEYS.some(k => sent.includes(k))) matched = 'unknown';
+    if (matched && !(matched in evidence)) { situations.push(matched); evidence[matched] = sent; }
+  }
+  return { situations, evidence };
+}
+
 // 한 입력 안에 같은 축을 높이는+낮추는 표현이 함께 있으면 상충(예: 재택+통근).
 function intraNoteConflict(note: string): boolean {
   const dirs: Record<string, Set<number>> = {};
@@ -160,7 +181,8 @@ export function localClarify(contract: ContractInfo, finance: FinanceInfo, prior
   const weightAdjust = sig.boost;
   if (['통근', '출퇴근', '회사', '직장'].some(k => note.includes(k)))
     questions.push('통근 발품 정확도를 높이려면 주 근무지를 알려주세요 (지금은 가구 유형 기준 대표 직장으로 가정).');
-  return { persona: SEGMENT_LABEL[household] ?? '임차 가구', weightAdjust, held: conflicts.length > 0, priorities, conflicts, questions, noteSignals: sig.labels, renewalAskPct: extractRenewalPct(note), consultNote: extractConsultNote(note) };
+  const sit = extractSituations(note);
+  return { persona: SEGMENT_LABEL[household] ?? '임차 가구', weightAdjust, held: conflicts.length > 0, priorities, conflicts, questions, noteSignals: sig.labels, renewalAskPct: extractRenewalPct(note), consultNote: extractConsultNote(note), renewalSituations: sit.situations as ClarifyResult['renewalSituations'], situationEvidence: sit.evidence };
 }
 
 // SC-14 최종 프로필 종합검증(로컬) — 키워드 '간이 검증'(mode=rule). 백엔드 LLM 없을 때의 폴백.

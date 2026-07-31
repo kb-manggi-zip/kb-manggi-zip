@@ -6,6 +6,7 @@ import { PRODUCTS_RENEWAL, PRODUCTS_MOVE, PRODUCTS_MOVE_MONTHLY, PRODUCTS_BUY } 
 import { PERSONAS } from '../data/personas';
 import { briefings } from '../data/briefings';
 import { RULES } from '../engine/rules';
+import { RENEWAL_CASES } from '../engine/renewalCases';
 import { getSessionId } from './session';
 import { formatAmount } from '../utils/format';
 import type {
@@ -20,6 +21,9 @@ import type {
 // Static exports for screens (screens must not import engine/ or data/ directly)
 export { PERSONAS, SAVED_MONEY_CARDS, briefings };
 export const NOTICE_DEADLINE_MONTHS = RULES.noticeDeadlineMonths;
+// 갱신 상황 id → 안내/근거(결정표 원문). 화면이 engine 직접 import 없이 카드에 표시.
+export const RENEWAL_SITUATION_INFO: Record<string, { guidance: string; citation: string }> =
+  Object.fromEntries(RENEWAL_CASES.map(c => [c.id, { guidance: c.guidance, citation: c.citation }]));
 
 // 원격(백엔드) 연결 모드 판별:
 //  - VITE_API_URL 설정 → 그 절대주소로 호출(별도 백엔드, 예: Render).
