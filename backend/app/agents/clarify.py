@@ -146,6 +146,62 @@ def note_signals(note: str) -> dict:
     return {"labels": labels, "boost": boost}
 
 
+# ── 갱신 인상률 파싱 + 상담 사정 보존 (작업 A·B) ──────────────────────────────
+def extract_renewal_pct(note: str) -> Optional[int]:
+    """자유입력에서 '집주인이 요구한 인상률'을 추출. '7% 올려달래요' → 7. 없으면 None.
+    ★ 숫자는 '제안'으로만 반환한다 — 계산엔 HITL 확정 후 compare가 min(X,5%)로 재사용(직행 금지)."""
+    if not note:
+        return None
+    # '올리다' 계열(올려/올리고/올린대/올릴/올렸/올랐) 또는 '인상' 맥락일 때만(단순 % 언급·전세가율 등은 무시)
+    if not any(k in note for k in ("올려", "올리", "올랐", "올렸", "올릴", "인상")):
+        return None
+    m = re.search(r"(\d{1,2}(?:\.\d)?)\s*(?:%|퍼센트|프로)", note)
+    if not m:
+        return None
+    try:
+        v = float(m.group(1))
+    except ValueError:
+        return None
+    return int(round(v)) if 0 < v <= 100 else None
+
+
+# 상담 전달 사정 키워드 — 계산 불가한 법률·협의 영역(보수적: 이 '구체' 키워드가 든 문장만 전달).
+# ※ '집주인/임대인'처럼 포괄적인 말은 제외 — 모든 인상률 요청에 붙어 순수 인상률까지 상담메모로 새는 걸 막음.
+_CONSULT_KEYS = (
+    "갱신요구권",
+    "갱신권",
+    "실거주",
+    "실입주",
+    "직접 살",
+    "수리",
+    "보수",
+    "누수",
+    "곰팡이",
+    "특약",
+    "보증금 반환",
+    "돌려주",
+    "재계약",
+    "명도",
+    "퇴거",
+    "갱신 거절",
+    "거절당",
+    "소송",
+    "내용증명",
+    "연락이 안",
+    "안 해줘",
+    "안해줘",
+)
+
+
+def extract_consult_note(note: str) -> str:
+    """4축·인상률로 해석 못한 '갱신·주거 사정' 문장만 원문 그대로 보존(상담 전달용).
+    판단 기준(보수적): 상담 키워드가 든 문장만. 잡담('날씨 좋네요')은 키워드 없어 제외. LLM 요약·재작성 없음."""
+    if not note:
+        return ""
+    keep = [s.strip() for s in _split_notes(note) if any(k in s for k in _CONSULT_KEYS)]
+    return " · ".join(keep)
+
+
 def note_values_food(note: str) -> Optional[bool]:
     """자유입력에서 카페·외식 소비 성향 직접 감지 → score_consumption의 values_food 판정.
 
@@ -212,7 +268,12 @@ _CLARIFY_SYSTEM = (
     "- 새 축·새 항목·구체 숫자(금액/개수)를 창작하지 마라.\n"
     "- interpretation은 반영 이유를 한국어 짧은 구절 배열로(없으면 빈 배열).\n"
     "- question은 '감지된 모순'이 주어졌을 때만 그 사실에 근거한 자연스러운 되묻기 한 문장, 없으면 빈 문자열.\n"
-    '출력은 오직 JSON 하나: {"interpretation": [..], "weight_adjustments": {..}, "question": ".."}'
+    "- renewal_ask_pct: 집주인이 요구한 갱신 인상률을 **입력에서 읽어** 정수 %로(예 '두 배로'=100, '7% 올려'=7). "
+    "없으면 null. ★입력에 근거해 읽는 것만 허용 — 없는 숫자를 지어내지 마라.\n"
+    "- consult_note: 가중치·인상률로 계산 불가한 갱신·주거 사정(실거주 거절·수리·보증금 반환·갱신권 등)이 있으면 "
+    "**입력 문장을 그대로 인용**(요약·재작성·번역 금지). 없으면 빈 문자열. 잡담은 넣지 마라.\n"
+    '출력은 오직 JSON 하나: {"interpretation": [..], "weight_adjustments": {..}, "question": "..", '
+    '"renewal_ask_pct": null, "consult_note": ""}'
 )
 
 
@@ -246,10 +307,15 @@ def _llm_interpret(note: str, household: Optional[str], conflict_facts: list[str
     for k, v in wa.items():
         if k not in _AXES or not isinstance(v, (int, float)) or isinstance(v, bool) or not (0.3 <= float(v) <= 2.0):
             return None
+    # 인상률: LLM이 읽은 정수만 채택(0~100). 범위 밖·타입 이상 → None(계산 미반영, HITL 제안 없음).
+    ask = data.get("renewal_ask_pct")
+    ask_pct = int(ask) if isinstance(ask, (int, float)) and not isinstance(ask, bool) and 0 < ask <= 100 else None
     return {
         "labels": [str(x) for x in interp],
         "boost": {k: float(v) for k, v in wa.items()},
         "question": str(data.get("question") or "").strip(),
+        "renewalAskPct": ask_pct,
+        "consultNote": str(data.get("consult_note") or "").strip(),  # 원문 인용(요약 금지 프롬프트로 강제)
     }
 
 
@@ -312,10 +378,14 @@ def clarify(
     # 2) 신호 라벨 + 적용 boost = LLM(축 제약) 우선, 실패/비활성 시 키워드.
     llm = _llm_interpret(note, household, conflicts) if (note and settings.llm_active) else None
     if llm is not None:
+        # LLM primary: 자연어를 읽어 4축 배수·인상률·상담 사정을 뽑는다(에이전트의 본질).
         labels, boost, llm_question = llm["labels"], llm["boost"], llm["question"]
+        ask_pct, consult = llm["renewalAskPct"], llm["consultNote"]
     else:
+        # 폴백(LLM 비활성/실패): 키워드·정규식으로 오프라인 완주. LLM이 없을 때만.
         sig = note_signals(note)
         labels, boost, llm_question = sig["labels"], sig["boost"], ""
+        ask_pct, consult = extract_renewal_pct(note), extract_consult_note(note)
 
     # weightAdjust = 이 입력의 '적용 boost'(축 제약). 사용자가 HITL로 확정하면 이게 랭킹에 실린다(결정론·재현가능).
     # priorities도 같은 boost로 → 화면 우선순위 = 실제 동네 랭킹.
@@ -337,6 +407,8 @@ def clarify(
         "conflicts": conflicts,
         "questions": questions,
         "noteSignals": labels,
+        "renewalAskPct": ask_pct,  # LLM이 읽은 '제안'(폴백은 정규식) — 확정 후 compare가 씀
+        "consultNote": consult,  # LLM이 고른 원문 사정(폴백은 키워드) — 상담 전달
     }
     if len(_CLARIFY_CACHE) >= _CLARIFY_CACHE_MAX:
         _CLARIFY_CACHE.clear()

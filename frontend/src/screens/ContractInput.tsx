@@ -6,6 +6,7 @@ import {
   PrimaryBtn, GhostBtn, SelectCard, AmountInput
 } from '../components/ui';
 import { api } from '../api/client';
+import { eulReul } from '../utils/josa';
 import type { ContractType, RenewalUsed, Household, FirstHome, HousingType } from '../api/types';
 
 // ─── 스텝 정의 ─────────────────────────────────────────────────────────────
@@ -65,6 +66,12 @@ export default function ContractInput() {
   );
   const [expiryDate, setExpiryDate] = useState(state.contract?.expiryDate || '');
   const [renewalUsed, setRenewalUsed] = useState<RenewalUsed>(state.contract?.renewalUsed || '미사용');
+  // 집주인이 요구한 인상률(선택). 빈값=미입력(null) → 기존 5% 상한 동작 불변. 자유입력으로도 잡히지만 여기서 직접 입력도 가능.
+  const [renewalAskPct, setRenewalAskPct] = useState<string>(
+    state.contract?.renewalAskPct != null ? String(state.contract.renewalAskPct) : ''
+  );
+  // 갱신 시점 계산 불가 사정(실거주 거절·전환 요구·기간 변경 등) — 요약 없이 그대로 상담 전달(기존 consultNote 재사용).
+  const [renewalConsult, setRenewalConsult] = useState<string>(state.contract?.consultNote || '');
   const [housingType, setHousingType] = useState<HousingType>(state.contract?.housingType || '아파트');
   const [preferredArea, setPreferredArea] = useState<string>(state.contract?.preferredArea || '');
   const [note, setNote] = useState<string>('');
@@ -135,6 +142,8 @@ export default function ContractInput() {
         preferredArea,
         note: notes.join(' · '),
         noteAdjust: {},  // 확정 전엔 비움 — SC-14에서 검증 후 HITL 확정 시 채워짐(B1·J2)
+        renewalAskPct: renewalAskPct.trim() !== '' ? parseInt(renewalAskPct, 10) : null,  // 미입력=null → 5% 상한 불변
+        consultNote: renewalConsult.trim(),  // 갱신 자연어 사정(원문) — SC-14에서 자유입력 추출분과 병합
       },
     });
     dispatch({
@@ -344,6 +353,38 @@ export default function ContractInput() {
                 괜찮아요, 두 경우 모두 계산해드릴게요 😊
               </div>
             )}
+            {/* 집주인 요구 인상률(선택) — 대상 명시(전세=보증금 / 월세=차임). 비우면 법정 5% 상한으로 계산 */}
+            {(() => { const target = contractType === '전세' ? '보증금' : '월세'; return (
+            <div className="mt-5">
+              <p className="text-sm font-semibold mb-1">집주인이 {target}{eulReul(target)} 얼마나 올려달래요? <span className="text-xs font-normal text-muted-foreground">(선택)</span></p>
+              <p className="text-xs text-muted-foreground mb-2">비워두면 법정 상한 5%로 계산해요. 상한을 넘겨 부르면 5% 기준으로 다시 계산해드려요.</p>
+              <div className="flex items-center gap-2">
+                <input
+                  type="number"
+                  inputMode="numeric"
+                  min={0}
+                  max={100}
+                  value={renewalAskPct}
+                  onChange={e => setRenewalAskPct(e.target.value)}
+                  placeholder="예: 7"
+                  className="w-24 px-3 py-2 rounded-xl border border-border bg-card text-foreground text-center"
+                />
+                <span className="text-sm text-muted-foreground">% ({target} 기준)</span>
+              </div>
+            </div>
+            ); })()}
+            {/* 계산 불가 사정 → 요약 없이 그대로 상담 전달(consultNote 재사용) */}
+            <div className="mt-5">
+              <p className="text-sm font-semibold mb-1">임대인이 다른 얘기도 했나요? <span className="text-xs font-normal text-muted-foreground">(선택)</span></p>
+              <p className="text-xs text-muted-foreground mb-2">실거주·전월세 전환·계약기간 변경 등 — 요약 없이 그대로 상담에 전달돼요.</p>
+              <textarea
+                value={renewalConsult}
+                onChange={e => setRenewalConsult(e.target.value)}
+                placeholder="예: 집주인이 실거주하겠다며 갱신을 거절했어요"
+                rows={2}
+                className="w-full px-3 py-2 rounded-xl border border-border bg-card text-foreground text-sm resize-none"
+              />
+            </div>
           </StepView>
         )}
 

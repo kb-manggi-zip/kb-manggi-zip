@@ -81,8 +81,12 @@ def compute_compare(
     jeonse_rate = bt.rate if bt.eligible else jeonse_kb
 
     # === 갱신 ===
-    new_deposit = js_round(deposit * (1 + renewal.increaseCap)) if ctype == "전세" else deposit
-    new_monthly = js_round(monthly_rent * (1 + renewal.increaseCap)) if ctype == "월세" else 0
+    # 집주인 요구 인상률(확정분)이 있으면 min(요구%, 법정상한 5%)로 계산 — 기존 상한 로직 재사용, 새 수식 없음.
+    # 미입력(None)이면 renewal.increaseCap(5%) 그대로 → 기존 동작·골든패스 숫자 100% 불변.
+    ask_pct = contract.renewalAskPct
+    effective_cap = min(ask_pct / 100, renewal.increaseCap) if ask_pct is not None else renewal.increaseCap
+    new_deposit = js_round(deposit * (1 + effective_cap)) if ctype == "전세" else deposit
+    new_monthly = js_round(monthly_rent * (1 + effective_cap)) if ctype == "월세" else 0
     deposit_gap = max(0, new_deposit - deposit)
     renewal_loan_interest = js_round(deposit_gap * jeonse_rate / 12)
     renewal_guar_monthly = js_round(deposit * guarantee_rate(deposit, house_type=hug_type) / 12)
@@ -93,10 +97,18 @@ def compute_compare(
 
     # 통보기한 경과(days_left<0) → 임대인 미통보 시 '동일 조건 묵시적 갱신'(인상 0%)이 원칙(주임법 §6).
     notice_passed = days_left < 0
+    cap_pct = int(round(renewal.increaseCap * 100))  # 법정 상한 % (=5)
     if notice_passed:
+        # 묵시적 갱신 상태에선 '동일 조건 원칙'이 인상률 판정보다 우선.
         uncertainty = (
             "통보기한이 지나 임대인이 통보하지 않았다면 동일 조건 묵시적 갱신(인상 0%)이 원칙이에요. "
-            "아래 금액은 합의 인상 시 5% 상한 기준입니다."
+            f"아래 금액은 합의 인상 시 {cap_pct}% 상한 기준입니다."
+        )
+    elif ask_pct is not None:
+        uncertainty = (
+            f"요구하신 {ask_pct}%는 법정 상한({cap_pct}%) 이내예요."
+            if ask_pct <= cap_pct
+            else f"요구 {ask_pct}%는 법정 상한을 넘어요 — 상한({cap_pct}%) 기준으로 계산했어요."
         )
     elif renewal_used == "모름":
         uncertainty = "갱신권 미사용 시 5% 상한 적용 / 이미 사용 시 협의 필요"

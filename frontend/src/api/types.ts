@@ -16,6 +16,8 @@ export interface ContractInfo {
   preferredArea?: string; // 선호지역 구명(예 '마포구') — 동네 후보를 그 구에서 우선. 빈값=전체
   note?: string; // 문진 말미 자유입력(선택) — 명확화 노드가 세그먼트·우선순위 축으로 제약 해석
   noteAdjust?: Record<string, number>; // HITL 확정된 축별 배수(자연어 해석 확정분) — 있으면 랭킹이 이걸 씀
+  renewalAskPct?: number | null; // 집주인이 요구한 갱신 인상률(%). 확정분만 — null이면 기존 5% 상한 동작 불변
+  consultNote?: string; // 계산 불가한 사정(원문) — 상담사에게 전달. LLM 요약·재작성 금지
 }
 
 export interface FinanceInfo {
@@ -143,6 +145,8 @@ export interface ClarifyResult {
   conflictItems?: ConflictItem[];  // 인라인 해소용 구조(K1/K4)
   questions?: string[];    // 되물을 질문
   noteSignals?: string[];  // 자유입력에서 뽑아낸 제약된 신호
+  renewalAskPct?: number | null; // 자유입력에서 추출한 갱신 인상률 '제안'(%) — 확정 전 계산 미반영
+  consultNote?: string;    // 4축·인상률로 해석 못한 갱신·주거 사정(원문) — 상담 전달용
 }
 
 // 상충 1건 — 인라인 해소(K1). type: axis(문장↔문장) | household(가구 유형) | intra(한 문장 내부)

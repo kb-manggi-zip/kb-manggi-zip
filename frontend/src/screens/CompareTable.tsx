@@ -175,6 +175,9 @@ export default function CompareTable() {
             contractType={contract.type}
             monthlyToDeposit={comparison.monthlyToDeposit}
             firstHome={finance?.firstHome}
+            renewalAskPct={contract.renewalAskPct ?? null}
+            deposit={contract.deposit}
+            monthlyRent={contract.monthlyRent}
             assumptions={assumptions}
             onSelectFinance={() => selectBranchTo(b.branch, "SC-09")}
             onSelectNext={() => selectBranchTo(b.branch, b.branch === "갱신" ? "SC-06" : "SC-04")}
@@ -340,6 +343,9 @@ function BranchCardView({
   contractType,
   monthlyToDeposit,
   firstHome,
+  renewalAskPct,
+  deposit,
+  monthlyRent,
   assumptions,
   onSelectFinance,
   onSelectNext,
@@ -348,6 +354,9 @@ function BranchCardView({
   contractType: string;
   monthlyToDeposit: number;
   firstHome?: FirstHome;
+  renewalAskPct?: number | null;
+  deposit: number;
+  monthlyRent: number;
   assumptions: string[];
   onSelectFinance: () => void;
   onSelectNext: () => void;
@@ -440,6 +449,25 @@ function BranchCardView({
             />
           )}
       </div>
+
+      {/* 갱신 인상률 요구가 있을 때 산식 노출(대상·적용률·전후). 표시용 재계산 — compare 결과와 동일 값 */}
+      {branch.branch === "갱신" && renewalAskPct != null && (() => {
+        const cap = Math.min(renewalAskPct, 5);
+        const isJeonse = contractType === "전세";
+        const before = isJeonse ? deposit : monthlyRent;
+        const after = isJeonse ? branch.depositOrPrice : Math.round(monthlyRent * (1 + cap / 100));
+        const man = (v: number) => `${Math.round(v / 10_000).toLocaleString()}만`;
+        return (
+          <div className="mx-5 mt-3 px-3 py-2 rounded-lg" style={{ background: COLORS.YELLOW_SURFACE }}>
+            <p className="text-[11px]" style={{ color: COLORS.KB_GRAY }}>
+              {renewalAskPct > 5
+                ? `⚠️ 요구 ${renewalAskPct}%는 상한 초과 → 5% 적용 · `
+                : `요구 ${renewalAskPct}% (상한 이내) · `}
+              {isJeonse ? "보증금" : "월세"} {man(before)} → {cap}% → {man(after)}
+            </p>
+          </div>
+        );
+      })()}
 
       {/* 대출 한도가 실제로 바뀔 수 있는 정보라 접지 않고 항상 보이게 유지 */}
       {branch.branch === "매매" && firstHome === "모름" && (

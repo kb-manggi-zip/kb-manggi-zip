@@ -92,6 +92,19 @@ export default function ReservationSheet() {
           </div>
         </div>
 
+        {/* 고객이 남긴 사정 — 계산에 못 담은 갱신·주거 사정(원문 그대로 상담사 전달) */}
+        {state.contract?.consultNote?.trim() && (
+          <div className="mx-5 mb-5 p-4 rounded-2xl border border-border bg-card">
+            <p className="text-xs text-muted-foreground mb-1.5">고객이 남긴 사정</p>
+            <p className="text-sm text-foreground whitespace-pre-line leading-relaxed">
+              “{state.contract.consultNote.trim()}”
+            </p>
+            <p className="text-xs mt-2" style={{ color }}>
+              ✓ 요약·각색 없이 상담사에게 그대로 전달돼요
+            </p>
+          </div>
+        )}
+
         {/* 캘린더 */}
         <div className="mx-5 bg-card rounded-2xl border border-border overflow-hidden">
           {/* 헤더 */}
