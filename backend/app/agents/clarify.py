@@ -23,7 +23,10 @@ from typing import Optional
 
 from ..core.config import settings
 from ..core.llm import generate
+from ..schemas import RenewalSituation
 from ..tools import scoring
+
+_SITUATION_VALUES = {e.value for e in RenewalSituation}  # 닫힌 enum — LLM 출력 검증용
 
 # 스코어 축 → 사람 라벨 (화면·우선순위 표기용)
 AXIS_LABEL = {
@@ -202,6 +205,41 @@ def extract_consult_note(note: str) -> str:
     return " · ".join(keep)
 
 
+# 갱신 상황 키워드 폴백(LLM 비활성/실패 시). 문장 단위로 닫힌 enum에 매핑. 매칭 없는 갱신 사정 → unknown.
+_SITUATION_KEYWORDS = (
+    (RenewalSituation.notice_deadline_passed, ("통보 없었", "통보가 없", "통보 안 ", "통보를 안", "묵시적")),
+    (
+        RenewalSituation.renewal_right_exhausted,
+        ("이미 갱신", "한 번 썼", "갱신권 썼", "갱신요구권 사용", "갱신권 사용", "이미 사용"),
+    ),
+    (RenewalSituation.jeonse_to_monthly, ("월세로 돌리", "전세를 월세", "월세로 바꾸", "월세로 전환", "반전세")),
+    (RenewalSituation.landlord_self_occupancy, ("실거주", "실입주", "직접 살", "본인이 들어", "직계")),
+    (RenewalSituation.term_change, ("계약기간", "기간을 바꾸", "기간 변경", "1년만", "2년으로")),
+)
+
+
+def extract_situations(note: str) -> tuple[list, dict]:
+    """자유입력 → (상황 enum 목록, {상황 id: 원문 구절}). 원문 그대로 보존(요약 금지).
+    특정 상황 키워드 매칭 우선, 매칭 없지만 갱신·주거 사정(_CONSULT_KEYS)이면 unknown(계산 미반영)."""
+    situations: list = []
+    evidence: dict = {}
+    if not note:
+        return situations, evidence
+    for sent in _split_notes(note):
+        s = sent.strip()
+        matched = None
+        for sit, keys in _SITUATION_KEYWORDS:
+            if any(k in s for k in keys):
+                matched = sit
+                break
+        if matched is None and any(k in s for k in _CONSULT_KEYS):
+            matched = RenewalSituation.unknown  # 갱신 사정이나 분류 불가 → consultNote 창구
+        if matched is not None and matched.value not in evidence:
+            situations.append(matched)
+            evidence[matched.value] = s
+    return situations, evidence
+
+
 def note_values_food(note: str) -> Optional[bool]:
     """자유입력에서 카페·외식 소비 성향 직접 감지 → score_consumption의 values_food 판정.
 
@@ -272,8 +310,17 @@ _CLARIFY_SYSTEM = (
     "없으면 null. ★입력에 근거해 읽는 것만 허용 — 없는 숫자를 지어내지 마라.\n"
     "- consult_note: 가중치·인상률로 계산 불가한 갱신·주거 사정(실거주 거절·수리·보증금 반환·갱신권 등)이 있으면 "
     "**입력 문장을 그대로 인용**(요약·재작성·번역 금지). 없으면 빈 문자열. 잡담은 넣지 마라.\n"
+    "- renewal_situations: 갱신 관련 사정이 있으면 아래 '닫힌 목록'의 id만 배열로. "
+    "★목록 밖 값·새 id 창작 금지. 없으면 빈 배열.\n"
+    "  목록: notice_deadline_passed(임대인이 갱신 통보를 기한 내 안 함/묵시적), "
+    "renewal_right_exhausted(갱신요구권 이미 사용·소진), "
+    "jeonse_to_monthly(전세를 월세로 전환 요구), "
+    "landlord_self_occupancy(임대인 본인·직계 실거주 이유로 갱신 거절), "
+    "term_change(계약기간 변경 요구), simple_increase(단순 % 인상 합의), unknown(갱신 사정이나 위로 분류 불가).\n"
+    "- situation_evidence: {상황 id: 그 분류의 근거가 된 사용자 원문 구절}. "
+    "**그대로 인용**(요약 금지). 분류한 상황만.\n"
     '출력은 오직 JSON 하나: {"interpretation": [..], "weight_adjustments": {..}, "question": "..", '
-    '"renewal_ask_pct": null, "consult_note": ""}'
+    '"renewal_ask_pct": null, "consult_note": "", "renewal_situations": [], "situation_evidence": {}}'
 )
 
 
@@ -310,12 +357,25 @@ def _llm_interpret(note: str, household: Optional[str], conflict_facts: list[str
     # 인상률: LLM이 읽은 정수만 채택(0~100). 범위 밖·타입 이상 → None(계산 미반영, HITL 제안 없음).
     ask = data.get("renewal_ask_pct")
     ask_pct = int(ask) if isinstance(ask, (int, float)) and not isinstance(ask, bool) and 0 < ask <= 100 else None
+    # 갱신 상황: 닫힌 enum만 채택. enum 밖 값은 '그 값만' 폐기(전체 폴백 아님).
+    raw_sit = data.get("renewal_situations") or []
+    situations = (
+        [s for s in raw_sit if isinstance(s, str) and s in _SITUATION_VALUES] if isinstance(raw_sit, list) else []
+    )
+    raw_ev = data.get("situation_evidence") or {}
+    evidence = (
+        {k: str(v) for k, v in raw_ev.items() if k in _SITUATION_VALUES and isinstance(v, str) and v.strip()}
+        if isinstance(raw_ev, dict)
+        else {}
+    )
     return {
         "labels": [str(x) for x in interp],
         "boost": {k: float(v) for k, v in wa.items()},
         "question": str(data.get("question") or "").strip(),
         "renewalAskPct": ask_pct,
         "consultNote": str(data.get("consult_note") or "").strip(),  # 원문 인용(요약 금지 프롬프트로 강제)
+        "renewalSituations": situations,  # 닫힌 enum 분류(밖 값 폐기)
+        "situationEvidence": evidence,  # 상황 id → 원문 구절
     }
 
 
@@ -381,11 +441,14 @@ def clarify(
         # LLM primary: 자연어를 읽어 4축 배수·인상률·상담 사정을 뽑는다(에이전트의 본질).
         labels, boost, llm_question = llm["labels"], llm["boost"], llm["question"]
         ask_pct, consult = llm["renewalAskPct"], llm["consultNote"]
+        situations, evidence = llm["renewalSituations"], llm["situationEvidence"]
     else:
         # 폴백(LLM 비활성/실패): 키워드·정규식으로 오프라인 완주. LLM이 없을 때만.
         sig = note_signals(note)
         labels, boost, llm_question = sig["labels"], sig["boost"], ""
         ask_pct, consult = extract_renewal_pct(note), extract_consult_note(note)
+        sit_list, evidence = extract_situations(note)
+        situations = [s.value for s in sit_list]  # enum → str(계약 일관)
 
     # weightAdjust = 이 입력의 '적용 boost'(축 제약). 사용자가 HITL로 확정하면 이게 랭킹에 실린다(결정론·재현가능).
     # priorities도 같은 boost로 → 화면 우선순위 = 실제 동네 랭킹.
@@ -409,6 +472,8 @@ def clarify(
         "noteSignals": labels,
         "renewalAskPct": ask_pct,  # LLM이 읽은 '제안'(폴백은 정규식) — 확정 후 compare가 씀
         "consultNote": consult,  # LLM이 고른 원문 사정(폴백은 키워드) — 상담 전달
+        "renewalSituations": situations,  # 닫힌 enum 분류 '제안'(확정 전 계산 미반영)
+        "situationEvidence": evidence,  # 상황 id → 원문 구절(그대로)
     }
     if len(_CLARIFY_CACHE) >= _CLARIFY_CACHE_MAX:
         _CLARIFY_CACHE.clear()

@@ -22,9 +22,22 @@
   + 요청 래퍼(CompareRequest / SimulateRequest / ProductsRequest): 엔드포인트 body용
 """
 
+from enum import Enum
 from typing import Literal, Optional
 
 from pydantic import BaseModel
+
+
+# ── 갱신 상황 enum (7개, 닫힘) — 자유입력을 AI가 이 목록으로만 분류. 목록 밖 값 생성 금지 ──
+class RenewalSituation(str, Enum):
+    notice_deadline_passed = "notice_deadline_passed"  # 통보기한 경과 → 묵시적 갱신(cap 0)
+    renewal_right_exhausted = "renewal_right_exhausted"  # 갱신요구권 소진 → 5% 상한 미적용 가능
+    jeonse_to_monthly = "jeonse_to_monthly"  # 전세→월세 전환 요구 → 전월세전환율 상한
+    landlord_self_occupancy = "landlord_self_occupancy"  # 임대인 실거주 → 계산 불변, 안내만
+    term_change = "term_change"  # 계약기간 변경 → 계산 불변, 안내만
+    simple_increase = "simple_increase"  # 단순 합의 인상 → cap 5(기본)
+    unknown = "unknown"  # 분류 불가 → 계산 미반영, consultNote 창구
+
 
 # ── 타입 별칭 (types.ts 리터럴 유니온) ──────────────────────────────
 ContractType = Literal["전세", "월세"]
@@ -51,6 +64,9 @@ class ContractInfo(BaseModel):
     noteAdjust: dict = {}  # HITL로 확정된 축별 배수(자연어 해석 확정분). 있으면 랭킹이 이걸 씀(결정론)
     renewalAskPct: Optional[int] = None  # 집주인이 요구한 갱신 인상률(%). 확정분만 — None이면 기존 5% 상한 동작 불변
     consultNote: str = ""  # 계산 불가한 사정(원문 그대로) — 상담사에게 전달. LLM 요약·재작성 금지
+    renewalSituations: list[
+        RenewalSituation
+    ] = []  # HITL 확정된 갱신 상황. 빈 리스트면 기존 동작 불변(resolver가 simple_increase 기본)
 
 
 class FinanceInfo(BaseModel):
@@ -150,6 +166,8 @@ class ClarifyResult(BaseModel):
     noteSignals: list[str] = []  # 자유입력에서 뽑아낸 제약된 신호(반영 내역)
     renewalAskPct: Optional[int] = None  # 자유입력에서 추출한 갱신 인상률 '제안'(%). 확정 전엔 계산 미반영
     consultNote: str = ""  # 4축·인상률로 해석 못한 갱신·주거 사정(원문). 상담 전달용 — 요약 금지
+    renewalSituations: list[RenewalSituation] = []  # AI가 닫힌 enum으로 분류한 갱신 상황 '제안'. 확정 전 계산 미반영
+    situationEvidence: dict[str, str] = {}  # 상황 id → 사용자 원문 구절(그대로). 요약·의역 금지
 
 
 class PersonaProfile(BaseModel):

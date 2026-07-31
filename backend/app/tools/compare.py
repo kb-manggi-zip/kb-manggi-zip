@@ -23,6 +23,7 @@ from .format import format_amt, js_round
 from .guarantee_hug import guarantee_rate
 from .lending_calc import annuity_payment, dsr_loan_limit, effective_dsr_rate, solve_max_price
 from .policy_loans import buttimok_youth_eligibility, didimdol_eligibility
+from .renewal_resolver import resolve as resolve_renewal
 
 
 def compute_compare(
@@ -84,7 +85,15 @@ def compute_compare(
     # 집주인 요구 인상률(확정분)이 있으면 min(요구%, 법정상한 5%)로 계산 — 기존 상한 로직 재사용, 새 수식 없음.
     # 미입력(None)이면 renewal.increaseCap(5%) 그대로 → 기존 동작·골든패스 숫자 100% 불변.
     ask_pct = contract.renewalAskPct
-    effective_cap = min(ask_pct / 100, renewal.increaseCap) if ask_pct is not None else renewal.increaseCap
+    # 확정 갱신 상황을 결정론 resolver로 조합 → 상한(cap_pct) 도출. 상황 없으면 simple_increase 기본(cap 5)
+    #   → renewal.increaseCap(0.05)와 동일 → 기존 동작·골든패스 숫자 100% 불변.
+    situation_ids = [s.value if hasattr(s, "value") else str(s) for s in contract.renewalSituations]
+    resolution = resolve_renewal(situation_ids, contract, days_left)
+    res_cap = resolution.cap_pct  # % 또는 None(상한 미적용)
+    if ask_pct is not None:
+        effective_cap = ask_pct / 100 if res_cap is None else min(ask_pct / 100, res_cap / 100)
+    else:
+        effective_cap = 0.0 if res_cap is None else res_cap / 100
     new_deposit = js_round(deposit * (1 + effective_cap)) if ctype == "전세" else deposit
     new_monthly = js_round(monthly_rent * (1 + effective_cap)) if ctype == "월세" else 0
     deposit_gap = max(0, new_deposit - deposit)
@@ -117,6 +126,11 @@ def compute_compare(
     else:
         uncertainty = None
 
+    # 확정 갱신 상황(requires 통과분)이 있으면 결과 안내를 결정표 guidance 원문으로 대체(최우선 케이스, 재작성 없음).
+    #   상황이 없거나 전부 기각되면 guidances 비어 → 위 기존 로직 그대로(동치·골든패스 불변).
+    if contract.renewalSituations and resolution.guidances:
+        uncertainty = resolution.guidances[0]
+
     # 헤드라인: 인상 반영 시 금액이 오르는데 '그대로'라고 하지 않도록 분기(B5).
     if ctype == "전세":
         renewal_headline = (
@@ -130,6 +144,9 @@ def compute_compare(
     renewal_basis = ["법정 상한 5%", "HUG 공시 요율"]
     if notice_passed:
         renewal_basis = ["통보기한 경과 → 동일 조건 갱신 원칙(주임법 §6)"] + renewal_basis
+    # 확정 상황의 근거 조항을 근거 라인 앞에 병치(원문 그대로). 상황 없으면 불변 → 동치 유지.
+    if contract.renewalSituations and resolution.citations:
+        renewal_basis = resolution.citations + renewal_basis
 
     renewal_branch = BranchResult(
         branch="갱신",

@@ -4,7 +4,7 @@ import { COLORS } from '../theme';
 import { MobileShell, PrimaryBtn, DdayBar } from '../components/ui';
 import { formatAmount } from '../utils/format';
 import { eunNeun, eulReul } from '../utils/josa';
-import { api } from '../api/client';
+import { api, RENEWAL_SITUATION_INFO } from '../api/client';
 import type { PersonaProfile, ClarifyResult } from '../api/types';
 
 function householdLabel(h: string) {
@@ -76,6 +76,9 @@ export default function ProfileConfirm() {
   const directCards = axisCards.filter(c => !c.ext);
   const extCards = axisCards.filter(c => c.ext);
   const renewalPct = validation?.renewalAskPct ?? null;
+  // 갱신 상황 카드 — 닫힌 enum 분류(unknown은 카드 없이 consultNote로만). 4축과 무게가 달라 별도 표시.
+  const situations = (validation?.renewalSituations ?? []).filter(s => s !== 'unknown');
+  const sitEvidence = validation?.situationEvidence ?? {};
   const cardState = (key: string) => (approved.has(key) ? 'approved' : rejected.has(key) ? 'rejected' : 'pending');
   function approve(key: string) { setApproved(s => new Set(s).add(key)); setRejected(s => { const n = new Set(s); n.delete(key); return n; }); }
   function reject(key: string) { setRejected(s => new Set(s).add(key)); setApproved(s => { const n = new Set(s); n.delete(key); return n; }); }
@@ -113,6 +116,8 @@ export default function ProfileConfirm() {
     };
     // 인상률 카드 승인 시에만 확정분으로 반영(미승인이면 null 유지 → 계산 불변)
     patch.renewalAskPct = (approved.has('renewal') && renewalPct != null) ? renewalPct : null;
+    // 갱신 상황: 승인분만 확정 → compare resolver가 requires 재검증 후 반영. 미승인은 계산 미반영.
+    patch.renewalSituations = situations.filter(s => approved.has('sit:' + s));
     dispatch({ type: 'SET_CONTRACT', contract: patch });
     dispatch({ type: 'NAVIGATE', screen: 'SC-03' });
   }
@@ -176,7 +181,7 @@ export default function ProfileConfirm() {
                   문진에서 직접 고치기
                 </button>
               </>
-            ) : (axisCards.length > 0 || renewalPct != null) ? (
+            ) : (axisCards.length > 0 || renewalPct != null || situations.length > 0) ? (
               <div className="space-y-2">
                 {/* 원문 인용은 여기 헤더에서 1회만(전체). 카드 안에서는 반복 인용하지 않는다. */}
                 {note.trim() && (
@@ -191,6 +196,15 @@ export default function ProfileConfirm() {
                     state={cardState('renewal')}
                     onApprove={() => approve('renewal')} onReject={() => reject('renewal')} onUndo={() => undo('renewal')} />
                 )}
+                {/* ①-b 갱신 상황 카드 — 권리 안내(무게 다름). 근거=결정표 원문. 인상률 아래·4축 위 */}
+                {situations.map(sid => (
+                  <SituationCard key={sid}
+                    evidence={sitEvidence[sid] || ''}
+                    guidance={RENEWAL_SITUATION_INFO[sid]?.guidance || ''}
+                    citation={RENEWAL_SITUATION_INFO[sid]?.citation || ''}
+                    state={cardState('sit:' + sid)}
+                    onApprove={() => approve('sit:' + sid)} onReject={() => reject('sit:' + sid)} onUndo={() => undo('sit:' + sid)} />
+                ))}
                 {/* 직접 추론 카드 */}
                 {directCards.map(c => (
                   <ProposalCard key={c.axis} icon={AXIS_UI[c.axis]?.icon ?? '•'} title={AXIS_UI[c.axis]?.label ?? c.axis}
@@ -362,6 +376,45 @@ function RenewalCard({ pct, ctype, deposit, monthly, state, onApprove, onReject,
       <p className="text-[11px] mt-1 font-medium" style={{ color: COLORS.KB_GRAY }}>
         {target} {man(before)} → {cap}% → {man(after)}
       </p>
+      <div className="flex gap-1.5 mt-2">
+        {state === 'pending' ? (
+          <>
+            <ChoiceBtn label="반영" primary onClick={onApprove} />
+            <ChoiceBtn label="아니요" onClick={onReject} />
+          </>
+        ) : (
+          <>
+            <span className="text-[11px] font-semibold px-2 py-1" style={{ color: state === 'approved' ? COLORS.KB_GRAY : COLORS.SUB }}>
+              {state === 'approved' ? '✓ 반영' : '반영 안 함'}
+            </span>
+            <ChoiceBtn label="되돌리기" onClick={onUndo} />
+          </>
+        )}
+      </div>
+    </div>
+  );
+}
+
+// 갱신 상황 카드 — 권리 안내(4축과 무게 다름: 좌측 굵은 바 + '근거 확인' 배지). guidance/citation은 결정표 원문.
+function SituationCard({ evidence, guidance, citation, state, onApprove, onReject, onUndo }: {
+  evidence: string; guidance: string; citation: string;
+  state: 'pending' | 'approved' | 'rejected'; onApprove: () => void; onReject: () => void; onUndo: () => void;
+}) {
+  const border = state === 'approved' ? COLORS.KB_YELLOW : state === 'rejected' ? COLORS.BORDER : COLORS.SUB;
+  const strike = state === 'rejected' ? 'line-through' : 'none';
+  return (
+    <div className="rounded-xl p-3" style={{
+      background: COLORS.CARD,
+      border: `${state === 'pending' ? '1.5px dashed' : '1.5px solid'} ${border}`,
+      borderLeft: `4px solid ${COLORS.KB_GRAY}`,  // 권리 안내 구분(좌측 굵은 바)
+      opacity: state === 'rejected' ? 0.5 : 1,
+    }}>
+      <div className="flex items-center gap-1.5 mb-1">
+        <span className="text-[9px] px-1.5 py-0.5 rounded-full font-semibold" style={{ background: COLORS.KB_GRAY, color: '#fff' }}>근거 확인</span>
+      </div>
+      {evidence && <p className="text-xs" style={{ color: COLORS.KB_GRAY, textDecoration: strike }}>“{evidence}”라고 하셨어요.</p>}
+      <p className="text-sm font-medium mt-1" style={{ color: COLORS.KB_GRAY, textDecoration: strike }}>→ {guidance}</p>
+      {citation && <p className="text-[11px] mt-1" style={{ color: COLORS.SUB }}>{citation}</p>}
       <div className="flex gap-1.5 mt-2">
         {state === 'pending' ? (
           <>

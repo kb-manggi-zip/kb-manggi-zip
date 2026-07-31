@@ -58,6 +58,22 @@ const cases = [
     contract: { type: '전세', deposit: 200000000, monthlyRent: 0, expiryDate: '2026-11-19', renewalUsed: '미사용', housingType: '연립다세대' },
     finance: { annualIncome: 40000000, ownCapital: 30000000, household: '1인', firstHome: '모름', under35: true },
   },
+  // 갱신 상황 결정표 동치 — resolver cap/근거가 py↔ts 오차 0인지 검증
+  {
+    name: 'S-notice 통보기한 경과 확정(cap 0)',
+    contract: { type: '전세', deposit: 280000000, monthlyRent: 0, expiryDate: '2026-06-30', renewalUsed: '미사용', renewalSituations: ['notice_deadline_passed'] },
+    finance: { annualIncome: 40000000, ownCapital: 30000000, household: '자녀', firstHome: '모름', under35: false },
+  },
+  {
+    name: 'S-notice-reject 통보상황이나 만기 미래(기각→cap 5)',
+    contract: { type: '전세', deposit: 280000000, monthlyRent: 0, expiryDate: '2026-11-30', renewalUsed: '미사용', renewalSituations: ['notice_deadline_passed'], renewalAskPct: 7 },
+    finance: { annualIncome: 40000000, ownCapital: 30000000, household: '1인', firstHome: '모름', under35: true },
+  },
+  {
+    name: 'S-self 실거주 안내(계산 불변, 근거 병치)',
+    contract: { type: '전세', deposit: 250000000, monthlyRent: 0, expiryDate: '2026-09-30', renewalUsed: '미사용', renewalSituations: ['landlord_self_occupancy'] },
+    finance: { annualIncome: 50000000, ownCapital: 20000000, household: '신혼', firstHome: '모름', under35: true },
+  },
 ];
 
 const out = {

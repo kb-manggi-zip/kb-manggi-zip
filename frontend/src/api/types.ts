@@ -5,6 +5,10 @@ export type HousingType = '아파트' | '연립다세대'; // 국토부 API prop
 export type Household = '1인' | '신혼' | '자녀';
 export type FirstHome = '예' | '아니오' | '모름';
 export type Branch = '갱신' | '이사' | '매매';
+// 갱신 상황 enum (7개, 닫힘) — 백엔드 RenewalSituation과 1:1. 목록 밖 값 금지
+export type RenewalSituation =
+  | 'notice_deadline_passed' | 'renewal_right_exhausted' | 'jeonse_to_monthly'
+  | 'landlord_self_occupancy' | 'term_change' | 'simple_increase' | 'unknown';
 
 export interface ContractInfo {
   type: ContractType;
@@ -18,6 +22,7 @@ export interface ContractInfo {
   noteAdjust?: Record<string, number>; // HITL 확정된 축별 배수(자연어 해석 확정분) — 있으면 랭킹이 이걸 씀
   renewalAskPct?: number | null; // 집주인이 요구한 갱신 인상률(%). 확정분만 — null이면 기존 5% 상한 동작 불변
   consultNote?: string; // 계산 불가한 사정(원문) — 상담사에게 전달. LLM 요약·재작성 금지
+  renewalSituations?: RenewalSituation[]; // HITL 확정된 갱신 상황. 빈 배열이면 기존 동작 불변(resolver simple_increase 기본)
 }
 
 export interface FinanceInfo {
@@ -147,6 +152,8 @@ export interface ClarifyResult {
   noteSignals?: string[];  // 자유입력에서 뽑아낸 제약된 신호
   renewalAskPct?: number | null; // 자유입력에서 추출한 갱신 인상률 '제안'(%) — 확정 전 계산 미반영
   consultNote?: string;    // 4축·인상률로 해석 못한 갱신·주거 사정(원문) — 상담 전달용
+  renewalSituations?: RenewalSituation[]; // AI가 닫힌 enum으로 분류한 갱신 상황 '제안' — 확정 전 계산 미반영
+  situationEvidence?: Record<string, string>; // 상황 id → 사용자 원문 구절(그대로)
 }
 
 // 상충 1건 — 인라인 해소(K1). type: axis(문장↔문장) | household(가구 유형) | intra(한 문장 내부)
