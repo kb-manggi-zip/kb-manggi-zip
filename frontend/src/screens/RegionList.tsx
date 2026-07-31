@@ -536,14 +536,13 @@ export function RegionCard({
   const cardReasons = (region.scoreReasons ?? []).filter(
     (r) => !hiddenReasons.includes(r) && r !== "예산 여유 있음"
   );
-  // L3: 미니 리포트 요약 1줄 — {소비 신호} 당신에게 — {동네 차별 팩트}. 구 폴백 공통값은 차별 팩트 아님 → 제외.
-  // 예산 여유도 뱃지와 중복이라 제외 — 뱃지에 없는 다른 차별 정보(카페밀집도 등)만 문장에 담는다.
-  // 카드에 이미 나와있는 중위가·실거래건수는 폴백으로 다시 안 쓴다 — 차별 팩트(카페 등) 없으면 빈 문자열.
-  // leadSignal의 카테고리(카페/장보기/여가)에 매칭되는 팩트만 붙인다 — 예전엔 항상 카페 팩트를
-  // 붙여서 "카페 적게 쓰는 편인 당신에게 — 카페 244곳" 같은 모순 문장이 나왔음(버그, 2026-07-31 수정).
-  // '적게 쓰는' 신호는 밀집도가 추천 근거가 아니므로 애초에 팩트를 안 붙인다.
-  const summaryFacts = (() => {
-    if (!leadSignal || !leadSignal.includes("많이 쓰는")) return "";
+  // L3: 미니 리포트 요약 1줄 — {소비 신호} 당신에게 — {동네 차별 팩트}. leadSignal은 페르소나 공통값(모든
+  // 카드에 동일 재사용)이라, 그 동네만의 차별 팩트가 실제로 있을 때만 문장을 보여준다 — 팩트 없이
+  // leadSignal만 있으면(모든 카드에 똑같은 문장만 반복) 아예 생략한다(버그, 2026-07-31 수정).
+  // leadSignal의 카테고리(카페/장보기/여가)에 매칭 + '많이 쓰는' 방향일 때만 해당 팩트를 찾는다 —
+  // 예전엔 항상 카페 팩트를 붙여 "카페 적게 쓰는 편인 당신에게 — 카페 244곳" 같은 모순이 났었음.
+  const summaryLine = (() => {
+    if (!leadSignal || !leadSignal.includes("많이 쓰는")) return null;
     const pattern = /카페|배달|식비|외식|맛집/.test(leadSignal)
       ? /음식점·카페 \d+곳/
       : /장보기|마트|시장/.test(leadSignal)
@@ -551,9 +550,11 @@ export function RegionCard({
         : /여가|취미|운동|산책|나들이/.test(leadSignal)
           ? /여가시설 \d+곳/
           : null;
-    if (!pattern) return "";
+    if (!pattern) return null;
     const distinct = cardReasons.filter((r) => !r.includes("구 기준"));
-    return distinct.map((r) => (r.match(pattern) || [])[0]).find(Boolean) ?? "";
+    const fact = distinct.map((r) => (r.match(pattern) || [])[0]).find(Boolean);
+    if (!fact) return null;
+    return `${leadSignal}${leadSignal.endsWith("편") ? "인" : ""} 당신에게 — ${fact}`;
   })();
   // 통근이 접히지 않았을 때만(동별 실측) 칩 레벨에 표시 + 대표 직장 기준 각주
   const commuteFolded = hiddenReasons.some((r) => r.includes("통근"));
@@ -589,9 +590,10 @@ export function RegionCard({
                 .find(Boolean);
           if (commute)
             commute = deemphasizeCommute ? `${commute} (참고)` : `${commute}*`; // G3 참고 / J4 대표직장 각주
-          const feature = [...region.tags, commute]
+          // 통근은 가장 중요한 축(가중치 최상위)인데 태그가 3개 이상이면 slice(0,3)에 밀려 안 보이던
+          // 버그(2026-07-31) — 통근이 있으면 태그는 2개까지만, 통근이 없을 때만 태그 3개.
+          const feature = [...region.tags.slice(0, commute ? 2 : 3), commute]
             .filter(Boolean)
-            .slice(0, 3)
             .join(" · ");
           return feature ? (
             <>
@@ -626,13 +628,11 @@ export function RegionCard({
           </div>
         )}
         {/* L3 미니 리포트 요약 — 소비 신호 × 동네 차별 팩트(구 폴백 공통값 제외). 순수 템플릿(LLM 없음) */}
-        {/* 개인화 신호도 차별 팩트도 없으면(예: 카페 데이터 없는 동네) 빈 줄만 남기지 않고 아예 생략 */}
-        {(leadSignal || summaryFacts) && (
+        {/* 그 동네만의 차별 팩트가 없으면(leadSignal만 있어도) 아예 생략 — 모든 카드에 leadSignal만
+            반복되는 무의미한 문장을 막는다(버그, 2026-07-31 수정) */}
+        {summaryLine && (
           <p className="text-xs font-medium pt-1" style={{ color }}>
-            {leadSignal
-              ? `${leadSignal}${leadSignal.endsWith("편") ? "인" : ""} 당신에게`
-              : "이 동네"}
-            {summaryFacts && ` — ${summaryFacts}`}
+            {summaryLine}
           </p>
         )}
         {cardReasons.length > 0 ? (
