@@ -24,6 +24,9 @@ log = logging.getLogger("renewal_resolver")
 _DEFAULT_CAP_PCT = 5  # simple_increase 기본(결정표 밖 폴백과 동일 값) — 골든패스 불변 보장
 
 
+_BRANCH_KEYS = ("renewal", "move", "purchase")
+
+
 @dataclass
 class RenewalResolution:
     cap_pct: Optional[int]  # 적용 상한 %. None = 상한 미적용(권 소진)
@@ -32,6 +35,8 @@ class RenewalResolution:
     citations: list[str] = field(default_factory=list)
     applied: list[str] = field(default_factory=list)  # 적용된 case id(priority 순)
     rejected: list[dict] = field(default_factory=list)  # [{"id":..., "reason":...}]
+    # 상황 → 3갈래 힌트(표시 계층). key=renewal|move|purchase, applied 케이스만. 계산 무관.
+    branchHints: dict = field(default_factory=lambda: {k: [] for k in _BRANCH_KEYS})
 
 
 @lru_cache(maxsize=1)
@@ -118,6 +123,17 @@ def resolve(situations: list[str], contract, days_left: int) -> RenewalResolutio
         if eff.get("apply_conversion_cap"):
             effects["apply_conversion_cap"] = True
 
+    # 3갈래 힌트 — applied(survivors)만, 여러 상황이 같은 갈래면 누적. 문구는 yaml 원문 그대로.
+    branch_hints: dict = {k: [] for k in _BRANCH_KEYS}
+    for c in survivors:
+        bh = c.get("branch_hint")
+        if not bh:
+            continue
+        for key in _BRANCH_KEYS:
+            h = bh.get(key)
+            if h:  # null 아닌 것만
+                branch_hints[key].append({"situationId": c["id"], "tone": h["tone"], "text": h["text"]})
+
     return RenewalResolution(
         cap_pct=cap_pct,
         effects=effects,
@@ -125,4 +141,5 @@ def resolve(situations: list[str], contract, days_left: int) -> RenewalResolutio
         citations=[c["citation"] for c in survivors],
         applied=[c["id"] for c in survivors],
         rejected=rejected,
+        branchHints=branch_hints,
     )

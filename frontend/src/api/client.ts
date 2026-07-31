@@ -6,7 +6,8 @@ import { PRODUCTS_RENEWAL, PRODUCTS_MOVE, PRODUCTS_MOVE_MONTHLY, PRODUCTS_BUY } 
 import { PERSONAS } from '../data/personas';
 import { briefings } from '../data/briefings';
 import { RULES } from '../engine/rules';
-import { RENEWAL_CASES } from '../engine/renewalCases';
+import { RENEWAL_CASES, resolveRenewal } from '../engine/renewalCases';
+import type { BranchKey, BranchHintItem } from '../engine/renewalCases';
 import { getSessionId } from './session';
 import { formatAmount } from '../utils/format';
 import type {
@@ -22,6 +23,11 @@ import type {
 export { PERSONAS, SAVED_MONEY_CARDS, briefings };
 export const NOTICE_DEADLINE_MONTHS = RULES.noticeDeadlineMonths;
 export const RENEWAL_CONVERSION_RATE = RULES.renewal.conversionRate; // 전월세전환율(§7-2) — 전환 산식 표시용
+// 확정 갱신 상황 → 3갈래 힌트(표시 계층). backend resolver.branchHints 미러. 계산 무관.
+export function renewalBranchHints(situations: string[], daysLeft: number): Record<BranchKey, BranchHintItem[]> {
+  return resolveRenewal(situations, daysLeft).branchHints;
+}
+export type { BranchKey, BranchHintItem } from '../engine/renewalCases';
 // 갱신 상황 id → 안내/근거(결정표 원문). 화면이 engine 직접 import 없이 카드에 표시.
 export const RENEWAL_SITUATION_INFO: Record<string, { guidance: string; citation: string }> =
   Object.fromEntries(RENEWAL_CASES.map(c => [c.id, { guidance: c.guidance, citation: c.citation }]));
