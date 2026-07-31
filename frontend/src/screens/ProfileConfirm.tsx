@@ -10,6 +10,26 @@ function householdLabel(h: string) {
   return h === '1인' ? '1인 가구' : h === '신혼' ? '신혼 가구' : '자녀 가구';
 }
 
+// 축 → 사용자 언어(화면엔 '축/배수/가중치' 안 씀)
+const AXIS_UI: Record<string, { label: string; icon: string }> = {
+  commute: { label: '통근', icon: '🚇' },
+  consumption: { label: '동네 생활·편의', icon: '🏘' },
+  budget: { label: '예산 여유', icon: '💵' },
+  preference: { label: '원하는 지역', icon: '📍' },
+};
+const RETAK_RE = /재택|집에서|집 주변|동네에서|근처에서/;
+// 확장 추론: 재택류 입력이 동네환경(consumption)을 올릴 때 = 한 단계 건너뛴 추론 → 그 단계를 드러냄
+function isExtended(note: string, axis: string): boolean {
+  return axis === 'consumption' && RETAK_RE.test(note);
+}
+// 근거 되비추기 문구 ("○○라고 하셨으니 → △△")
+function cardRationale(note: string, axis: string, mult: number): string {
+  if (isExtended(note, axis)) return '재택이면 동네에서 보내는 시간이 길어서, 동네 생활·편의를 더 볼까요?';
+  const dir = mult > 1 ? '더' : '덜';
+  const phrase = (note || '').length > 16 ? note.slice(0, 16) + '…' : note;
+  return `'${phrase}'라고 하셨으니, ${AXIS_UI[axis]?.label ?? axis}은(는) ${dir} 중요하게 볼게요.`;
+}
+
 // 문진 완료 직후 1회 — '당신의 프로필'. 확실한 것만: 사실 + 칩(사실 파생·본인 진술·실측). 가중치 바·세그먼트 통계 칩 없음.
 export default function ProfileConfirm() {
   const { state, dispatch } = useApp();
@@ -19,6 +39,10 @@ export default function ProfileConfirm() {
   const [acceptedPairs, setAcceptedPairs] = useState<string[][]>([]);  // '둘 다 맞아요'로 확인한 쌍(K1)
   const [applied, setApplied] = useState(false);
   const [tooltip, setTooltip] = useState<string | null>(null);
+  // C: 제안 카드 개별 승인/거절 상태(축 key 또는 'renewal'). 확정 전엔 '확인 대기'.
+  const [approved, setApproved] = useState<Set<string>>(new Set());
+  const [rejected, setRejected] = useState<Set<string>>(new Set());
+  const [showExt, setShowExt] = useState(false); // 확장 추론 카드 펼침
 
   // 예산(참고) — 예산↔선호 상충 판단 맥락. 갈래 미선택이라 대표로 전세(이사) 예산 사용.
   const refBudget = comparison?.branches.find(b => b.branch === '이사')?.depositOrPrice
@@ -31,6 +55,7 @@ export default function ProfileConfirm() {
     // acceptedPairs 변하면 재검증(둘 다 맞아요로 확인한 쌍 제외).
     api.validateProfile(contract, finance, refBudget, true, acceptedPairs).then(setValidation).catch(() => setValidation(null));
     setApplied(false);
+    setApproved(new Set()); setRejected(new Set()); setShowExt(false); // 재검증 시 카드 상태 초기화
   }, [contract, finance, acceptedPairs]); // eslint-disable-line react-hooks/exhaustive-deps
 
   if (!contract || !finance) return null;
@@ -41,6 +66,19 @@ export default function ProfileConfirm() {
   const isRuleMode = validation?.mode === 'rule';
   const held = !!validation?.held;
   const hasAdjust = !held && !!validation?.weightAdjust && Object.keys(validation.weightAdjust).length > 0;
+
+  // ── C: 축별 제안 카드 파생(1카드=1축). 직접 추론 먼저, 확장 추론(재택→동네환경)은 접어서 뒤로 ──
+  const note = contract.note ?? '';
+  const adjust: Record<string, number> = (!held && validation?.weightAdjust) || {};
+  const axisCards = Object.entries(adjust).map(([axis, mult]) => ({ axis, mult, ext: isExtended(note, axis) }));
+  const directCards = axisCards.filter(c => !c.ext);
+  const extCards = axisCards.filter(c => c.ext);
+  const renewalPct = validation?.renewalAskPct ?? null;
+  const cardState = (key: string) => (approved.has(key) ? 'approved' : rejected.has(key) ? 'rejected' : 'pending');
+  function approve(key: string) { setApproved(s => new Set(s).add(key)); setRejected(s => { const n = new Set(s); n.delete(key); return n; }); }
+  function reject(key: string) { setRejected(s => new Set(s).add(key)); setApproved(s => { const n = new Set(s); n.delete(key); return n; }); }
+  function undo(key: string) { setApproved(s => { const n = new Set(s); n.delete(key); return n; }); setRejected(s => { const n = new Set(s); n.delete(key); return n; }); }
+  function approveAllDirect() { setApproved(s => { const n = new Set(s); directCards.forEach(c => n.add(c.axis)); if (renewalPct != null) n.add('renewal'); return n; }); }
 
   // ── 인라인 해소(K1): 되묻기의 목적은 재입력이 아니라 확인 ──
   const notesOf = () => (contract!.note ?? '').split(' · ').map(s => s.trim()).filter(Boolean);
@@ -55,11 +93,22 @@ export default function ProfileConfirm() {
     dispatch({ type: 'SET_FINANCE', finance: { ...finance!, household: seg as typeof finance.household } });
   }
 
-  // HITL 확정: 상충이 없을 때만, 검증이 해석한 조정을 이 시점에 noteAdjust에 반영(확정 전 미반영, B1·J2).
+  // HITL 확정: '승인한 축만' noteAdjust에 실린다(거절·확인대기는 미반영). 승인→noteAdjust→랭킹 흐름은 그대로.
   function applyAndCompare() {
-    if (hasAdjust) {
-      dispatch({ type: 'SET_CONTRACT', contract: { ...contract!, noteAdjust: validation!.weightAdjust! } });
-    }
+    const noteAdjust: Record<string, number> = {};
+    axisCards.forEach(({ axis, mult }) => { if (approved.has(axis)) noteAdjust[axis] = mult; });
+    const patch: typeof contract = {
+      ...contract!,
+      noteAdjust,
+      // ★ D-7: 승인이 0건이면 noteAdjust가 비어 '키워드 폴백'이 미승인 신호를 되살리므로 원문 note를 비운다.
+      //   승인이 1건↑이면 noteAdjust(비어있지 않음)가 랭킹을 주도하므로 note는 유지(리포트에 진술 칩 표시).
+      //   상담 사정은 승인과 무관하게 항상 consultNote로 보존.
+      note: approved.size > 0 ? contract!.note : '',
+      consultNote: validation?.consultNote || '',
+    };
+    // 인상률 카드 승인 시에만 확정분으로 반영(미승인이면 null 유지 → 계산 불변)
+    patch.renewalAskPct = (approved.has('renewal') && renewalPct != null) ? renewalPct : null;
+    dispatch({ type: 'SET_CONTRACT', contract: patch });
     dispatch({ type: 'NAVIGATE', screen: 'SC-03' });
   }
 
@@ -122,19 +171,40 @@ export default function ProfileConfirm() {
                   문진에서 직접 고치기
                 </button>
               </>
-            ) : noteSignals.length > 0 ? (
-              <>
-                <div className="flex flex-wrap gap-1.5">
-                  {noteSignals.map((s, i) => (
-                    <span key={i} className="text-[11px] px-2 py-0.5 rounded-full" style={{ background: '#00000008', color: COLORS.SUB }}>{s}</span>
-                  ))}
-                </div>
-                {hasAdjust && (
-                  <p className="text-[11px]" style={{ color: applied ? COLORS.MINT : COLORS.SUB }}>
-                    {applied ? '✓ 동네 추천에 반영했어요' : '아래 [반영하고 비교]를 누르면 동네 추천에 실려요'}
-                  </p>
+            ) : (axisCards.length > 0 || renewalPct != null) ? (
+              <div className="space-y-2">
+                <p className="text-[11px]" style={{ color: COLORS.SUB }}>승인한 것만 동네 추천에 실려요. (거절·확인 대기는 반영 안 함)</p>
+                {/* ① 인상률 제안 — 별도 형태(숫자 확정), 맨 위 */}
+                {renewalPct != null && (
+                  <RenewalCard pct={renewalPct} state={cardState('renewal')}
+                    onApprove={() => approve('renewal')} onReject={() => reject('renewal')} onUndo={() => undo('renewal')} />
                 )}
-              </>
+                {/* 직접 추론 카드 */}
+                {directCards.map(c => (
+                  <ProposalCard key={c.axis} icon={AXIS_UI[c.axis]?.icon ?? '•'} title={AXIS_UI[c.axis]?.label ?? c.axis}
+                    rationale={cardRationale(note, c.axis, c.mult)} state={cardState(c.axis)}
+                    onApprove={() => approve(c.axis)} onReject={() => reject(c.axis)} onUndo={() => undo(c.axis)} />
+                ))}
+                {/* 확장 추론 — 접기(펼쳐서 개별 승인해야 반영, '모두 반영'에 안 걸림) */}
+                {extCards.length > 0 && (
+                  showExt ? (
+                    extCards.map(c => (
+                      <ProposalCard key={c.axis} icon={AXIS_UI[c.axis]?.icon ?? '•'} title={AXIS_UI[c.axis]?.label ?? c.axis}
+                        rationale={cardRationale(note, c.axis, c.mult)} state={cardState(c.axis)} extended
+                        onApprove={() => approve(c.axis)} onReject={() => reject(c.axis)} onUndo={() => undo(c.axis)} />
+                    ))
+                  ) : (
+                    <button onClick={() => setShowExt(true)} className="text-xs underline w-full text-left" style={{ color: COLORS.SUB }}>
+                      + 관련 제안 {extCards.length}개 ▾
+                    </button>
+                  )
+                )}
+                {(directCards.length > 0 || renewalPct != null) && (
+                  <button onClick={approveAllDirect} className="text-[11px] underline" style={{ color: COLORS.KB_GRAY }}>
+                    위 제안 모두 반영 (접힌 건 펼쳐서 개별 승인)
+                  </button>
+                )}
+              </div>
             ) : (
               <p className="text-xs" style={{ color: COLORS.SUB }}>특별히 반영할 신호는 없었어요.</p>
             )}
@@ -202,18 +272,88 @@ export default function ProfileConfirm() {
       </div>
 
       <div className="px-5 pb-8 pt-3 space-y-2">
-        {/* 상충 없고 반영할 신호가 있으면 HITL 확정 버튼(이때만 noteAdjust 반영). 그 외엔 그냥 진행. */}
-        {items.length === 0 && hasAdjust ? (
-          <>
-            <PrimaryBtn onClick={() => { applyAndCompare(); setApplied(true); }}>반영하고 비교하기 →</PrimaryBtn>
-            <button onClick={() => dispatch({ type: 'NAVIGATE', screen: 'SC-03' })}
-              className="w-full text-center text-xs text-muted-foreground py-1">반영 없이 비교만 할게요</button>
-          </>
+        {/* 승인한 것만 실린다. 상충 미해결 중엔 그냥 진행(카드 미노출). */}
+        {items.length === 0 && (axisCards.length > 0 || renewalPct != null) ? (
+          <PrimaryBtn onClick={() => { applyAndCompare(); setApplied(true); }}>
+            {approved.size > 0 ? `승인 ${approved.size}건 반영하고 비교하기 →` : '반영 없이 비교하기 →'}
+          </PrimaryBtn>
         ) : (
           <PrimaryBtn onClick={() => dispatch({ type: 'NAVIGATE', screen: 'SC-03' })}>이대로 비교하기 →</PrimaryBtn>
         )}
       </div>
     </MobileShell>
+  );
+}
+
+// C: 축 제안 카드 — 확인 대기(점선·회색) / 승인(솔리드) / 거절(흐림·취소선, 되돌리기 가능)
+function ProposalCard({ icon, title, rationale, state, extended, onApprove, onReject, onUndo }: {
+  icon: string; title: string; rationale: string; state: 'pending' | 'approved' | 'rejected';
+  extended?: boolean; onApprove: () => void; onReject: () => void; onUndo: () => void;
+}) {
+  const border = state === 'approved' ? COLORS.KB_YELLOW : state === 'rejected' ? COLORS.BORDER : COLORS.SUB;
+  return (
+    <div className="rounded-xl p-3" style={{
+      background: COLORS.CARD,
+      border: `${state === 'pending' ? '1.5px dashed' : '1.5px solid'} ${border}`,
+      opacity: state === 'rejected' ? 0.5 : 1,
+    }}>
+      <div className="flex items-center gap-1.5">
+        <span className="text-sm">{icon}</span>
+        <span className="text-sm font-bold" style={{ color: COLORS.KB_GRAY, textDecoration: state === 'rejected' ? 'line-through' : 'none' }}>{title}</span>
+        {extended && <span className="text-[9px] px-1 py-0.5 rounded" style={{ background: '#00000010', color: COLORS.SUB }}>관련 제안</span>}
+      </div>
+      <p className="text-xs mt-1" style={{ color: COLORS.SUB, textDecoration: state === 'rejected' ? 'line-through' : 'none' }}>{rationale}</p>
+      <div className="flex gap-1.5 mt-2">
+        {state === 'pending' ? (
+          <>
+            <ChoiceBtn label="반영" primary onClick={onApprove} />
+            <ChoiceBtn label="아니요" onClick={onReject} />
+          </>
+        ) : (
+          <>
+            <span className="text-[11px] font-semibold px-2 py-1" style={{ color: state === 'approved' ? COLORS.KB_GRAY : COLORS.SUB }}>
+              {state === 'approved' ? '✓ 반영' : '반영 안 함'}
+            </span>
+            <ChoiceBtn label="되돌리기" onClick={onUndo} />
+          </>
+        )}
+      </div>
+    </div>
+  );
+}
+
+// C①: 인상률 카드 — 4축과 다른 형태(숫자 확정 + 상한 판정 프리뷰)
+function RenewalCard({ pct, state, onApprove, onReject, onUndo }: {
+  pct: number; state: 'pending' | 'approved' | 'rejected'; onApprove: () => void; onReject: () => void; onUndo: () => void;
+}) {
+  const over = pct > 5;
+  const border = state === 'approved' ? COLORS.KB_YELLOW : state === 'rejected' ? COLORS.BORDER : COLORS.SUB;
+  return (
+    <div className="rounded-xl p-3" style={{
+      background: over ? '#FDECEC' : COLORS.CARD,
+      border: `${state === 'pending' ? '1.5px dashed' : '1.5px solid'} ${border}`,
+      opacity: state === 'rejected' ? 0.5 : 1,
+    }}>
+      <p className="text-sm font-bold" style={{ color: COLORS.KB_GRAY, textDecoration: state === 'rejected' ? 'line-through' : 'none' }}>💰 갱신 인상률 {pct}%</p>
+      <p className="text-xs mt-1" style={{ color: COLORS.SUB }}>
+        {over ? `⚠️ 법정 상한 5%를 넘어 5%로 계산돼요.` : `법정 상한(5%) 이내예요.`} 이 값으로 갱신을 계산할까요?
+      </p>
+      <div className="flex gap-1.5 mt-2">
+        {state === 'pending' ? (
+          <>
+            <ChoiceBtn label="반영" primary onClick={onApprove} />
+            <ChoiceBtn label="아니요" onClick={onReject} />
+          </>
+        ) : (
+          <>
+            <span className="text-[11px] font-semibold px-2 py-1" style={{ color: state === 'approved' ? COLORS.KB_GRAY : COLORS.SUB }}>
+              {state === 'approved' ? '✓ 반영' : '반영 안 함'}
+            </span>
+            <ChoiceBtn label="되돌리기" onClick={onUndo} />
+          </>
+        )}
+      </div>
+    </div>
   );
 }
 
