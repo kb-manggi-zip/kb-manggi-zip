@@ -96,11 +96,24 @@ def compute_compare(
         effective_cap = 0.0 if res_cap is None else res_cap / 100
     new_deposit = js_round(deposit * (1 + effective_cap)) if ctype == "전세" else deposit
     new_monthly = js_round(monthly_rent * (1 + effective_cap)) if ctype == "월세" else 0
+    # 보증금→월세 전환(주임법 §7-2). cap_pct(인상률 상한)와 **독립** 규제 — 둘 다 승인되면 각각 적용.
+    #   apply_conversion_cap 효과 + 감액분 입력(conversionAmount) 있을 때만. 전세 방향만(보증금 일부를 월세로).
+    #   미입력이면 conv_reduction=0 → 숫자 완전 불변(안내·근거만). 전월세전환율은 renewal.conversionRate(yaml) 그대로.
+    conv_reduction = 0
+    conv_monthly = 0
+    if resolution.effects.get("apply_conversion_cap") and contract.conversionAmount and ctype == "전세":
+        conv_reduction = min(contract.conversionAmount, new_deposit)  # 전환 후 보증금 음수 방지
+        conv_monthly = js_round(conv_reduction * renewal.conversionRate / 12)
+        new_deposit = new_deposit - conv_reduction
+        new_monthly = new_monthly + conv_monthly
     deposit_gap = max(0, new_deposit - deposit)
     renewal_loan_interest = js_round(deposit_gap * jeonse_rate / 12)
     renewal_guar_monthly = js_round(deposit * guarantee_rate(deposit, house_type=hug_type) / 12)
+    # 전세 부담 = 대출이자 + 보증료 + (전환 시 새 월세). 전환 없으면 new_monthly=0 → 기존 동치 불변.
     renewal_monthly_burden = (
-        renewal_loan_interest + renewal_guar_monthly if ctype == "전세" else new_monthly + renewal_guar_monthly
+        renewal_loan_interest + renewal_guar_monthly + new_monthly
+        if ctype == "전세"
+        else new_monthly + renewal_guar_monthly
     )
     monthly_to_deposit = js_round(monthly_rent * 12 / renewal.conversionRate) if ctype == "월세" else 0
 
@@ -133,11 +146,12 @@ def compute_compare(
 
     # 헤드라인: 인상 반영 시 금액이 오르는데 '그대로'라고 하지 않도록 분기(B5).
     if ctype == "전세":
-        renewal_headline = (
-            f"보증금 {format_amt(deposit)} → {format_amt(new_deposit)} (합의 인상 시)"
-            if new_deposit != deposit
-            else f"보증금 {format_amt(deposit)} 그대로"
-        )
+        if conv_reduction > 0:
+            renewal_headline = f"보증금 {format_amt(new_deposit)} + 월세 {js_round(new_monthly / 10000)}만 (전환)"
+        elif new_deposit != deposit:
+            renewal_headline = f"보증금 {format_amt(deposit)} → {format_amt(new_deposit)} (합의 인상 시)"
+        else:
+            renewal_headline = f"보증금 {format_amt(deposit)} 그대로"
     else:
         renewal_headline = f"월세 {js_round(new_monthly / 10000)}만으로 연장"
 

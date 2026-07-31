@@ -67,6 +67,7 @@ class ContractInfo(BaseModel):
     renewalSituations: list[
         RenewalSituation
     ] = []  # HITL 확정된 갱신 상황. 빈 리스트면 기존 동작 불변(resolver가 simple_increase 기본)
+    conversionAmount: Optional[int] = None  # 보증금→월세 전환하려는 감액분(원). None이면 전환 미계산(안내만)
 
 
 class FinanceInfo(BaseModel):
@@ -168,6 +169,7 @@ class ClarifyResult(BaseModel):
     consultNote: str = ""  # 4축·인상률로 해석 못한 갱신·주거 사정(원문). 상담 전달용 — 요약 금지
     renewalSituations: list[RenewalSituation] = []  # AI가 닫힌 enum으로 분류한 갱신 상황 '제안'. 확정 전 계산 미반영
     situationEvidence: dict[str, str] = {}  # 상황 id → 사용자 원문 구절(그대로). 요약·의역 금지
+    conversionAmount: Optional[int] = None  # 자유입력에서 뽑은 전환 감액분(원) '제안'. 확정 전 계산 미반영(프리필용)
 
 
 class PersonaProfile(BaseModel):

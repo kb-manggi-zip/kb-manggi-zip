@@ -964,6 +964,341 @@
           "법정 상한 5%"
         ]
       }
+    },
+    {
+      "name": "S-conv 전세→월세 전환 1억(§7-2)",
+      "contract": {
+        "type": "전세",
+        "deposit": 320000000,
+        "monthlyRent": 0,
+        "expiryDate": "2026-11-30",
+        "renewalUsed": "미사용",
+        "renewalSituations": [
+          "jeonse_to_monthly"
+        ],
+        "conversionAmount": 100000000
+      },
+      "finance": {
+        "annualIncome": 40000000,
+        "ownCapital": 30000000,
+        "household": "1인",
+        "firstHome": "모름",
+        "under35": true
+      },
+      "expected": {
+        "branches": [
+          {
+            "branch": "갱신",
+            "headline": "보증금 2억 3,600만 + 월세 40만 (전환)",
+            "depositOrPrice": 236000000,
+            "loanAmount": 0,
+            "oneTimeCost": 0,
+            "guaranteeMonthly": 32533,
+            "monthlyBurden": 428366,
+            "risks": [
+              "보증금 반환 위험 지속",
+              "임대인 사정에 따라 거절 가능"
+            ],
+            "cares": [
+              "반환보증 점검 (+3만/월)",
+              "계약서 특약 확인"
+            ],
+            "basis": [
+              "주택임대차보호법 제7조의2",
+              "법정 상한 5%",
+              "HUG 공시 요율"
+            ],
+            "uncertainty": "전세를 월세로 바꾸자는 요구에는 전월세전환율 상한이 적용돼요.",
+            "feature": "가장 가볍고 익숙함"
+          },
+          {
+            "branch": "이사",
+            "headline": "새 전세 최대 5억 4,200만",
+            "depositOrPrice": 542000000,
+            "loanAmount": 222000000,
+            "oneTimeCost": 1760000,
+            "guaranteeMonthly": 55103,
+            "monthlyBurden": 774753,
+            "risks": [
+              "새 보증금 잠김",
+              "이사 과정 일회성 비용"
+            ],
+            "cares": [
+              "새 계약 시 전세보증금 반환보증 확인",
+              "일회성 비용 약 176만"
+            ],
+            "basis": [
+              "전세대출 한도 80%",
+              "실거래 기준"
+            ],
+            "feature": "환경을 바꿀 기회"
+          },
+          {
+            "branch": "매매",
+            "headline": "최대 5억 4,840만 내 집",
+            "depositOrPrice": 548403262,
+            "loanAmount": 198403262,
+            "oneTimeCost": 9426049,
+            "guaranteeMonthly": 0,
+            "monthlyBurden": 820511,
+            "risks": [
+              "자산가치 변동",
+              "원금 장기 상환 부담"
+            ],
+            "cares": [
+              "화재보험 가입",
+              "청약통장 납입 유지"
+            ],
+            "basis": [
+              "규제지역 LTV 40%",
+              "KB 한도 3억",
+              "스트레스 DSR 가산 3.0%",
+              "디딤돌 혼합"
+            ],
+            "feature": "일부는 원금으로 적립"
+          }
+        ],
+        "dday": 134,
+        "noticeDaysLeft": 73,
+        "noticeDeadline": "2026-09-30",
+        "monthlyToDeposit": 0,
+        "savings": 1760000,
+        "assumptions": [
+          "이 금액은 사전 가늠이며, 실제 대출 심사 결과와 다를 수 있어요",
+          "전세대출 금리 HF 공시 평균 3.89%",
+          "규제지역 LTV 40% (생애최초 70%)",
+          "KB 주택구입 대출 한도 3억 (2026.7~)",
+          "스트레스 DSR 수도권 3.0% (한도 산정에만 적용)",
+          "보증료 HUG 공시 요율 (아파트·부채비율 80% 이하 가정)",
+          "기존 대출이 없다고 가정했어요. 대출이 있으면 한도가 줄어들 수 있어요",
+          "생애최초 주택구입이라면 LTV 70%까지 가능해 한도가 더 늘어날 수 있어요",
+          "법정 상한 5%"
+        ]
+      }
+    },
+    {
+      "name": "S-conv+cap0 통보경과+전환 동시(독립 적용)",
+      "contract": {
+        "type": "전세",
+        "deposit": 320000000,
+        "monthlyRent": 0,
+        "expiryDate": "2026-05-30",
+        "renewalUsed": "미사용",
+        "renewalSituations": [
+          "notice_deadline_passed",
+          "jeonse_to_monthly"
+        ],
+        "conversionAmount": 100000000
+      },
+      "finance": {
+        "annualIncome": 40000000,
+        "ownCapital": 30000000,
+        "household": "1인",
+        "firstHome": "모름",
+        "under35": true
+      },
+      "expected": {
+        "branches": [
+          {
+            "branch": "갱신",
+            "headline": "보증금 2억 2,000만 + 월세 40만 (전환)",
+            "depositOrPrice": 220000000,
+            "loanAmount": 0,
+            "oneTimeCost": 0,
+            "guaranteeMonthly": 32533,
+            "monthlyBurden": 428366,
+            "risks": [
+              "보증금 반환 위험 지속",
+              "임대인 사정에 따라 거절 가능"
+            ],
+            "cares": [
+              "반환보증 점검 (+3만/월)",
+              "계약서 특약 확인"
+            ],
+            "basis": [
+              "주택임대차보호법 제6조",
+              "주택임대차보호법 제7조의2",
+              "통보기한 경과 → 동일 조건 갱신 원칙(주임법 §6)",
+              "법정 상한 5%",
+              "HUG 공시 요율"
+            ],
+            "uncertainty": "통보기한이 지나 임대인이 통보하지 않았다면 동일 조건 묵시적 갱신(인상 0%)이 원칙이에요.",
+            "feature": "가장 가볍고 익숙함"
+          },
+          {
+            "branch": "이사",
+            "headline": "새 전세 최대 5억 4,200만",
+            "depositOrPrice": 542000000,
+            "loanAmount": 222000000,
+            "oneTimeCost": 1760000,
+            "guaranteeMonthly": 55103,
+            "monthlyBurden": 774753,
+            "risks": [
+              "새 보증금 잠김",
+              "이사 과정 일회성 비용"
+            ],
+            "cares": [
+              "새 계약 시 전세보증금 반환보증 확인",
+              "일회성 비용 약 176만"
+            ],
+            "basis": [
+              "전세대출 한도 80%",
+              "실거래 기준"
+            ],
+            "feature": "환경을 바꿀 기회"
+          },
+          {
+            "branch": "매매",
+            "headline": "최대 5억 4,840만 내 집",
+            "depositOrPrice": 548403262,
+            "loanAmount": 198403262,
+            "oneTimeCost": 9426049,
+            "guaranteeMonthly": 0,
+            "monthlyBurden": 820511,
+            "risks": [
+              "자산가치 변동",
+              "원금 장기 상환 부담"
+            ],
+            "cares": [
+              "화재보험 가입",
+              "청약통장 납입 유지"
+            ],
+            "basis": [
+              "규제지역 LTV 40%",
+              "KB 한도 3억",
+              "스트레스 DSR 가산 3.0%",
+              "디딤돌 혼합"
+            ],
+            "feature": "일부는 원금으로 적립"
+          }
+        ],
+        "dday": -50,
+        "noticeDaysLeft": -111,
+        "noticeDeadline": "2026-03-30",
+        "monthlyToDeposit": 0,
+        "savings": 1760000,
+        "assumptions": [
+          "이 금액은 사전 가늠이며, 실제 대출 심사 결과와 다를 수 있어요",
+          "전세대출 금리 HF 공시 평균 3.89%",
+          "규제지역 LTV 40% (생애최초 70%)",
+          "KB 주택구입 대출 한도 3억 (2026.7~)",
+          "스트레스 DSR 수도권 3.0% (한도 산정에만 적용)",
+          "보증료 HUG 공시 요율 (아파트·부채비율 80% 이하 가정)",
+          "기존 대출이 없다고 가정했어요. 대출이 있으면 한도가 줄어들 수 있어요",
+          "생애최초 주택구입이라면 LTV 70%까지 가능해 한도가 더 늘어날 수 있어요",
+          "법정 상한 5%"
+        ]
+      }
+    },
+    {
+      "name": "S-conv 미입력 전환상황만(안내만·숫자불변)",
+      "contract": {
+        "type": "전세",
+        "deposit": 320000000,
+        "monthlyRent": 0,
+        "expiryDate": "2026-11-30",
+        "renewalUsed": "미사용",
+        "renewalSituations": [
+          "jeonse_to_monthly"
+        ]
+      },
+      "finance": {
+        "annualIncome": 40000000,
+        "ownCapital": 30000000,
+        "household": "1인",
+        "firstHome": "모름",
+        "under35": true
+      },
+      "expected": {
+        "branches": [
+          {
+            "branch": "갱신",
+            "headline": "보증금 3억 2,000만 → 3억 3,600만 (합의 인상 시)",
+            "depositOrPrice": 336000000,
+            "loanAmount": 16000000,
+            "oneTimeCost": 0,
+            "guaranteeMonthly": 32533,
+            "monthlyBurden": 84400,
+            "risks": [
+              "보증금 반환 위험 지속",
+              "임대인 사정에 따라 거절 가능"
+            ],
+            "cares": [
+              "반환보증 점검 (+3만/월)",
+              "계약서 특약 확인"
+            ],
+            "basis": [
+              "주택임대차보호법 제7조의2",
+              "법정 상한 5%",
+              "HUG 공시 요율"
+            ],
+            "uncertainty": "전세를 월세로 바꾸자는 요구에는 전월세전환율 상한이 적용돼요.",
+            "feature": "가장 가볍고 익숙함"
+          },
+          {
+            "branch": "이사",
+            "headline": "새 전세 최대 5억 4,200만",
+            "depositOrPrice": 542000000,
+            "loanAmount": 222000000,
+            "oneTimeCost": 1760000,
+            "guaranteeMonthly": 55103,
+            "monthlyBurden": 774753,
+            "risks": [
+              "새 보증금 잠김",
+              "이사 과정 일회성 비용"
+            ],
+            "cares": [
+              "새 계약 시 전세보증금 반환보증 확인",
+              "일회성 비용 약 176만"
+            ],
+            "basis": [
+              "전세대출 한도 80%",
+              "실거래 기준"
+            ],
+            "feature": "환경을 바꿀 기회"
+          },
+          {
+            "branch": "매매",
+            "headline": "최대 5억 4,840만 내 집",
+            "depositOrPrice": 548403262,
+            "loanAmount": 198403262,
+            "oneTimeCost": 9426049,
+            "guaranteeMonthly": 0,
+            "monthlyBurden": 820511,
+            "risks": [
+              "자산가치 변동",
+              "원금 장기 상환 부담"
+            ],
+            "cares": [
+              "화재보험 가입",
+              "청약통장 납입 유지"
+            ],
+            "basis": [
+              "규제지역 LTV 40%",
+              "KB 한도 3억",
+              "스트레스 DSR 가산 3.0%",
+              "디딤돌 혼합"
+            ],
+            "feature": "일부는 원금으로 적립"
+          }
+        ],
+        "dday": 134,
+        "noticeDaysLeft": 73,
+        "noticeDeadline": "2026-09-30",
+        "monthlyToDeposit": 0,
+        "savings": 1760000,
+        "assumptions": [
+          "이 금액은 사전 가늠이며, 실제 대출 심사 결과와 다를 수 있어요",
+          "전세대출 금리 HF 공시 평균 3.89%",
+          "규제지역 LTV 40% (생애최초 70%)",
+          "KB 주택구입 대출 한도 3억 (2026.7~)",
+          "스트레스 DSR 수도권 3.0% (한도 산정에만 적용)",
+          "보증료 HUG 공시 요율 (아파트·부채비율 80% 이하 가정)",
+          "기존 대출이 없다고 가정했어요. 대출이 있으면 한도가 줄어들 수 있어요",
+          "생애최초 주택구입이라면 LTV 70%까지 가능해 한도가 더 늘어날 수 있어요",
+          "법정 상한 5%"
+        ]
+      }
     }
   ]
 }

@@ -21,6 +21,7 @@ import type {
 // Static exports for screens (screens must not import engine/ or data/ directly)
 export { PERSONAS, SAVED_MONEY_CARDS, briefings };
 export const NOTICE_DEADLINE_MONTHS = RULES.noticeDeadlineMonths;
+export const RENEWAL_CONVERSION_RATE = RULES.renewal.conversionRate; // 전월세전환율(§7-2) — 전환 산식 표시용
 // 갱신 상황 id → 안내/근거(결정표 원문). 화면이 engine 직접 import 없이 카드에 표시.
 export const RENEWAL_SITUATION_INFO: Record<string, { guidance: string; citation: string }> =
   Object.fromEntries(RENEWAL_CASES.map(c => [c.id, { guidance: c.guidance, citation: c.citation }]));

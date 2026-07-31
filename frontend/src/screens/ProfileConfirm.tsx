@@ -45,6 +45,7 @@ export default function ProfileConfirm() {
   const [approved, setApproved] = useState<Set<string>>(new Set());
   const [rejected, setRejected] = useState<Set<string>>(new Set());
   const [showExt, setShowExt] = useState(false); // 확장 추론 카드 펼침
+  const [convAmount, setConvAmount] = useState(''); // 전환 감액분 입력(만원). 프리필=clarify 추출
 
   // 예산(참고) — 예산↔선호 상충 판단 맥락. 갈래 미선택이라 대표로 전세(이사) 예산 사용.
   const refBudget = comparison?.branches.find(b => b.branch === '이사')?.depositOrPrice
@@ -57,8 +58,13 @@ export default function ProfileConfirm() {
     // acceptedPairs 변하면 재검증(둘 다 맞아요로 확인한 쌍 제외).
     api.validateProfile(contract, finance, refBudget, true, acceptedPairs).then(setValidation).catch(() => setValidation(null));
     setApplied(false);
-    setApproved(new Set()); setRejected(new Set()); setShowExt(false); // 재검증 시 카드 상태 초기화
+    setApproved(new Set()); setRejected(new Set()); setShowExt(false); setConvAmount(''); // 재검증 시 카드 상태 초기화
   }, [contract, finance, acceptedPairs]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // 전환 감액분 프리필 — clarify가 자유입력에서 뽑았으면 사람이 확정하도록 채워둠(원→만원)
+  useEffect(() => {
+    if (validation?.conversionAmount != null) setConvAmount(String(Math.round(validation.conversionAmount / 10000)));
+  }, [validation]);
 
   if (!contract || !finance) return null;
 
@@ -118,6 +124,9 @@ export default function ProfileConfirm() {
     patch.renewalAskPct = (approved.has('renewal') && renewalPct != null) ? renewalPct : null;
     // 갱신 상황: 승인분만 확정 → compare resolver가 requires 재검증 후 반영. 미승인은 계산 미반영.
     patch.renewalSituations = situations.filter(s => approved.has('sit:' + s));
+    // 전환 감액분: jeonse_to_monthly 승인 + 입력 있을 때만(만원→원). 미입력/미승인이면 null → 전환 미계산(안내만).
+    patch.conversionAmount = (approved.has('sit:jeonse_to_monthly') && convAmount.trim() !== '')
+      ? parseInt(convAmount, 10) * 10_000 : null;
     dispatch({ type: 'SET_CONTRACT', contract: patch });
     dispatch({ type: 'NAVIGATE', screen: 'SC-03' });
   }
@@ -205,6 +214,19 @@ export default function ProfileConfirm() {
                     state={cardState('sit:' + sid)}
                     onApprove={() => approve('sit:' + sid)} onReject={() => reject('sit:' + sid)} onUndo={() => undo('sit:' + sid)} />
                 ))}
+                {/* 전환 감액분 후속 입력 — jeonse_to_monthly 승인 시에만. 미입력이면 안내만(금액 미계산) */}
+                {situations.includes('jeonse_to_monthly') && approved.has('sit:jeonse_to_monthly') && (
+                  <div className="rounded-xl p-3" style={{ background: COLORS.CARD, border: `1.5px solid ${COLORS.KB_YELLOW}`, borderLeft: `4px solid ${COLORS.KB_GRAY}` }}>
+                    <p className="text-sm font-semibold" style={{ color: COLORS.KB_GRAY }}>보증금을 얼마나 월세로 돌리자고 하나요?</p>
+                    <div className="flex items-center gap-2 mt-1.5">
+                      <input type="number" inputMode="numeric" min={0} value={convAmount}
+                        onChange={e => setConvAmount(e.target.value)} placeholder="예: 10000"
+                        className="w-28 px-3 py-2 rounded-xl border border-border bg-card text-foreground text-center" />
+                      <span className="text-sm text-muted-foreground">만원</span>
+                    </div>
+                    <p className="text-[11px] mt-1.5" style={{ color: COLORS.SUB }}>비우면 안내만 하고 금액은 계산하지 않아요.</p>
+                  </div>
+                )}
                 {/* 직접 추론 카드 */}
                 {directCards.map(c => (
                   <ProposalCard key={c.axis} icon={AXIS_UI[c.axis]?.icon ?? '•'} title={AXIS_UI[c.axis]?.label ?? c.axis}

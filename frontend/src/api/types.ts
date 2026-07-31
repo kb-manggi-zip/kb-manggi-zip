@@ -23,6 +23,7 @@ export interface ContractInfo {
   renewalAskPct?: number | null; // 집주인이 요구한 갱신 인상률(%). 확정분만 — null이면 기존 5% 상한 동작 불변
   consultNote?: string; // 계산 불가한 사정(원문) — 상담사에게 전달. LLM 요약·재작성 금지
   renewalSituations?: RenewalSituation[]; // HITL 확정된 갱신 상황. 빈 배열이면 기존 동작 불변(resolver simple_increase 기본)
+  conversionAmount?: number | null; // 보증금→월세 전환하려는 감액분(원). null이면 전환 미계산(안내만)
 }
 
 export interface FinanceInfo {
@@ -154,6 +155,7 @@ export interface ClarifyResult {
   consultNote?: string;    // 4축·인상률로 해석 못한 갱신·주거 사정(원문) — 상담 전달용
   renewalSituations?: RenewalSituation[]; // AI가 닫힌 enum으로 분류한 갱신 상황 '제안' — 확정 전 계산 미반영
   situationEvidence?: Record<string, string>; // 상황 id → 사용자 원문 구절(그대로)
+  conversionAmount?: number | null; // 자유입력에서 뽑은 전환 감액분(원) '제안' — 프리필용
 }
 
 // 상충 1건 — 인라인 해소(K1). type: axis(문장↔문장) | household(가구 유형) | intra(한 문장 내부)
