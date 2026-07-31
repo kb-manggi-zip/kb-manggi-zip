@@ -3,6 +3,7 @@ import { useApp } from '../store';
 import { COLORS } from '../theme';
 import { MobileShell, PrimaryBtn, DdayBar } from '../components/ui';
 import { formatAmount } from '../utils/format';
+import { eunNeun, eulReul } from '../utils/josa';
 import { api } from '../api/client';
 import type { PersonaProfile, ClarifyResult } from '../api/types';
 
@@ -22,12 +23,13 @@ const RETAK_RE = /재택|집에서|집 주변|동네에서|근처에서/;
 function isExtended(note: string, axis: string): boolean {
   return axis === 'consumption' && RETAK_RE.test(note);
 }
-// 근거 되비추기 문구 ("○○라고 하셨으니 → △△")
+// 카드 문구 = 축 + 방향만(원문 인용은 그룹 헤더에 1회만, 카드 반복 인용 금지).
+//   방향(더/덜)은 배수 부호에서 파생 — 배수>1 '더', <1 '덜'(하드코딩 아님). 조사는 받침 따라 자동.
 function cardRationale(note: string, axis: string, mult: number): string {
   if (isExtended(note, axis)) return '재택이면 동네에서 보내는 시간이 길어서, 동네 생활·편의를 더 볼까요?';
   const dir = mult > 1 ? '더' : '덜';
-  const phrase = (note || '').length > 16 ? note.slice(0, 16) + '…' : note;
-  return `'${phrase}'라고 하셨으니, ${AXIS_UI[axis]?.label ?? axis}은(는) ${dir} 중요하게 볼게요.`;
+  const label = AXIS_UI[axis]?.label ?? axis;
+  return `${label}${eunNeun(label)} ${dir} 중요하게 볼게요.`;
 }
 
 // 문진 완료 직후 1회 — '당신의 프로필'. 확실한 것만: 사실 + 칩(사실 파생·본인 진술·실측). 가중치 바·세그먼트 통계 칩 없음.
@@ -104,7 +106,10 @@ export default function ProfileConfirm() {
       //   승인이 1건↑이면 noteAdjust(비어있지 않음)가 랭킹을 주도하므로 note는 유지(리포트에 진술 칩 표시).
       //   상담 사정은 승인과 무관하게 항상 consultNote로 보존.
       note: approved.size > 0 ? contract!.note : '',
-      consultNote: validation?.consultNote || '',
+      // 상담 사정 = 갱신 스텝 직접입력(contract.consultNote) + 자유입력에서 추출분(validation) 병합(원문·중복 제거)
+      consultNote: Array.from(new Set(
+        [(contract!.consultNote || '').trim(), (validation?.consultNote || '').trim()].filter(Boolean)
+      )).join(' · '),
     };
     // 인상률 카드 승인 시에만 확정분으로 반영(미승인이면 null 유지 → 계산 불변)
     patch.renewalAskPct = (approved.has('renewal') && renewalPct != null) ? renewalPct : null;
@@ -173,10 +178,17 @@ export default function ProfileConfirm() {
               </>
             ) : (axisCards.length > 0 || renewalPct != null) ? (
               <div className="space-y-2">
+                {/* 원문 인용은 여기 헤더에서 1회만(전체). 카드 안에서는 반복 인용하지 않는다. */}
+                {note.trim() && (
+                  <p className="text-xs" style={{ color: COLORS.KB_GRAY }}>
+                    남기신 말: <span className="italic" style={{ color: COLORS.SUB }}>“{note.length > 60 ? note.slice(0, 60) + '…' : note}”</span>
+                  </p>
+                )}
                 <p className="text-[11px]" style={{ color: COLORS.SUB }}>승인한 것만 동네 추천에 실려요. (거절·확인 대기는 반영 안 함)</p>
                 {/* ① 인상률 제안 — 별도 형태(숫자 확정), 맨 위 */}
                 {renewalPct != null && (
-                  <RenewalCard pct={renewalPct} state={cardState('renewal')}
+                  <RenewalCard pct={renewalPct} ctype={contract.type} deposit={contract.deposit} monthly={contract.monthlyRent}
+                    state={cardState('renewal')}
                     onApprove={() => approve('renewal')} onReject={() => reject('renewal')} onUndo={() => undo('renewal')} />
                 )}
                 {/* 직접 추론 카드 */}
@@ -322,11 +334,18 @@ function ProposalCard({ icon, title, rationale, state, extended, onApprove, onRe
   );
 }
 
-// C①: 인상률 카드 — 4축과 다른 형태(숫자 확정 + 상한 판정 프리뷰)
-function RenewalCard({ pct, state, onApprove, onReject, onUndo }: {
-  pct: number; state: 'pending' | 'approved' | 'rejected'; onApprove: () => void; onReject: () => void; onUndo: () => void;
+// C①: 인상률 카드 — 4축과 다른 형태(숫자 확정 + 상한 판정 프리뷰 + 적용 대상·산식)
+function RenewalCard({ pct, ctype, deposit, monthly, state, onApprove, onReject, onUndo }: {
+  pct: number; ctype: string; deposit: number; monthly: number;
+  state: 'pending' | 'approved' | 'rejected'; onApprove: () => void; onReject: () => void; onUndo: () => void;
 }) {
   const over = pct > 5;
+  const cap = Math.min(pct, 5);                 // 실제 적용률 = min(요구%, 법정 5%)
+  const isJeonse = ctype === '전세';
+  const target = isJeonse ? '보증금' : '월세';   // 적용 대상: 전세=보증금 / 월세=차임
+  const before = isJeonse ? deposit : monthly;
+  const after = Math.round(before * (1 + cap / 100)); // 표시용 재계산(계산 로직 아님 — 근거 노출)
+  const man = (v: number) => `${Math.round(v / 10_000).toLocaleString()}만`;
   const border = state === 'approved' ? COLORS.KB_YELLOW : state === 'rejected' ? COLORS.BORDER : COLORS.SUB;
   return (
     <div className="rounded-xl p-3" style={{
@@ -334,9 +353,14 @@ function RenewalCard({ pct, state, onApprove, onReject, onUndo }: {
       border: `${state === 'pending' ? '1.5px dashed' : '1.5px solid'} ${border}`,
       opacity: state === 'rejected' ? 0.5 : 1,
     }}>
-      <p className="text-sm font-bold" style={{ color: COLORS.KB_GRAY, textDecoration: state === 'rejected' ? 'line-through' : 'none' }}>💰 갱신 인상률 {pct}%</p>
+      <p className="text-sm font-bold" style={{ color: COLORS.KB_GRAY, textDecoration: state === 'rejected' ? 'line-through' : 'none' }}>
+        💰 집주인이 {target}{eulReul(target)} {pct}% 올려달래요
+      </p>
       <p className="text-xs mt-1" style={{ color: COLORS.SUB }}>
         {over ? `⚠️ 법정 상한 5%를 넘어 5%로 계산돼요.` : `법정 상한(5%) 이내예요.`} 이 값으로 갱신을 계산할까요?
+      </p>
+      <p className="text-[11px] mt-1 font-medium" style={{ color: COLORS.KB_GRAY }}>
+        {target} {man(before)} → {cap}% → {man(after)}
       </p>
       <div className="flex gap-1.5 mt-2">
         {state === 'pending' ? (
