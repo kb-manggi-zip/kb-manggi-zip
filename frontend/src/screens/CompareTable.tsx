@@ -14,8 +14,17 @@ import {
 } from "../components/ui";
 import AiBriefing from "../components/AiBriefing";
 import { formatAmount, formatMonthly, ddayText } from "../utils/format";
-import { briefings, RENEWAL_CONVERSION_RATE } from "../api/client";
+import { briefings, RENEWAL_CONVERSION_RATE, renewalBranchHints } from "../api/client";
+import type { BranchHintItem } from "../api/client";
 import type { BranchResult, Branch, FirstHome } from "../api/types";
+
+// tone → 기존 디자인 토큰(새 색 정의 금지). favorable=초록(MINT)/uncertain=주의(CORAL)/consider=중립강조(옐로surface)/neutral=기본
+const HINT_TONE: Record<string, { fg: string; bg: string; icon: string }> = {
+  favorable: { fg: COLORS.KB_GRAY, bg: `${COLORS.MINT}22`, icon: "✅" },
+  uncertain: { fg: COLORS.KB_GRAY, bg: `${COLORS.CORAL}22`, icon: "⚠️" },
+  consider: { fg: COLORS.KB_GRAY, bg: COLORS.YELLOW_SURFACE, icon: "🔎" },
+  neutral: { fg: COLORS.SUB, bg: "transparent", icon: "•" },
+};
 
 export default function CompareTable() {
   const { state, dispatch } = useApp();
@@ -38,6 +47,9 @@ export default function CompareTable() {
   const commonAssumptions = assumptions.filter(
     (a) => assumptionForBranch(a, "갱신") === "common" && !/사전 가늠/.test(a)
   );
+  // 확정 갱신 상황 → 3갈래 힌트(표시 계층). 계산·순위 무관, 정보만 붙인다. 미승인/기각이면 빈 배열.
+  const BRANCH_TO_KEY: Record<string, "renewal" | "move" | "purchase"> = { 갱신: "renewal", 이사: "move", 매매: "purchase" };
+  const branchHintMap = renewalBranchHints((contract.renewalSituations ?? []).map(String), noticeDaysLeft);
   const name = finance?.household === "신혼" ? "신혼 가구" : "나";
   // 분석 에이전트(narrate 노드)가 만든 통역을 재사용(중복 LLM 호출 없음). 없으면 로컬 템플릿.
   const briefText = state.briefing?.trim()
@@ -179,6 +191,7 @@ export default function CompareTable() {
             deposit={contract.deposit}
             monthlyRent={contract.monthlyRent}
             conversionAmount={contract.conversionAmount ?? null}
+            hints={branchHintMap[BRANCH_TO_KEY[b.branch]] ?? []}
             assumptions={assumptions}
             onSelectFinance={() => selectBranchTo(b.branch, "SC-09")}
             onSelectNext={() => selectBranchTo(b.branch, b.branch === "갱신" ? "SC-06" : "SC-04")}
@@ -348,6 +361,7 @@ function BranchCardView({
   deposit,
   monthlyRent,
   conversionAmount,
+  hints,
   assumptions,
   onSelectFinance,
   onSelectNext,
@@ -360,6 +374,7 @@ function BranchCardView({
   deposit: number;
   monthlyRent: number;
   conversionAmount?: number | null;
+  hints: BranchHintItem[];
   assumptions: string[];
   onSelectFinance: () => void;
   onSelectNext: () => void;
@@ -452,6 +467,21 @@ function BranchCardView({
             />
           )}
       </div>
+
+      {/* 상황 → 이 갈래 힌트(표시 계층). 헤드라인 금액 아래·근거 위. 힌트 없으면 아무것도 안 그림 */}
+      {hints.length > 0 && (
+        <div className="px-5 pt-3 space-y-1.5">
+          {hints.map((h, i) => {
+            const t = HINT_TONE[h.tone] ?? HINT_TONE.neutral;
+            return (
+              <div key={i} className="flex items-start gap-1.5 px-2.5 py-1.5 rounded-lg" style={{ background: t.bg }}>
+                <span className="text-[11px] leading-snug">{t.icon}</span>
+                <p className="text-[11px] leading-snug" style={{ color: t.fg }}>{h.text}</p>
+              </div>
+            );
+          })}
+        </div>
+      )}
 
       {/* 갱신 인상률 요구가 있을 때 산식 노출(대상·적용률·전후). 표시용 재계산 — compare 결과와 동일 값 */}
       {branch.branch === "갱신" && renewalAskPct != null && (() => {
