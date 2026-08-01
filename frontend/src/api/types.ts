@@ -193,6 +193,8 @@ export interface SpendAnalysis {
   trend: { month: string; total: number }[];
   dynamicQueries?: { question: string; sql: string | null; result: number | null; fellBack: boolean; blockReason?: string }[];
   synthetic: boolean;
+  reactLog?: { thought: string; action: string; observation: string }[]; // 여력 판정 ReAct 트레이스(표시용)
+  verdict?: string; // 여력 판정 결론("여력 안" | "초과 N만")
 }
 
 // ⑥ 다음 액션 — 자격 기반 정책대출 차액(버팀목/디딤돌)

@@ -210,6 +210,8 @@ class SpendAnalysis(BaseModel):
     trend: list[dict]  # [{month, total}]
     dynamicQueries: list[dict] = []  # LLM 동적 질문/SQL/결과/폴백여부
     synthetic: bool = True  # 합성 시연 데이터
+    reactLog: list[dict] = []  # 여력 판정 ReAct 트레이스 [{thought, action, observation}] — 표시용, 계산 무관
+    verdict: str = ""  # 여력 판정 결론("여력 안" | "초과 N만") — reactLog 결론과 일치, feasibility와 동일 판정
 
 
 class NextAction(BaseModel):

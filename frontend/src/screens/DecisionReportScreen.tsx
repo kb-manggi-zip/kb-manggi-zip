@@ -247,6 +247,21 @@ export default function DecisionReportScreen() {
                 {(rep.spend.topCategories?.length ?? 0) > 0 && (
                   <p className="text-xs text-muted-foreground">주요 지출: {rep.spend.topCategories.map(t => `${t.category} ${man(t.monthly)}`).join(' · ')}</p>
                 )}
+                {/* 여력 판정 ReAct 트레이스 — 기본 접힘(미클릭 시 위 숫자와 동일). 표시용, 계산 무관 */}
+                {(rep.spend.reactLog?.length ?? 0) > 0 && (
+                  <details className="mt-1.5">
+                    <summary className="text-xs cursor-pointer select-none" style={{ color: COLORS.KB_GRAY }}>▾ 어떻게 판단했나요?</summary>
+                    <div className="mt-1.5 space-y-2">
+                      {rep.spend.reactLog!.map((s, i) => (
+                        <div key={i} className="text-[11px] leading-snug pl-1">
+                          <p style={{ color: COLORS.SUB }}>💭 {s.thought}</p>
+                          <p style={{ color: COLORS.SUB }}>⚡ {s.action}</p>
+                          <p style={{ color: COLORS.KB_GRAY }}>👀 {s.observation}</p>
+                        </div>
+                      ))}
+                    </div>
+                  </details>
+                )}
                 <p className="text-[11px] pt-1" style={{ color: COLORS.SUB }}>⚠️ 합성 시연 데이터 기준입니다. 실서비스에서는 마이데이터 동의 후 실제 내역으로 분석됩니다.</p>
               </Section>
             )}

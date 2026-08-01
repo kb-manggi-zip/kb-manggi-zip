@@ -122,6 +122,37 @@ def _feasibility_sentence(selected, spend: Optional[dict]) -> str:
     )
 
 
+def _react_log(selected, spend: dict) -> tuple[list[dict], str]:
+    """여력 판정을 ReAct(생각→행동→관찰) 3단계로 재구성한 **결정론 트레이스**.
+    새 LLM 호출·새 계산 없음 — 이미 산출된 fixed/variable/burden을 그대로 서술한다.
+    verdict는 _feasibility_sentence와 **같은 burden vs variable 판정**이라 모순이 생길 수 없다."""
+    total = spend["monthlyTotal"]
+    fixed = spend["fixedMonthly"]
+    variable = spend["variableMonthly"]
+    burden = selected.monthlyBurden  # compare 출력(맥락) — 재계산하지 않는다
+    over = burden > variable
+    gap = burden - variable
+    verdict = f"초과 {_man(gap)}" if over else "여력 안"
+    log = [
+        {
+            "thought": "이 가구의 고정지출 항목은 무엇인가?",
+            "action": "월세·보험·구독·대출 이자 등 매달 고정으로 나가는 지출을 분류",
+            "observation": f"고정지출 월 {_man(fixed)} (월평균 총지출 {_man(total)} 중)",
+        },
+        {
+            "thought": "변동 여력은 얼마인가?",
+            "action": "월평균 총지출 − 고정지출",
+            "observation": f"변동 여력 월 {_man(variable)}",
+        },
+        {
+            "thought": f"선택한 '{selected.branch}'의 월 부담이 변동 여력 안에 드는가?",
+            "action": f"월 부담 {_man(burden)} vs 변동 여력 {_man(variable)} 비교",
+            "observation": (f"여력 초과 (초과 {_man(gap)})" if over else f"여력 안 (여유 {_man(-gap)})"),
+        },
+    ]
+    return log, verdict
+
+
 def build_report(
     contract: dict,
     finance: dict,
@@ -191,6 +222,10 @@ def build_report(
     persona_ctx = f"{finance.get('household')} 가구 · {contract.get('type')} 계약 · note={contract.get('note', '')}"
     spend = spend_query.analyze_spending(pid, persona_ctx=persona_ctx, branch=branch)
     feasibility = _feasibility_sentence(selected, spend)
+    if spend:
+        # 여력 판정 ReAct 트레이스(표시용) — 계산 무관, feasibility와 동일 판정. spend에 실어 프론트로 전달.
+        spend = {**spend}
+        spend["reactLog"], spend["verdict"] = _react_log(selected, spend)
 
     return DecisionReport(
         persona=prof,  # PersonaProfile dict → pydantic 변환
