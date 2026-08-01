@@ -622,7 +622,7 @@ export function RegionCard({
             </>
           ) : null;
         })()}
-        {/* 시세 지표 — 실거래 건수 + 전세가율을 한 줄로 묶어 별도 행 하나를 줄인다 */}
+        {/* 시세 지표 — 실거래 건수 + 전세가율(%). 설명 문구는 위험도에 따라 강조 수준을 달리한다(아래). */}
         <div className="flex items-center gap-1.5 flex-wrap">
           <span className={`${TYPE.body} text-muted-foreground`}>
             최근 실거래 {region.tradeCount}건
@@ -637,15 +637,34 @@ export function RegionCard({
               >
                 전세가율 {Math.round(region.jeonseRatio.ratio * 100)}%
               </span>
-              <span
-                className={`${TYPE.body} text-muted-foreground`}
-                title={region.jeonseRatio.basis}
-              >
-                {region.jeonseRatio.label}
-              </span>
+              {region.jeonseRatio.band === "safe" && (
+                <span
+                  className={`${TYPE.body} text-muted-foreground`}
+                  title={region.jeonseRatio.basis}
+                >
+                  {region.jeonseRatio.label}
+                </span>
+              )}
             </>
           )}
         </div>
+        {/* caution·alert만 별도 경고 박스로 승격 — safe는 위 인라인 잔글씨로 충분(경고할 게 없음) */}
+        {region.jeonseRatio && region.jeonseRatio.band !== "safe" && (
+          <div
+            className="flex items-start gap-1.5 px-2.5 py-1.5 rounded-lg"
+            style={{ background: bandStyle(region.jeonseRatio.band).background }}
+          >
+            <span className={TYPE.caption}>
+              {region.jeonseRatio.band === "alert" ? "⚠️" : "🔎"}
+            </span>
+            <p
+              className={TYPE.caption}
+              style={{ color: bandStyle(region.jeonseRatio.band).color }}
+            >
+              {region.jeonseRatio.label}
+            </p>
+          </div>
+        )}
         {cardReasons.length > 0 ? (
           <div className="pt-1">
             <Accordion title="동네 추천 이유 보기" compact>
