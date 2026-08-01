@@ -184,11 +184,11 @@ export function BasisChip({ label, tip }: { label: string; tip: string }) {
       </button>
       {open && (
         <div
-          className="absolute bottom-full mb-2 left-0 z-50 w-44 bg-foreground text-background text-xs rounded-xl p-2.5 shadow-lg leading-relaxed"
+          className="absolute bottom-full mb-2 left-1/2 -translate-x-1/2 z-50 w-max max-w-[75vw] whitespace-nowrap bg-foreground text-background text-xs rounded-xl p-2.5 shadow-lg leading-relaxed"
           onClick={() => setOpen(false)}
         >
           {tip}
-          <div className="absolute -bottom-1 left-4 w-2 h-2 bg-foreground rotate-45" />
+          <div className="absolute -bottom-1 left-1/2 -translate-x-1/2 w-2 h-2 bg-foreground rotate-45" />
         </div>
       )}
     </div>

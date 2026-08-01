@@ -226,7 +226,7 @@ export default function RenewalChecklist() {
               {item.id === 'notice' && (
                 <button
                   onClick={() => setDraftOpen(true)}
-                  className="mt-2 ml-10 flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-full border transition-colors"
+                  className="mt-1.5 w-full flex items-center justify-center gap-1.5 text-xs font-semibold py-2 rounded-xl border transition-colors"
                   style={{ borderColor: COLORS.MINT, color: COLORS.MINT, background: COLORS.MINT + '15' }}
                 >
                   📝 통보 문자 초안 받기
