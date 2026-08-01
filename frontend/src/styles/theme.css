@@ -141,6 +141,11 @@
     font-family: var(--font-family);
   }
 
+  /* Tailwind preflight가 button cursor를 default로 리셋해서 클릭 가능한데 화살표 커서로 보이던 문제 */
+  button:not(:disabled) {
+    cursor: pointer;
+  }
+
   /**
   * Default typography styles for HTML elements (h1-h4, p, label, button, input).
   * These are in @layer base, so Tailwind utility classes (like text-sm, text-lg) automatically override them.

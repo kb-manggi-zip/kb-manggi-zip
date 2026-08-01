@@ -222,8 +222,8 @@ export function Disclaimer() {
 export function Toast({ message, visible }: { message: string; visible: boolean }) {
   return (
     <div
-      className="fixed bottom-8 left-1/2 -translate-x-1/2 z-[100] px-5 py-3 bg-foreground text-background text-sm font-medium rounded-2xl shadow-xl transition-all duration-300"
-      style={{ opacity: visible ? 1 : 0, transform: `translateX(-50%) translateY(${visible ? 0 : 16}px)` }}
+      className="absolute bottom-8 left-1/2 z-[100] px-5 py-3 bg-foreground text-background text-sm font-medium rounded-2xl shadow-xl transition-all duration-300 whitespace-nowrap"
+      style={{ opacity: visible ? 1 : 0, translate: `-50% ${visible ? 0 : 16}px` }}
     >
       {message}
     </div>
