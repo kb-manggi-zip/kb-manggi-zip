@@ -83,7 +83,7 @@ export default function SavedMoneyPlayer() {
         {/* 갈래 칩 */}
         <div className="px-5 pb-6 flex items-center gap-2">
           <button
-            onClick={e => { e.stopPropagation(); dispatch({ type: 'NAVIGATE', screen: 'SC-06' }); }}
+            onClick={e => { e.stopPropagation(); dispatch({ type: 'BACK', fallback: 'SC-06' }); }}
             className="text-white/60 text-sm pr-2"
           >
             ←

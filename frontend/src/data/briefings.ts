@@ -70,5 +70,5 @@ export const briefings = {
     `갱신하면 아끼는 돈의 쓰임을 정리했어요.`,
 
   finance: (branch: string, reason: string): string =>
-    `${branch} 경로에 맞는 상품을 골랐어요. ${reason}`,
+    `${branch}에 맞는 상품을 골랐어요. ${reason}`,
 };

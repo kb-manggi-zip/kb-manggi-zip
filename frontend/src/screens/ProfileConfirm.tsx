@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { useApp } from '../store';
-import { COLORS } from '../theme';
+import { COLORS, TYPE } from '../theme';
 import { MobileShell, PrimaryBtn, DdayBar } from '../components/ui';
 import { formatAmount } from '../utils/format';
 import { eunNeun, eulReul } from '../utils/josa';
@@ -139,9 +139,9 @@ export default function ProfileConfirm() {
     <MobileShell>
       {comparison && <DdayBar dday={comparison.dday} noticeDaysLeft={comparison.noticeDaysLeft} />}
 
-      <div className="flex items-center gap-2 px-5 py-3">
+      <div className="relative flex items-center px-5 py-3">
         <button onClick={() => dispatch({ type: 'NAVIGATE', screen: 'SC-02' })} className="text-muted-foreground text-lg -ml-1 p-2">←</button>
-        <span className="text-sm text-muted-foreground">비교 전 확인</span>
+        <span className={`absolute left-1/2 -translate-x-1/2 ${TYPE.heading}`} style={{ color: COLORS.KB_GRAY }}>비교 전 확인</span>
       </div>
 
       <div className="flex-1 overflow-y-auto px-5 pb-8 space-y-5">
@@ -359,7 +359,12 @@ function ProposalCard({ icon, title, rationale, state, extended, onApprove, onRe
           </>
         ) : (
           <>
-            <span className="text-[11px] font-semibold px-2 py-1" style={{ color: state === 'approved' ? COLORS.KB_GRAY : COLORS.SUB }}>
+            <span className="text-xs font-semibold px-3 py-2 rounded-xl border"
+              style={{
+                color: state === 'approved' ? COLORS.KB_GRAY : COLORS.SUB,
+                background: state === 'approved' ? COLORS.KB_YELLOW + '33' : COLORS.CARD,
+                borderColor: state === 'approved' ? COLORS.KB_YELLOW : COLORS.BORDER,
+              }}>
               {state === 'approved' ? '✓ 반영' : '반영 안 함'}
             </span>
             <ChoiceBtn label="되돌리기" onClick={onUndo} />
@@ -406,7 +411,12 @@ function RenewalCard({ pct, ctype, deposit, monthly, state, onApprove, onReject,
           </>
         ) : (
           <>
-            <span className="text-[11px] font-semibold px-2 py-1" style={{ color: state === 'approved' ? COLORS.KB_GRAY : COLORS.SUB }}>
+            <span className="text-xs font-semibold px-3 py-2 rounded-xl border"
+              style={{
+                color: state === 'approved' ? COLORS.KB_GRAY : COLORS.SUB,
+                background: state === 'approved' ? COLORS.KB_YELLOW + '33' : COLORS.CARD,
+                borderColor: state === 'approved' ? COLORS.KB_YELLOW : COLORS.BORDER,
+              }}>
               {state === 'approved' ? '✓ 반영' : '반영 안 함'}
             </span>
             <ChoiceBtn label="되돌리기" onClick={onUndo} />
@@ -445,7 +455,12 @@ function SituationCard({ evidence, guidance, citation, state, onApprove, onRejec
           </>
         ) : (
           <>
-            <span className="text-[11px] font-semibold px-2 py-1" style={{ color: state === 'approved' ? COLORS.KB_GRAY : COLORS.SUB }}>
+            <span className="text-xs font-semibold px-3 py-2 rounded-xl border"
+              style={{
+                color: state === 'approved' ? COLORS.KB_GRAY : COLORS.SUB,
+                background: state === 'approved' ? COLORS.KB_YELLOW + '33' : COLORS.CARD,
+                borderColor: state === 'approved' ? COLORS.KB_YELLOW : COLORS.BORDER,
+              }}>
               {state === 'approved' ? '✓ 반영' : '반영 안 함'}
             </span>
             <ChoiceBtn label="되돌리기" onClick={onUndo} />

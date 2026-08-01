@@ -300,13 +300,13 @@ export default function ContractInput() {
 
         {currentStep.id === 'deposit' && (
           <StepView title="보증금이 얼마인가요?">
-            <AmountInput value={deposit} onChange={setDeposit} label="보증금 (만원)" placeholder="예: 32000" />
+            <AmountInput value={deposit} onChange={setDeposit} label="보증금 (만원)" placeholder="32,000" />
           </StepView>
         )}
 
         {currentStep.id === 'rent' && (
           <StepView title="월세액을 알려주세요">
-            <AmountInput value={monthlyRent} onChange={setMonthlyRent} label="월세 (만원)" placeholder="예: 200" />
+            <AmountInput value={monthlyRent} onChange={setMonthlyRent} label="월세 (만원)" placeholder="200" />
           </StepView>
         )}
 

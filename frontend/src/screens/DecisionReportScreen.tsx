@@ -1,6 +1,6 @@
 import React, { useEffect, useState, useRef } from 'react';
 import { useApp } from '../store';
-import { COLORS, BRANCH_COLORS, BRANCH_ICONS } from '../theme';
+import { COLORS, BRANCH_COLORS, BRANCH_ICONS, TYPE, BTN } from '../theme';
 import { MobileShell, BackBtn, DdayBar } from '../components/ui';
 import { formatAmount, ddayText } from '../utils/format';
 import { kbLandUrl, officialProductUrl } from '../utils/external';
@@ -16,10 +16,10 @@ function Section({ n, title, open, onToggle, children }: {
   return (
     <div className="bg-card rounded-2xl border border-border overflow-hidden">
       <button onClick={onToggle} className="w-full flex items-center gap-2 px-4 py-3">
-        <span className="text-xs font-bold w-5 h-5 rounded-full flex items-center justify-center shrink-0"
+        <span className="text-[11px] leading-none font-bold w-5 h-5 rounded-full flex items-center justify-center shrink-0"
           style={{ background: COLORS.KB_YELLOW, color: COLORS.TEXT }}>{n}</span>
-        <h2 className="text-sm font-bold flex-1 text-left" style={{ color: COLORS.TEXT }}>{title}</h2>
-        <span className="text-xs text-muted-foreground">{open ? '접기' : '자세히'}</span>
+        <h2 className={`${TYPE.bodyStrong} font-bold flex-1 text-left`} style={{ color: COLORS.TEXT }}>{title}</h2>
+        <span className={`${TYPE.caption} text-muted-foreground`}>{open ? '접기' : '자세히'}</span>
       </button>
       {open && <div className="px-4 pb-4 space-y-2">{children}</div>}
     </div>
@@ -33,17 +33,17 @@ function FinItem({ tag, name, url, sub, extra, icon, color }: {
   return (
     <div className="rounded-xl p-3" style={{ background: COLORS.YELLOW_SURFACE }}>
       <div className="flex items-center gap-1.5 flex-wrap">
-        <span className="text-[10px] font-bold px-1.5 py-0.5 rounded" style={{ background: color + '22', color }}>{tag}</span>
+        <span className={`${TYPE.caption} font-bold px-1.5 py-0.5 rounded`} style={{ background: color + '22', color }}>{tag}</span>
         {url ? (
-          <a href={url} target="_blank" rel="noopener noreferrer" className="text-sm font-semibold underline underline-offset-2" style={{ color: COLORS.TEXT }}>
+          <a href={url} target="_blank" rel="noopener noreferrer" className={`${TYPE.bodyStrong} font-semibold underline underline-offset-2`} style={{ color: COLORS.TEXT }}>
             {icon ? icon + ' ' : ''}{name} ↗
           </a>
         ) : (
-          <span className="text-sm font-semibold" style={{ color: COLORS.TEXT }}>{icon ? icon + ' ' : ''}{name}</span>
+          <span className={`${TYPE.bodyStrong} font-semibold`} style={{ color: COLORS.TEXT }}>{icon ? icon + ' ' : ''}{name}</span>
         )}
       </div>
-      {sub && <p className="text-xs mt-0.5 text-muted-foreground">{sub}</p>}
-      {extra && <p className="text-sm font-bold mt-1" style={{ color }}>{extra}</p>}
+      {sub && <p className={`${TYPE.body} mt-0.5 text-muted-foreground`}>{sub}</p>}
+      {extra && <p className={`${TYPE.body} font-bold mt-1`} style={{ color }}>{extra}</p>}
     </div>
   );
 }
@@ -83,9 +83,9 @@ export default function DecisionReportScreen() {
     return (
       <MobileShell>
         <div className="flex-1 flex flex-col items-center justify-center gap-3 px-6 text-center">
-          <p className="text-sm text-muted-foreground">먼저 계약 입력과 갈래 선택이 필요해요.</p>
+          <p className={`${TYPE.body} text-muted-foreground`}>먼저 계약 입력과 갈래 선택이 필요해요.</p>
           <button onClick={() => dispatch({ type: 'NAVIGATE', screen: 'SC-01' })}
-            className="px-4 py-2 rounded-xl font-semibold text-sm" style={{ background: COLORS.KB_YELLOW }}>처음으로</button>
+            className={`px-4 py-2 rounded-xl font-semibold ${TYPE.body}`} style={{ background: COLORS.KB_YELLOW }}>처음으로</button>
         </div>
       </MobileShell>
     );
@@ -122,21 +122,21 @@ export default function DecisionReportScreen() {
       <DdayBar dday={rep?.dday} noticeDaysLeft={rep?.comparison.noticeDaysLeft} />
       <div className="flex items-center gap-2 px-5 py-2 border-b-2" style={{ borderColor: color }}>
         <BackBtn onClick={() => dispatch({ type: 'BACK', fallback: 'SC-11' })} />
-        <span className="font-bold" style={{ color }}>만기 결정 리포트</span>
+        <span className={TYPE.heading} style={{ color }}>만기 결정 리포트</span>
       </div>
 
       <div className="flex-1 overflow-y-auto px-5 py-4 space-y-3">
-        {loading && <p className="text-sm text-muted-foreground text-center py-10">리포트를 만드는 중…</p>}
+        {loading && <p className={`${TYPE.body} text-muted-foreground text-center py-10`}>리포트를 만드는 중…</p>}
 
         {/* R5 조건②: 전환 실패 시 이전 리포트 유지 + 안내 */}
         {switchError && (
-          <div className="rounded-xl px-3 py-2 text-xs" style={{ background: '#FDECEC', color: '#B42318' }}>
+          <div className={`rounded-xl px-3 py-2 ${TYPE.body}`} style={{ background: '#FDECEC', color: '#B42318' }}>
             {switchError}
           </div>
         )}
         {/* R5 조건②: 전환 재조회 중 로딩 표시(이전 리포트는 dim 처리, 값 오인 방지) */}
         {switching && (
-          <div className="flex items-center justify-center gap-2 rounded-xl px-3 py-2 text-xs" style={{ background: color + '14', color }}>
+          <div className={`flex items-center justify-center gap-2 rounded-xl px-3 py-2 ${TYPE.body}`} style={{ background: color + '14', color }}>
             <span className="inline-block w-3 h-3 rounded-full border-2 border-current border-t-transparent animate-spin" />
             ‘{selectedBranch}’ 기준으로 다시 계산 중…
           </div>
@@ -144,34 +144,34 @@ export default function DecisionReportScreen() {
 
         {rep && (
           <div className={`space-y-3 ${switching ? 'opacity-40 pointer-events-none' : ''}`}>
-            {/* 1층 — 상단 요약 카드(월부담) + P4 한 줄 결론 */}
+            {/* 1층 — 상단 요약 카드(월부담). 이 화면에서 진짜 튀어야 할 건 이 숫자 하나뿐. */}
             <div className="rounded-2xl p-4 text-center" style={{ background: color + '14', border: `1px solid ${color}44` }}>
-              <p className="text-xs text-muted-foreground">{BRANCH_ICONS[shown]} {shown} · 월 부담</p>
-              <p className="text-3xl font-bold my-1" style={{ color: COLORS.TEXT }}>{selBurden != null ? man(selBurden) : '—'}</p>
-              <p className="text-xs" style={{ color: COLORS.SUB }}>{rep.feasibility}</p>
+              <p className={`${TYPE.body} text-muted-foreground`}>{BRANCH_ICONS[shown]} {shown} · 월 부담</p>
+              <p className={`${TYPE.display} my-1`} style={{ color: COLORS.TEXT }}>{selBurden != null ? man(selBurden) : '—'}</p>
+              <p className={TYPE.body} style={{ color: COLORS.SUB }}>{rep.feasibility}</p>
             </div>
             {/* R5: 관점 선언 + 비교 잔상 — 고른 길이 중심이되 비교 맥락을 리포트 안에 유지(결정론) */}
             {perspective && (
               <div className="rounded-2xl px-4 py-3 space-y-0.5" style={{ background: color + '0A', border: `1px solid ${color}22` }}>
-                <p className="text-sm font-semibold" style={{ color: COLORS.TEXT }}>🧭 {perspective.declare}</p>
-                {perspective.contrast && <p className="text-xs leading-relaxed" style={{ color: COLORS.SUB }}>{perspective.contrast}</p>}
-                <p className="text-[11px] pt-0.5" style={{ color: COLORS.SUB }}>아래 <b>‘세 갈래 채점’</b>에서 갈래를 눌러 다른 기준으로 바꿔볼 수 있어요.</p>
+                <p className={`${TYPE.body} font-semibold`} style={{ color: COLORS.TEXT }}>🧭 {perspective.declare}</p>
+                {perspective.contrast && <p className={TYPE.body} style={{ color: COLORS.SUB }}>{perspective.contrast}</p>}
+                <p className={`${TYPE.caption} pt-0.5`} style={{ color: COLORS.SUB }}>아래 <b>‘세 갈래 채점’</b>에서 갈래를 눌러 다른 기준으로 바꿔볼 수 있어요.</p>
               </div>
             )}
-            {/* P4: 이 사람 고유 한 줄 결론(결정론 조립) */}
+            {/* P4: 이 사람 고유 한 줄 결론(결정론 조립) — 이 화면이 최종적으로 하고 싶은 말이라 위 숫자 다음으로 크게. */}
             {oneLine && (
               <div className="rounded-2xl px-4 py-3" style={{ background: color + '0A', borderLeft: `3px solid ${color}` }}>
-                <p className="text-sm font-semibold leading-snug" style={{ color: COLORS.TEXT }}>📌 {oneLine}</p>
-                <p className="text-[11px] mt-0.5" style={{ color: COLORS.SUB }}>* 자격·금리는 정보 제공이며 실제 조건은 심사에 따라요(권유 아님).</p>
+                <p className={`${TYPE.bodyStrong} font-bold leading-snug break-keep`} style={{ color: COLORS.TEXT }}>📌 {oneLine}</p>
+                <p className={`${TYPE.caption} mt-0.5`} style={{ color: COLORS.SUB }}>* 자격·금리는 정보 제공이며 실제 조건은 심사에 따라요(권유 아님).</p>
               </div>
             )}
 
             {/* ①~⑥ 접힘 카드 */}
-            <Section n="①" title="당신의 상황" open={!!open['①']} onToggle={() => toggle('①')}>
-              <p className="text-sm font-semibold">{rep.persona.headline}</p>
+            <Section n="1" title="당신의 상황" open={!!open['①']} onToggle={() => toggle('①')}>
+              <p className={`${TYPE.body} font-semibold`}>{rep.persona.headline}</p>
               <div className="flex flex-wrap gap-1.5">
                 {(rep.persona.consumptionSignals ?? []).map((s, i) => (
-                  <span key={i} title={s.reason} className="text-[11px] px-2 py-0.5 rounded-full"
+                  <span key={i} title={s.reason} className={`${TYPE.caption} px-2 py-0.5 rounded-full`}
                     style={s.source === '실측' ? { background: color + '22', color, fontWeight: 600 } : { background: '#00000008', color: COLORS.SUB }}>
                     {s.source === '실측' ? '실측 ' : ''}{s.label}
                   </span>
@@ -179,7 +179,7 @@ export default function DecisionReportScreen() {
               </div>
             </Section>
 
-            <Section n="②" title="세 갈래 채점" open={!!open['②']} onToggle={() => toggle('②')}>
+            <Section n="2" title="세 갈래 채점" open={!!open['②']} onToggle={() => toggle('②')}>
               <div className="grid grid-cols-3 gap-2">
                 {rep.comparison.branches.map(b => {
                   const active = b.branch === shown;
@@ -197,78 +197,78 @@ export default function DecisionReportScreen() {
                       }}
                     >
                       <p className="text-sm">{BRANCH_ICONS[b.branch]}</p>
-                      <p className="text-[11px] font-medium" style={{ color: BRANCH_COLORS[b.branch] }}>{b.branch}</p>
-                      <p className="text-sm font-bold mt-0.5">{man(b.monthlyBurden)}</p>
+                      <p className={`${TYPE.caption} font-medium`} style={{ color: BRANCH_COLORS[b.branch] }}>{b.branch}</p>
+                      <p className={`${TYPE.body} font-bold mt-0.5`}>{man(b.monthlyBurden)}</p>
                     </button>
                   );
                 })}
               </div>
-              <p className="text-[11px] mt-2 text-center" style={{ color: COLORS.SUB }}>👆 갈래를 눌러 다른 기준으로 리포트를 다시 볼 수 있어요</p>
+              <p className={`${TYPE.caption} mt-2 text-center`} style={{ color: COLORS.SUB }}>👆 갈래를 눌러 다른 기준으로 리포트를 다시 볼 수 있어요</p>
             </Section>
 
             {rep.topRegion ? (
-              <Section n="③" title={`왜 이 동네${rep.topRegion ? ` (${rep.topRegion.name.split(' ').pop()} 기준)` : ''}`} open={!!open['③']} onToggle={() => toggle('③')}>
-                <p className="text-sm font-semibold">{rep.topRegion.name} · 중위 {formatAmount(rep.topRegion.midPrice)}</p>
-                {(rep.topRegion.scoreReasons ?? []).map((r, i) => <p key={i} className="text-xs text-muted-foreground">· {r}</p>)}
+              <Section n="3" title={`왜 이 동네${rep.topRegion ? ` (${rep.topRegion.name.split(' ').pop()} 기준)` : ''}`} open={!!open['③']} onToggle={() => toggle('③')}>
+                <p className={`${TYPE.body} font-semibold`}>{rep.topRegion.name} · 중위 {formatAmount(rep.topRegion.midPrice)}</p>
+                {(rep.topRegion.scoreReasons ?? []).map((r, i) => <p key={i} className={`${TYPE.body} text-muted-foreground`}>· {r}</p>)}
                 {rep.topRegion.jeonseRatio && (
-                  <p className="text-xs" style={{ color: COLORS.SUB }}>전세가율 {Math.round(rep.topRegion.jeonseRatio.ratio * 100)}% — {rep.topRegion.jeonseRatio.label}</p>
+                  <p className={TYPE.body} style={{ color: COLORS.SUB }}>전세가율 {Math.round(rep.topRegion.jeonseRatio.ratio * 100)}% — {rep.topRegion.jeonseRatio.label}</p>
                 )}
                 {/* P5: 발품 넘김 — 시세 기준임을 명시하고 실매물 확인은 KB부동산으로 잇는다(발품 대체 안 함) */}
-                <p className="text-[11px] mt-1 pt-1 border-t border-border/50" style={{ color: COLORS.SUB }}>
+                <p className={`${TYPE.caption} mt-1 pt-1 border-t border-border/50`} style={{ color: COLORS.SUB }}>
                   여기 숫자는 이 동네 <b>실거래 시세 기준</b>이에요. 실제 매물·집주인 의사는 확인이 필요해요 — 아래 KB부동산에서 이어보세요.
                 </p>
               </Section>
             ) : shown === '갱신' && (
               // 갱신은 새 동네 추천이 없음 → 현재 동네 유지를 명시(빈 구간 방지, B7)
-              <Section n="③" title="현재 동네 유지" open={!!open['③']} onToggle={() => toggle('③')}>
-                <p className="text-sm leading-relaxed text-muted-foreground">
+              <Section n="3" title="현재 동네 유지" open={!!open['③']} onToggle={() => toggle('③')}>
+                <p className={`${TYPE.body} text-muted-foreground`}>
                   갱신은 지금 동네를 그대로 이어가는 선택이에요. 새로 추천할 동네도, 발품도 없어요.
                 </p>
               </Section>
             )}
 
             {rep.dayBrief && (
-              <Section n="④" title={shown === '갱신' ? '유지하는 하루' : `그 동네의 하루${rep.topRegion ? ` (${rep.topRegion.name.split(' ').pop()} 기준)` : ''}`} open={!!open['④']} onToggle={() => toggle('④')}>
-                <p className="text-sm leading-relaxed text-muted-foreground">{rep.dayBrief}</p>
+              <Section n="4" title={shown === '갱신' ? '유지하는 하루' : `그 동네의 하루${rep.topRegion ? ` (${rep.topRegion.name.split(' ').pop()} 기준)` : ''}`} open={!!open['④']} onToggle={() => toggle('④')}>
+                <p className={`${TYPE.body} text-muted-foreground`}>{rep.dayBrief}</p>
               </Section>
             )}
 
             {rep.spend && (
-              <Section n="⑤" title="지출로 본 실현 가능성" open={!!open['⑤']} onToggle={() => toggle('⑤')}>
+              <Section n="5" title="지출로 본 실현 가능성" open={!!open['⑤']} onToggle={() => toggle('⑤')}>
                 <div className="flex gap-2 text-center">
-                  {[['월평균', rep.spend.monthlyTotal], ['고정', rep.spend.fixedMonthly], ['변동 여력', rep.spend.variableMonthly]].map(([l, v]) => (
+                  {[['월 평균 지출', rep.spend.monthlyTotal], ['고정 지출', rep.spend.fixedMonthly], ['변동 지출 여력', rep.spend.variableMonthly]].map(([l, v]) => (
                     <div key={l as string} className="flex-1 bg-muted rounded-xl py-2">
-                      <p className="text-[11px] text-muted-foreground">{l}</p>
-                      <p className="text-sm font-bold">{man(v as number)}</p>
+                      <p className={`${TYPE.caption} text-muted-foreground`}>{l}</p>
+                      <p className={`${TYPE.body} font-bold`}>{man(v as number)}</p>
                     </div>
                   ))}
                 </div>
-                <p className="text-sm mt-1" style={{ color: COLORS.TEXT }}>{rep.feasibility}</p>
+                <p className={`${TYPE.body} mt-1`} style={{ color: COLORS.TEXT }}>{rep.feasibility}</p>
                 {(rep.spend.topCategories?.length ?? 0) > 0 && (
-                  <p className="text-xs text-muted-foreground">주요 지출: {rep.spend.topCategories.map(t => `${t.category} ${man(t.monthly)}`).join(' · ')}</p>
+                  <p className={`${TYPE.body} text-muted-foreground`}>주요 지출: {rep.spend.topCategories.map(t => `${t.category} ${man(t.monthly)}`).join(' · ')}</p>
                 )}
-                {/* 여력 판정 ReAct 트레이스 — 기본 접힘(미클릭 시 위 숫자와 동일). 표시용, 계산 무관 */}
+                {/* 여력 판정 ReAct 트레이스 — Section⑤ 자체가 이미 접이식이라 안에 또 접는 버튼을 두지 않고 그냥 보여준다 */}
                 {(rep.spend.reactLog?.length ?? 0) > 0 && (
-                  <details className="mt-1.5">
-                    <summary className="text-xs cursor-pointer select-none" style={{ color: COLORS.KB_GRAY }}>▾ 어떻게 판단했나요?</summary>
+                  <div className="mt-1.5">
+                    <p className={TYPE.caption} style={{ color: COLORS.KB_GRAY }}>어떻게 판단했나요?</p>
                     <div className="mt-1.5 space-y-2">
                       {rep.spend.reactLog!.map((s, i) => (
-                        <div key={i} className="text-[11px] leading-snug pl-1">
+                        <div key={i} className={`${TYPE.caption} pl-1`}>
                           <p style={{ color: COLORS.SUB }}>💭 {s.thought}</p>
                           <p style={{ color: COLORS.SUB }}>⚡ {s.action}</p>
                           <p style={{ color: COLORS.KB_GRAY }}>👀 {s.observation}</p>
                         </div>
                       ))}
                     </div>
-                  </details>
+                  </div>
                 )}
-                <p className="text-[11px] pt-1" style={{ color: COLORS.SUB }}>⚠️ 합성 시연 데이터 기준입니다. 실서비스에서는 마이데이터 동의 후 실제 내역으로 분석됩니다.</p>
+                <p className={`${TYPE.caption} pt-1`} style={{ color: COLORS.SUB }}>⚠️ 합성 시연 데이터 기준입니다. 실서비스에서는 마이데이터 동의 후 실제 내역으로 분석됩니다.</p>
               </Section>
             )}
 
-            <Section n="⑥" title="다음 액션 · KB 연결" open={!!open['⑥']} onToggle={() => toggle('⑥')}>
+            <Section n="6" title="다음 액션 · KB 연결" open={!!open['⑥']} onToggle={() => toggle('⑥')}>
               {/* Q1: 금융상품은 여기 한 곳에서만, '자격 기준(동네 무관)'으로 3분류(필요 여신/자격 상품/보호 장치) */}
-              <p className="text-[11px] mb-1.5" style={{ color: COLORS.SUB }}>
+              <p className={`${TYPE.caption} mb-1.5`} style={{ color: COLORS.SUB }}>
                 아래는 <b>당신 자격 기준</b>이에요(동네와 무관). 정보 제공이며 권유가 아니에요.
               </p>
 
@@ -309,11 +309,11 @@ export default function DecisionReportScreen() {
 
               {/* 지출 여력과 연결(⑤ 값 재사용) */}
               {rep.spend && selBurden != null && (
-                <p className="text-[11px] mt-2" style={{ color: COLORS.SUB }}>
+                <p className={`${TYPE.caption} mt-2`} style={{ color: COLORS.SUB }}>
                   이 월 부담 {man(selBurden)}은 변동지출 여력 {man(rep.spend.variableMonthly)} {selBurden <= rep.spend.variableMonthly ? '안이에요' : '을 넘어요'}.
                 </p>
               )}
-              <p className="text-[11px] mt-0.5" style={{ color: COLORS.SUB }}>* 자격·한도·금리는 정보 제공이며 실제 조건은 KB 심사에 따라요(권유 아님).</p>
+              <p className={`${TYPE.caption} mt-0.5`} style={{ color: COLORS.SUB }}>* 자격·한도·금리는 정보 제공이며 실제 조건은 KB 심사에 따라요(권유 아님).</p>
 
               {/* 이사·매매면 그 동네 실매물을 KB부동산에서 이어보기(외부 링크·AI 큐레이션 아님) */}
               {rep.topRegion && (
@@ -321,7 +321,7 @@ export default function DecisionReportScreen() {
                   href={kbLandUrl(rep.topRegion.lat, rep.topRegion.lng)}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="mt-2 flex items-center justify-center gap-1 text-xs font-medium py-2 rounded-xl border"
+                  className={`mt-2 flex items-center justify-center gap-1 border ${BTN.card}`}
                   style={{ borderColor: color + '55', color }}
                 >
                   {rep.topRegion.name} 실매물은 KB부동산에서 이어보세요 →
@@ -332,15 +332,15 @@ export default function DecisionReportScreen() {
         )}
       </div>
 
-      {/* 하단 고정 — 다음 액션이 항상 보이게 */}
+      {/* 하단 고정 — 다음 액션이 항상 보이게. 버튼은 위 콘텐츠보다 확실히 커야 하는 최종 액션. */}
       {rep && (
         <div className="px-5 py-3 border-t border-border flex items-center gap-3" style={{ background: COLORS.CARD }}>
           <div className="flex-1">
-            <p className="text-[11px] text-muted-foreground">갱신 통보 기한</p>
-            <p className="text-sm font-bold" style={{ color: COLORS.CORAL }}>{ddayText(rep.dday)}</p>
+            <p className={`${TYPE.caption} text-muted-foreground`}>갱신 통보 기한</p>
+            <p className={`${TYPE.body} font-bold`} style={{ color: COLORS.CORAL }}>{ddayText(rep.dday)}</p>
           </div>
           <button onClick={() => dispatch({ type: 'NAVIGATE', screen: 'SC-10' })}
-            className="px-5 py-2.5 rounded-xl text-sm font-bold" style={{ background: COLORS.KB_YELLOW, color: COLORS.TEXT }}>
+            className={`px-5 py-2.5 rounded-xl font-bold ${TYPE.heading}`} style={{ background: COLORS.KB_YELLOW, color: COLORS.TEXT }}>
             KB 상담 예약
           </button>
         </div>

@@ -184,11 +184,11 @@ export function BasisChip({ label, tip }: { label: string; tip: string }) {
       </button>
       {open && (
         <div
-          className="absolute bottom-full mb-2 left-0 z-50 w-44 bg-foreground text-background text-xs rounded-xl p-2.5 shadow-lg leading-relaxed"
+          className="absolute bottom-full mb-2 left-1/2 -translate-x-1/2 z-50 w-max max-w-[75vw] whitespace-nowrap bg-foreground text-background text-xs rounded-xl p-2.5 shadow-lg leading-relaxed"
           onClick={() => setOpen(false)}
         >
           {tip}
-          <div className="absolute -bottom-1 left-4 w-2 h-2 bg-foreground rotate-45" />
+          <div className="absolute -bottom-1 left-1/2 -translate-x-1/2 w-2 h-2 bg-foreground rotate-45" />
         </div>
       )}
     </div>
@@ -222,8 +222,8 @@ export function Disclaimer() {
 export function Toast({ message, visible }: { message: string; visible: boolean }) {
   return (
     <div
-      className="fixed bottom-8 left-1/2 -translate-x-1/2 z-[100] px-5 py-3 bg-foreground text-background text-sm font-medium rounded-2xl shadow-xl transition-all duration-300"
-      style={{ opacity: visible ? 1 : 0, transform: `translateX(-50%) translateY(${visible ? 0 : 16}px)` }}
+      className="absolute bottom-8 left-1/2 z-[100] px-5 py-3 bg-foreground text-background text-sm font-medium rounded-2xl shadow-xl transition-all duration-300 whitespace-nowrap"
+      style={{ opacity: visible ? 1 : 0, translate: `-50% ${visible ? 0 : 16}px` }}
     >
       {message}
     </div>
@@ -231,7 +231,7 @@ export function Toast({ message, visible }: { message: string; visible: boolean 
 }
 
 // ─── Accordion ───────────────────────────────────────────────────────────────
-export function Accordion({ title, children }: { title: string; children: React.ReactNode }) {
+export function Accordion({ title, children, compact = false }: { title: string; children: React.ReactNode; compact?: boolean }) {
   const [open, setOpen] = useState(false);
   return (
     <div className="border border-border rounded-2xl">
@@ -239,13 +239,13 @@ export function Accordion({ title, children }: { title: string; children: React.
           대신 버튼/내용 각각에 상황별로 라운딩을 준다. */}
       <button
         onClick={() => setOpen(o => !o)}
-        className={`w-full flex items-center justify-between px-4 py-3 text-sm font-medium text-foreground bg-card ${open ? 'rounded-t-2xl' : 'rounded-2xl'}`}
+        className={`w-full flex items-center justify-between px-4 text-foreground bg-card ${compact ? 'py-2 text-xs font-medium' : 'py-3 text-sm font-medium'} ${open ? 'rounded-t-2xl' : 'rounded-2xl'}`}
       >
         {title}
         <span className="transition-transform duration-200" style={{ transform: open ? 'rotate(180deg)' : 'rotate(0deg)' }}>▾</span>
       </button>
       {open && (
-        <div className="px-4 pt-2 pb-4 bg-muted/50 text-sm text-muted-foreground space-y-1 rounded-b-2xl">
+        <div className={`px-4 pt-2 pb-4 bg-muted/50 text-muted-foreground space-y-1 rounded-b-2xl ${compact ? 'text-xs' : 'text-sm'}`}>
           {children}
         </div>
       )}
