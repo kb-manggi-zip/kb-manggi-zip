@@ -91,14 +91,14 @@ export default function RegionList() {
     applyNote && Object.keys(state.contract?.noteAdjust ?? {}).length > 0;
 
   // L3 미니 리포트 리드 신호 — 확정 신호만(실측>진술>세그먼트), 출처 규칙 유지. 보류 신호는 persona에 없음.
-  // 같은 출처 안에서도 "많이 쓰는" 신호를 우선한다 — "적게 쓰는" 신호는 summaryLine에서 어차피 팩트를
+  // 같은 출처 안에서도 "많이 하는" 신호를 우선한다 — "적게 하는" 신호는 summaryLine에서 어차피 팩트를
   // 안 붙이므로(밀집도가 추천 근거가 안 됨), 배열 순서상 앞에 있단 이유로 "적게" 신호가 먼저 뽑혀
   // "많이" 신호(실제로 보여줄 수 있는)를 가려버리던 문제 수정(2026-07-31).
   const leadSignal = (() => {
     const sig = persona?.consumptionSignals ?? [];
     const pickFrom = (source: string) => {
       const inSource = sig.filter((s) => s.source === source);
-      return inSource.find((s) => s.label.includes("많이 쓰는")) ?? inSource[0];
+      return inSource.find((s) => s.label.includes("많이 하는")) ?? inSource[0];
     };
     const pick = pickFrom("실측") ?? pickFrom("진술") ?? pickFrom("세그먼트");
     return pick?.label;
@@ -544,10 +544,10 @@ export function RegionCard({
   // 카드에 동일 재사용)이라, 그 동네만의 차별 팩트가 실제로 있을 때만 문장을 보여준다 — 팩트 없이
   // leadSignal만 있으면(모든 카드에 똑같은 문장만 반복) 아예 생략한다(버그, 2026-07-31 수정).
   // leadSignal의 카테고리(카페·배달·식비/쇼핑/여가 — rules/consumption_baseline.yaml의 5개 실측
-  // 카테고리 중 밀집도로 대응 가능한 3그룹)에 매칭 + '많이 쓰는' 방향일 때만 해당 팩트를 찾는다 —
-  // 예전엔 항상 카페 팩트를 붙여 "카페 적게 쓰는 편인 당신에게 — 카페 244곳" 같은 모순이 났었음.
+  // 카테고리 중 밀집도로 대응 가능한 3그룹)에 매칭 + '많이 하는' 방향일 때만 해당 팩트를 찾는다 —
+  // 예전엔 항상 카페 팩트를 붙여 "카페 적게 하는 편인 당신에게 — 카페 244곳" 같은 모순이 났었음.
   const summaryLine = (() => {
-    if (!leadSignal || !leadSignal.includes("많이 쓰는")) return null;
+    if (!leadSignal || !leadSignal.includes("많이 하는")) return null;
     const pattern = /카페|배달|식비|외식|맛집/.test(leadSignal)
       ? /음식점·카페 \d+곳/
       : /쇼핑|장보기|마트|시장/.test(leadSignal)
@@ -574,6 +574,8 @@ export function RegionCard({
             <p className={TYPE.heading}>{region.name}</p>
             <p className={`${TYPE.bodyStrong} text-muted-foreground`}>
               {subtitle ?? `중위가 ${formatAmount(region.midPrice)}`}
+              {" · 실거래 "}
+              {region.tradeCount}건
             </p>
           </div>
           {region.surplus > 0 && (
@@ -585,88 +587,66 @@ export function RegionCard({
             </span>
           )}
         </div>
-        {/* L3 미니 리포트 요약 — 소비 신호 × 동네 차별 팩트(구 폴백 공통값 제외). 순수 템플릿(LLM 없음).
-            헤더 바로 아래로 올리고 태그·시세보다 굵게(bodyStrong) — 카드에서 가장 설득력 있는 한 줄이라 위계상 첫머리. */}
-        {/* 그 동네만의 차별 팩트가 없으면(leadSignal만 있어도) 아예 생략 — 모든 카드에 leadSignal만
-            반복되는 무의미한 문장을 막는다(버그, 2026-07-31 수정) */}
-        {summaryLine && (
-          <p className={`${TYPE.bodyStrong} font-semibold`} style={{ color }}>
-            {summaryLine}
-          </p>
-        )}
-        {/* 특징 한 줄 — 스코어 근거(통근) + region_facts(태그). 전부 실측/facts 값 */}
-        {(() => {
-          // 접힌(구 공통) 통근은 카드에서 빼고, 동별 통근만 칩으로. 대표 직장 기준은 '*' 각주로.
-          let commute = commuteFolded
-            ? undefined
-            : cardReasons
-                .map((r) => (r.match(/통근 \d+분/) || [])[0])
-                .find(Boolean);
-          if (commute)
-            commute = deemphasizeCommute ? `${commute} (참고)` : `${commute}*`; // G3 참고 / J4 대표직장 각주
-          // 통근은 가장 중요한 축(가중치 최상위)인데 태그가 3개 이상이면 slice(0,3)에 밀려 안 보이던
-          // 버그(2026-07-31) — 통근이 있으면 태그는 2개까지만, 통근이 없을 때만 태그 3개.
-          const feature = [...region.tags.slice(0, commute ? 2 : 3), commute]
-            .filter(Boolean)
-            .join(" · ");
-          return feature ? (
-            <>
-              <p className={TYPE.body} style={{ color: COLORS.SUB }}>
+        {/* 동네 정보 — 객관적 사실(누구한테나 같은 값). 태그·통근 → 전세가율(위험도) → 실거래는 참고치로 맨 끝. */}
+        <div className="space-y-1.5">
+          {(() => {
+            // 접힌(구 공통) 통근은 카드에서 빼고, 동별 통근만 칩으로. 대표 직장 기준은 '*' 각주로.
+            let commute = commuteFolded
+              ? undefined
+              : cardReasons
+                  .map((r) => (r.match(/통근 \d+분/) || [])[0])
+                  .find(Boolean);
+            if (commute)
+              commute = deemphasizeCommute ? `${commute} (참고)` : `${commute}*`; // G3 참고 / J4 대표직장 각주
+            // 통근은 가장 중요한 축(가중치 최상위)인데 태그가 3개 이상이면 slice(0,3)에 밀려 안 보이던
+            // 버그(2026-07-31) — 통근이 있으면 태그는 2개까지만, 통근이 없을 때만 태그 3개.
+            const feature = [...region.tags.slice(0, commute ? 2 : 3), commute]
+              .filter(Boolean)
+              .join(" · ");
+            // 각주는 항상 보이는 별도 줄 대신 '*' 자체에 title 툴팁으로 — 필요할 때만 확인.
+            return feature ? (
+              <p
+                className={TYPE.body}
+                style={{ color: COLORS.SUB }}
+                title={
+                  commute && !deemphasizeCommute
+                    ? "통근은 세그먼트 대표 직장 기준(문진에 직장 입력 없음)"
+                    : undefined
+                }
+              >
                 {feature}
               </p>
-              {commute && !deemphasizeCommute && (
-                <p className={TYPE.caption} style={{ color: COLORS.SUB }}>
-                  * 통근은 세그먼트 대표 직장 기준(문진에 직장 입력 없음)
-                </p>
-              )}
-            </>
-          ) : null;
-        })()}
-        {/* 시세 지표 — 실거래 건수 + 전세가율(%). 설명 문구는 위험도에 따라 강조 수준을 달리한다(아래). */}
-        <div className="flex items-center gap-1.5 flex-wrap">
-          <span className={`${TYPE.body} text-muted-foreground`}>
-            최근 실거래 {region.tradeCount}건
-          </span>
+            ) : null;
+          })()}
+          {/* 전세가율 — safe·위험 구간 모두 "숫자 — 문구" 한 줄 문장으로 통일. 박스·볼드 없이
+              색(safe=민트, caution=옐로, alert=레드)과 아이콘(위험 구간만)으로만 구분해 가볍게.
+              여유 배지가 갈래색으로 옮겨가서 민트는 이제 전세가율 안전 신호 전용으로 안 겹친다. */}
           {region.jeonseRatio && (
-            <>
-              <span className="text-muted-foreground/40">·</span>
-              <span
-                className={`${TYPE.body} font-semibold px-2 py-0.5 rounded-full`}
-                style={bandStyle(region.jeonseRatio.band)}
-                title={region.jeonseRatio.basis}
-              >
-                전세가율 {Math.round(region.jeonseRatio.ratio * 100)}%
-              </span>
-              {region.jeonseRatio.band === "safe" && (
-                <span
-                  className={`${TYPE.body} text-muted-foreground`}
-                  title={region.jeonseRatio.basis}
-                >
-                  {region.jeonseRatio.label}
-                </span>
-              )}
-            </>
-          )}
-        </div>
-        {/* caution·alert만 별도 경고 박스로 승격 — safe는 위 인라인 잔글씨로 충분(경고할 게 없음) */}
-        {region.jeonseRatio && region.jeonseRatio.band !== "safe" && (
-          <div
-            className="flex items-start gap-1.5 px-2.5 py-1.5 rounded-lg"
-            style={{ background: bandStyle(region.jeonseRatio.band).background }}
-          >
-            <span className={TYPE.caption}>
-              {region.jeonseRatio.band === "alert" ? "⚠️" : "🔎"}
-            </span>
             <p
-              className={TYPE.caption}
+              className={TYPE.body}
               style={{ color: bandStyle(region.jeonseRatio.band).color }}
+              title={region.jeonseRatio.basis}
             >
+              {region.jeonseRatio.band !== "safe" &&
+                (region.jeonseRatio.band === "alert" ? "⚠️ " : "🔎 ")}
+              전세가율 {Math.round(region.jeonseRatio.ratio * 100)}% —{" "}
               {region.jeonseRatio.label}
             </p>
-          </div>
-        )}
-        {cardReasons.length > 0 ? (
-          <div className="pt-1">
+          )}
+        </div>
+
+        {/* 당신에게 — 개인화 매칭(요약 한 줄 + 이 순위가 나온 이유). 동네 정보와 분리해 뭐가 "너한테만"
+            해당하는 이유인지 헷갈리지 않게 옅은 배경 박스로 구분. */}
+        <div className="rounded-xl p-3 space-y-1.5" style={{ background: color + "0D" }}>
+          {/* L3 미니 리포트 요약 — 소비 신호 × 동네 차별 팩트(구 폴백 공통값 제외). 순수 템플릿(LLM 없음).
+              그 동네만의 차별 팩트가 없으면(leadSignal만 있어도) 아예 생략 — 모든 카드에 leadSignal만
+              반복되는 무의미한 문장을 막는다(버그, 2026-07-31 수정) */}
+          {summaryLine && (
+            <p className={`${TYPE.body} font-medium`} style={{ color }}>
+              {summaryLine}
+            </p>
+          )}
+          {cardReasons.length > 0 ? (
             <Accordion title="동네 추천 이유 보기" compact>
               {cardReasons.map((r, i) => (
                 <p key={i} className={`${TYPE.body} py-0.5`}>
@@ -677,16 +657,16 @@ export function RegionCard({
                 </p>
               ))}
             </Accordion>
-          </div>
-        ) : (
-          // cardReasons가 비는 두 경우 모두 커버: ①통근·상권이 "구 기준 공통값"으로 접힘(hiddenReasons)
-          // ②이 동네는 그 데이터 자체가 없어서(동·구 모두 미확보) 애초에 근거가 예산 여유 하나뿐이었던 경우
-          <p className={`${TYPE.body} pt-1`} style={{ color: COLORS.SUB }}>
-            {hiddenReasons.length > 0
-              ? "통근·상권 근거는 위 구 공통 안내를 참고하세요."
-              : "이 동네는 예산 조건에 맞아 후보에 포함됐어요."}
-          </p>
-        )}
+          ) : (
+            // cardReasons가 비는 두 경우 모두 커버: ①통근·상권이 "구 기준 공통값"으로 접힘(hiddenReasons)
+            // ②이 동네는 그 데이터 자체가 없어서(동·구 모두 미확보) 애초에 근거가 예산 여유 하나뿐이었던 경우
+            <p className={TYPE.body} style={{ color: COLORS.SUB }}>
+              {hiddenReasons.length > 0
+                ? "통근·상권 근거는 위 구 공통 안내를 참고하세요."
+                : "이 동네는 예산 조건에 맞아 후보에 포함됐어요."}
+            </p>
+          )}
+        </div>
         <button
           onClick={onSelect}
           className={`mt-2 w-full flex items-center justify-center gap-1 active:scale-[0.98] transition-transform ${BTN.card}`}

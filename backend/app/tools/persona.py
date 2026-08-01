@@ -64,7 +64,7 @@ def build_persona(
         from .personal_traits import derive_personal_traits
 
         for cat, o in derive_personal_traits(persona_id).items():
-            lvl = "많이 쓰는 편" if o["level"] == "high" else "적게 쓰는 편"
+            lvl = "소비 많이 하는 편" if o["level"] == "high" else "소비 적게 하는 편"
             signals.append(
                 {"label": f"{cat} {lvl}", "source": "실측", "reason": f"{o['reason']} · 시연용 합성 데이터 기준"}
             )
