@@ -6,7 +6,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## 프로젝트 개요
 
-**KB 만기상담소** — 전월세 만기가 다가온 세입자에게 3갈래(**갱신·이사·매매**)를 계산·비교해주는 데모 앱.
+**KB만기.zip** — 전월세 만기가 다가온 세입자에게 3갈래(**갱신·이사·매매**)를 계산·비교해주는 데모 앱.
 
 - `frontend/` — **프론트(완성)**. React 18 + Vite 6 + TypeScript + Tailwind v4. Figma Make에서 생성됨.
 - `backend/` — **백엔드(B0·B1 완료, 나머지 seam)**. FastAPI + Pydantic v2 + SQLAlchemy. 자세한 건 `backend/README.md`.

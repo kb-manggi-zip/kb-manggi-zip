@@ -15,7 +15,7 @@ from .routers.api import router as api_router
 
 logging.basicConfig(level=logging.INFO)
 
-app = FastAPI(title="KB 만기상담소 API", version="0.1.0")
+app = FastAPI(title="KB만기.zip API", version="0.1.0")
 
 app.add_middleware(
     CORSMiddleware,
