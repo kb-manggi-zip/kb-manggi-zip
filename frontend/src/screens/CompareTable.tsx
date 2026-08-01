@@ -401,7 +401,7 @@ function BranchCardView({
 
   return (
     <div
-      className="flex-none snap-center bg-card rounded-3xl border border-border overflow-hidden"
+      className="flex-none snap-center bg-card rounded-3xl border border-border"
       style={{
         width: "calc(100vw - 60px)",
         maxWidth: 330,
