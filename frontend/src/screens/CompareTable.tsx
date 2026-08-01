@@ -2,7 +2,7 @@ import React, { useState, useRef } from "react";
 import { toPng } from "html-to-image";
 import { useApp } from "../store";
 import type { Screen } from "../store";
-import { COLORS, BRANCH_COLORS, BRANCH_ICONS } from "../theme";
+import { COLORS, BRANCH_COLORS, BRANCH_ICONS, TYPE } from "../theme";
 import {
   MobileShell,
   DdayBar,
@@ -103,7 +103,7 @@ export default function CompareTable() {
           onClick={() => dispatch({ type: "NAVIGATE", screen: "SC-01" })}
         />
         <span
-          className="absolute left-1/2 -translate-x-1/2 font-bold"
+          className={`absolute left-1/2 -translate-x-1/2 ${TYPE.heading}`}
           style={{ color: COLORS.KB_GRAY }}
         >
           세 갈래 비교
@@ -412,25 +412,25 @@ function BranchCardView({
       <div className="px-5 pt-5 pb-3 flex items-center gap-2">
         <span className="text-2xl">{icon}</span>
         <div>
-          <span className="text-sm font-bold" style={{ color }}>
+          <span className={`${TYPE.bodyStrong} font-bold`} style={{ color }}>
             {branch.branch}
           </span>
-          <p className="text-xs text-muted-foreground">{branch.headline}</p>
+          <p className={`${TYPE.body} text-muted-foreground`}>{branch.headline}</p>
         </div>
       </div>
 
       <div className="px-5 pb-3 border-b border-border">
         {/* monthlyBurden은 이미 반환보증료 포함(=실질). 이중으로 더하지 않고 이자/월세 + 보증료로 분해 표시. */}
-        <p className="text-xs text-muted-foreground">
+        <p className={`${TYPE.body} text-muted-foreground`}>
           실질 월 부담 <span className="opacity-70">(반환보증료 포함)</span>
         </p>
         <div className="flex items-baseline gap-2">
-          <span className="text-3xl font-bold text-foreground">
+          <span className={`${TYPE.display} text-foreground`}>
             {Math.round(branch.monthlyBurden / 10_000)}만원
           </span>
         </div>
         {branch.guaranteeMonthly > 0 && (
-          <p className="text-xs text-muted-foreground mt-0.5">
+          <p className={`${TYPE.body} text-muted-foreground mt-0.5`}>
             이자·월세{" "}
             {formatMonthly(branch.monthlyBurden - branch.guaranteeMonthly)} +
             반환보증료 {formatMonthly(branch.guaranteeMonthly)} 포함
@@ -438,7 +438,7 @@ function BranchCardView({
         )}
       </div>
 
-      <div className="px-5 py-3 space-y-2 text-sm border-b border-border">
+      <div className={`px-5 py-3 space-y-2 ${TYPE.bodyStrong} border-b border-border`}>
         <Row
           label={branch.branch === "매매" ? "집값 상한" : "보증금"}
           value={formatAmount(branch.depositOrPrice)}
@@ -475,8 +475,8 @@ function BranchCardView({
             const t = HINT_TONE[h.tone] ?? HINT_TONE.neutral;
             return (
               <div key={i} className="flex items-start gap-1.5 px-2.5 py-1.5 rounded-lg" style={{ background: t.bg }}>
-                <span className="text-[11px] leading-snug">{t.icon}</span>
-                <p className="text-[11px] leading-snug" style={{ color: t.fg }}>{h.text}</p>
+                <span className={TYPE.caption}>{t.icon}</span>
+                <p className={TYPE.caption} style={{ color: t.fg }}>{h.text}</p>
               </div>
             );
           })}
@@ -492,7 +492,7 @@ function BranchCardView({
         const man = (v: number) => `${Math.round(v / 10_000).toLocaleString()}만`;
         return (
           <div className="mx-5 mt-3 px-3 py-2 rounded-lg" style={{ background: COLORS.YELLOW_SURFACE }}>
-            <p className="text-[11px]" style={{ color: COLORS.KB_GRAY }}>
+            <p className={TYPE.caption} style={{ color: COLORS.KB_GRAY }}>
               {renewalAskPct > 5
                 ? `⚠️ 요구 ${renewalAskPct}%는 상한 초과 → 5% 적용 · `
                 : `요구 ${renewalAskPct}% (상한 이내) · `}
@@ -510,14 +510,14 @@ function BranchCardView({
         const man = (v: number) => `${Math.round(v / 10_000).toLocaleString()}만`;
         return (
           <div className="mx-5 mt-3 px-3 py-2 rounded-lg" style={{ background: COLORS.YELLOW_SURFACE }}>
-            <p className="text-[11px] font-medium" style={{ color: COLORS.KB_GRAY }}>보증금 {man(reduction)} → 월세 전환 시</p>
-            <p className="text-[11px]" style={{ color: COLORS.KB_GRAY }}>
+            <p className={`${TYPE.caption} font-medium`} style={{ color: COLORS.KB_GRAY }}>보증금 {man(reduction)} → 월세 전환 시</p>
+            <p className={TYPE.caption} style={{ color: COLORS.KB_GRAY }}>
               {man(reduction)} × {pct}% ÷ 12 = 월 {convMonthly.toLocaleString()}원
             </p>
-            <p className="text-[11px]" style={{ color: COLORS.KB_GRAY }}>
+            <p className={TYPE.caption} style={{ color: COLORS.KB_GRAY }}>
               → 전환 후: 보증금 {man(branch.depositOrPrice)} · 월세 {man(convMonthly)}
             </p>
-            <p className="text-[10px] mt-0.5" style={{ color: COLORS.SUB }}>근거: 주택임대차보호법 제7조의2 (전환율 상한 {pct}%)</p>
+            <p className={`${TYPE.caption} mt-0.5`} style={{ color: COLORS.SUB }}>근거: 주택임대차보호법 제7조의2 (전환율 상한 {pct}%)</p>
           </div>
         );
       })() : null}
@@ -528,7 +528,7 @@ function BranchCardView({
           className="mx-5 mt-3 px-3 py-2 rounded-lg"
           style={{ background: COLORS.YELLOW_SURFACE }}
         >
-          <p className="text-[11px]" style={{ color: COLORS.KB_GRAY }}>
+          <p className={TYPE.caption} style={{ color: COLORS.KB_GRAY }}>
             💡 생애최초라면 LTV 70%까지 가능해 한도가 더 늘어날 수 있어요
           </p>
         </div>
@@ -544,13 +544,13 @@ function BranchCardView({
             </p>
             <div className="space-y-1.5">
               {branch.risks.map((r) => (
-                <p key={r} className="text-xs">
+                <p key={r} className={TYPE.body}>
                   • {r}
                 </p>
               ))}
             </div>
             {branch.uncertainty && (
-              <p className="mt-1.5 text-xs text-muted-foreground italic">
+              <p className={`mt-1.5 ${TYPE.body} text-muted-foreground italic`}>
                 ※ {branch.uncertainty}
               </p>
             )}
@@ -561,7 +561,7 @@ function BranchCardView({
             </p>
             <div className="space-y-1.5">
               {branch.cares.map((c) => (
-                <p key={c} className="text-xs">
+                <p key={c} className={TYPE.body}>
                   • {c}
                 </p>
               ))}
@@ -573,7 +573,7 @@ function BranchCardView({
       {/* 접힘: 근거·가정 (feature 인용 + 근거칩 + 계산 가정) */}
       <div className="px-5 py-2">
         <Accordion title="어떻게 계산했나요?">
-          <p className="text-xs italic mb-2">"{branch.feature}"</p>
+          <p className={`${TYPE.body} italic mb-2`}>"{branch.feature}"</p>
           {basisChips.length > 0 && (
             <div className="mb-2">
               <p className="text-muted-foreground font-medium mb-1">
@@ -595,7 +595,7 @@ function BranchCardView({
               {branchAssumptions
                 .filter(([, k]) => k === "branch")
                 .map(([a]) => (
-                  <p key={a} className="text-xs py-0.5">
+                  <p key={a} className={`${TYPE.body} py-0.5`}>
                     • {a}
                   </p>
                 ))}

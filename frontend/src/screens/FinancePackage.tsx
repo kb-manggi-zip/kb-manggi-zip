@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { useApp } from '../store';
-import { COLORS, BRANCH_COLORS, BRANCH_ICONS } from '../theme';
+import { COLORS, BRANCH_COLORS, BRANCH_ICONS, TYPE } from '../theme';
 import { MobileShell, DdayBar, BackBtn, PrimaryBtn, SecondaryBtn, BasisChip, Disclaimer } from '../components/ui';
 import AiBriefing from '../components/AiBriefing';
 import { api, briefings } from '../api/client';
@@ -67,7 +67,7 @@ export default function FinancePackage() {
         {/* 실제 이동 스택(history)에서 pop — 어디서 왔든 정확히 그 화면으로 돌아감 */}
         <BackBtn onClick={() => dispatch({ type: 'BACK', fallback: selectedBranch === '갱신' ? 'SC-08' : 'SC-07' })} />
         <span className="text-xl">{icon}</span>
-        <h1 className="text-lg font-bold" style={{ color }}>
+        <h1 className={TYPE.heading} style={{ color }}>
           {selectedBranch} · KB 금융 패키지
         </h1>
       </div>
@@ -76,7 +76,7 @@ export default function FinancePackage() {
         {/* 상품 사유는 백엔드 LLM seam(상품별 1콜) — 응답 전 빈 화면 대신 스켈레톤으로 '불러오는 중' 신호 */}
         {!products ? <FinanceSkeleton color={color} /> : <>
         {/* Q1: 상품은 자격 기준 — 동네와 무관함을 명시(동네 카드엔 상품 미표시, 여기 한 곳) */}
-        <p className="text-[11px] px-1" style={{ color: COLORS.SUB }}>
+        <p className={`${TYPE.caption} px-1`} style={{ color: COLORS.SUB }}>
           아래 상품은 <b>당신 자격 기준</b>이에요(동네와 무관). 상품명을 누르면 공식 페이지로 이어져요.
         </p>
 
@@ -87,11 +87,11 @@ export default function FinancePackage() {
         >
           <div className="px-5 pt-5 pb-3 flex items-start justify-between">
             <div className="flex-1">
-              <span className="text-xs font-bold px-2 py-0.5 rounded-full text-white mb-2 block w-fit" style={{ background: color }}>
+              <span className={`${TYPE.body} font-bold px-2 py-0.5 rounded-full text-white mb-2 block w-fit`} style={{ background: color }}>
                 주요 대출
               </span>
-              <ProductName name={products.mainLoan.name} className="text-base font-bold inline-block" />
-              <p className="text-sm text-muted-foreground mt-0.5">{products.mainLoan.condition}</p>
+              <ProductName name={products.mainLoan.name} className={`${TYPE.heading} inline-block`} />
+              <p className={`${TYPE.bodyStrong} text-muted-foreground mt-0.5`}>{products.mainLoan.condition}</p>
             </div>
           </div>
 
@@ -106,13 +106,13 @@ export default function FinancePackage() {
           {products.mainLoan.maxAmount && (
             <div className="mx-5 mb-4 grid grid-cols-2 gap-3">
               <div className="bg-muted rounded-xl px-3 py-2.5">
-                <p className="text-xs text-muted-foreground">최대 한도</p>
-                <p className="font-bold mt-0.5">{formatAmount(products.mainLoan.maxAmount)}</p>
+                <p className={`${TYPE.body} text-muted-foreground`}>최대 한도</p>
+                <p className={`${TYPE.heading} mt-0.5`}>{formatAmount(products.mainLoan.maxAmount)}</p>
               </div>
               {branchData && (
                 <div className="bg-muted rounded-xl px-3 py-2.5">
-                  <p className="text-xs text-muted-foreground">예상 월 상환</p>
-                  <p className="font-bold mt-0.5">{formatAmount(branchData.monthlyBurden)}</p>
+                  <p className={`${TYPE.body} text-muted-foreground`}>예상 월 상환</p>
+                  <p className={`${TYPE.heading} mt-0.5`}>{formatAmount(branchData.monthlyBurden)}</p>
                 </div>
               )}
             </div>
@@ -132,10 +132,10 @@ export default function FinancePackage() {
         {products.guarantee && (
           <div className="bg-card rounded-2xl border border-border overflow-hidden" style={{ boxShadow: '0 2px 8px rgba(0,0,0,0.06)' }}>
             <div className="px-5 pt-4 pb-3">
-              <span className="text-xs text-muted-foreground font-medium block">보장</span>
-              <ProductName name={products.guarantee.name} className="font-semibold inline-block" />
-              <p className="text-sm text-muted-foreground">{products.guarantee.condition}</p>
-              <p className="text-sm mt-2 text-foreground/80">{products.guarantee.recommendReason}</p>
+              <span className={`${TYPE.body} text-muted-foreground font-medium block`}>보장</span>
+              <ProductName name={products.guarantee.name} className={`${TYPE.bodyStrong} font-semibold inline-block`} />
+              <p className={`${TYPE.bodyStrong} text-muted-foreground`}>{products.guarantee.condition}</p>
+              <p className={`${TYPE.bodyStrong} mt-2 text-foreground`}>{products.guarantee.recommendReason}</p>
             </div>
           </div>
         )}
@@ -145,10 +145,10 @@ export default function FinancePackage() {
           <div className="bg-card rounded-2xl border border-border p-4">
             <div className="flex items-start justify-between">
               <div>
-                <span className="text-xs text-muted-foreground block">추가</span>
-                <ProductName name={products.extra.name} className="font-semibold inline-block" />
-                <p className="text-sm text-muted-foreground mt-0.5">{products.extra.condition}</p>
-                <p className="text-sm mt-1">{products.extra.recommendReason}</p>
+                <span className={`${TYPE.body} text-muted-foreground block`}>추가</span>
+                <ProductName name={products.extra.name} className={`${TYPE.bodyStrong} font-semibold inline-block`} />
+                <p className={`${TYPE.bodyStrong} text-muted-foreground mt-0.5`}>{products.extra.condition}</p>
+                <p className={`${TYPE.bodyStrong} mt-1`}>{products.extra.recommendReason}</p>
               </div>
             </div>
           </div>

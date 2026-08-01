@@ -1,7 +1,7 @@
 import React, { useEffect, useState, useMemo } from "react";
 import { useApp } from "../store";
 import type { Screen } from "../store";
-import { COLORS, BRANCH_COLORS, BRANCH_ICONS } from "../theme";
+import { COLORS, BRANCH_COLORS, BRANCH_ICONS, TYPE, BTN } from "../theme";
 import {
   MobileShell,
   DdayBar,
@@ -140,7 +140,7 @@ export default function RegionList() {
           onClick={() => dispatch({ type: "BACK", fallback: "SC-09" })}
         />
         <span className="text-lg">{icon}</span>
-        <span className="font-bold" style={{ color }}>
+        <span className={TYPE.heading} style={{ color }}>
           {selectedBranch} · 예산 최대 {formatAmount(branch.depositOrPrice)}
         </span>
       </div>
@@ -160,7 +160,7 @@ export default function RegionList() {
         {persona && <PersonaCardView persona={persona} color={color} />}
         {/* 동네 후보 — 이 화면의 핵심 콘텐츠 */}
         <div className="px-5 py-3 space-y-3">
-          <h2 className="text-base font-bold text-foreground">동네 후보</h2>
+          <h2 className={`${TYPE.heading} text-foreground`}>동네 후보</h2>
           {/* P2·P6: 대략(세그먼트 평균) → 정확(개인 확정 반영) 상태를 화면 언어로 */}
           <div
             className="rounded-xl px-3 py-2 text-xs"
@@ -202,7 +202,7 @@ export default function RegionList() {
                   · {r}
                 </p>
               ))}
-              <p className="mt-1 text-[11px]" style={{ color: COLORS.SUB }}>
+              <p className={`mt-1 ${TYPE.caption}`} style={{ color: COLORS.SUB }}>
                 동 단위 데이터는 순차 수집 예정 · 아래 카드엔 동별로 다른 값만
                 표시해요
               </p>
@@ -287,7 +287,7 @@ function PersonaCardView({
     >
       <div className="flex items-center gap-2">
         <span className="text-base">🎯</span>
-        <span className="font-bold text-sm" style={{ color }}>
+        <span className={`${TYPE.bodyStrong} font-bold`} style={{ color }}>
           {persona.segment} 맞춤 추천
         </span>
       </div>
@@ -298,7 +298,7 @@ function PersonaCardView({
             <span
               key={i}
               title={s.reason}
-              className="text-[11px] px-2 py-0.5 rounded-full"
+              className={`${TYPE.caption} px-2 py-0.5 rounded-full`}
               style={
                 s.source === "실측"
                   ? { background: color + "22", color, fontWeight: 600 }
@@ -311,11 +311,11 @@ function PersonaCardView({
           ))}
         </div>
       )}
-      <p className="text-[11px] text-muted-foreground">{persona.budgetBand}</p>
+      <p className={`${TYPE.caption} text-muted-foreground`}>{persona.budgetBand}</p>
 
       {/* 추천 기준 보기 — 세그먼트 가중치·근거는 접어둔다('당신은'이 아니라 '이 세그먼트는') */}
       <Accordion title="추천 기준" compact>
-        <p className="text-[11px] pb-1">
+        <p className={`${TYPE.caption} pb-1`}>
           이 세그먼트는 동네를 볼 때 아래 순서로 봐요. 자유입력을 반영하면 여기
           가중치가 함께 조정돼요.
           {adjusted && (
@@ -571,20 +571,29 @@ export function RegionCard({
       <div className="w-full text-left space-y-3">
         <div className="flex items-start justify-between">
           <div>
-            <p className="font-bold">{region.name}</p>
-            <p className="text-sm text-muted-foreground">
+            <p className={TYPE.heading}>{region.name}</p>
+            <p className={`${TYPE.bodyStrong} text-muted-foreground`}>
               {subtitle ?? `중위가 ${formatAmount(region.midPrice)}`}
             </p>
           </div>
           {region.surplus > 0 && (
             <span
-              className="text-xs font-semibold px-2.5 py-1 rounded-full"
-              style={{ background: COLORS.MINT + "33", color: COLORS.MINT }}
+              className={`${TYPE.body} font-semibold px-2.5 py-1 rounded-full`}
+              style={{ background: color + "1f", color }}
             >
               +{formatAmount(region.surplus)} 여유
             </span>
           )}
         </div>
+        {/* L3 미니 리포트 요약 — 소비 신호 × 동네 차별 팩트(구 폴백 공통값 제외). 순수 템플릿(LLM 없음).
+            헤더 바로 아래로 올리고 태그·시세보다 굵게(bodyStrong) — 카드에서 가장 설득력 있는 한 줄이라 위계상 첫머리. */}
+        {/* 그 동네만의 차별 팩트가 없으면(leadSignal만 있어도) 아예 생략 — 모든 카드에 leadSignal만
+            반복되는 무의미한 문장을 막는다(버그, 2026-07-31 수정) */}
+        {summaryLine && (
+          <p className={`${TYPE.bodyStrong} font-semibold`} style={{ color }}>
+            {summaryLine}
+          </p>
+        )}
         {/* 특징 한 줄 — 스코어 근거(통근) + region_facts(태그). 전부 실측/facts 값 */}
         {(() => {
           // 접힌(구 공통) 통근은 카드에서 빼고, 동별 통근만 칩으로. 대표 직장 기준은 '*' 각주로.
@@ -602,49 +611,46 @@ export function RegionCard({
             .join(" · ");
           return feature ? (
             <>
-              <p className="text-xs" style={{ color: COLORS.SUB }}>
+              <p className={TYPE.body} style={{ color: COLORS.SUB }}>
                 {feature}
               </p>
               {commute && !deemphasizeCommute && (
-                <p className="text-[10px]" style={{ color: COLORS.SUB }}>
+                <p className={TYPE.caption} style={{ color: COLORS.SUB }}>
                   * 통근은 세그먼트 대표 직장 기준(문진에 직장 입력 없음)
                 </p>
               )}
             </>
           ) : null;
         })()}
-        <span className="text-xs text-muted-foreground">
-          최근 실거래 {region.tradeCount}건
-        </span>
-        {region.jeonseRatio && (
-          <div
-            className="flex items-center gap-1.5 flex-wrap"
-            title={region.jeonseRatio.basis}
-          >
-            <span
-              className="text-xs font-semibold px-2 py-0.5 rounded-full"
-              style={bandStyle(region.jeonseRatio.band)}
-            >
-              전세가율 {Math.round(region.jeonseRatio.ratio * 100)}%
-            </span>
-            <span className="text-xs text-muted-foreground">
-              {region.jeonseRatio.label}
-            </span>
-          </div>
-        )}
-        {/* L3 미니 리포트 요약 — 소비 신호 × 동네 차별 팩트(구 폴백 공통값 제외). 순수 템플릿(LLM 없음) */}
-        {/* 그 동네만의 차별 팩트가 없으면(leadSignal만 있어도) 아예 생략 — 모든 카드에 leadSignal만
-            반복되는 무의미한 문장을 막는다(버그, 2026-07-31 수정) */}
-        {summaryLine && (
-          <p className="text-xs font-medium pt-1" style={{ color }}>
-            {summaryLine}
-          </p>
-        )}
+        {/* 시세 지표 — 실거래 건수 + 전세가율을 한 줄로 묶어 별도 행 하나를 줄인다 */}
+        <div className="flex items-center gap-1.5 flex-wrap">
+          <span className={`${TYPE.body} text-muted-foreground`}>
+            최근 실거래 {region.tradeCount}건
+          </span>
+          {region.jeonseRatio && (
+            <>
+              <span className="text-muted-foreground/40">·</span>
+              <span
+                className={`${TYPE.body} font-semibold px-2 py-0.5 rounded-full`}
+                style={bandStyle(region.jeonseRatio.band)}
+                title={region.jeonseRatio.basis}
+              >
+                전세가율 {Math.round(region.jeonseRatio.ratio * 100)}%
+              </span>
+              <span
+                className={`${TYPE.body} text-muted-foreground`}
+                title={region.jeonseRatio.basis}
+              >
+                {region.jeonseRatio.label}
+              </span>
+            </>
+          )}
+        </div>
         {cardReasons.length > 0 ? (
           <div className="pt-1">
             <Accordion title="동네 추천 이유 보기" compact>
               {cardReasons.map((r, i) => (
-                <p key={i} className="text-xs py-0.5">
+                <p key={i} className={`${TYPE.body} py-0.5`}>
                   ·{" "}
                   {deemphasizeCommute && r.startsWith("통근")
                     ? `${r} — 재택 반영, 참고용`
@@ -656,7 +662,7 @@ export function RegionCard({
         ) : (
           // cardReasons가 비는 두 경우 모두 커버: ①통근·상권이 "구 기준 공통값"으로 접힘(hiddenReasons)
           // ②이 동네는 그 데이터 자체가 없어서(동·구 모두 미확보) 애초에 근거가 예산 여유 하나뿐이었던 경우
-          <p className="text-xs pt-1" style={{ color: COLORS.SUB }}>
+          <p className={`${TYPE.body} pt-1`} style={{ color: COLORS.SUB }}>
             {hiddenReasons.length > 0
               ? "통근·상권 근거는 위 구 공통 안내를 참고하세요."
               : "이 동네는 예산 조건에 맞아 후보에 포함됐어요."}
@@ -664,7 +670,7 @@ export function RegionCard({
         )}
         <button
           onClick={onSelect}
-          className="mt-2 w-full flex items-center justify-center gap-1 text-xs font-semibold py-2 rounded-xl active:scale-[0.98] transition-transform"
+          className={`mt-2 w-full flex items-center justify-center gap-1 active:scale-[0.98] transition-transform ${BTN.card}`}
           style={{ background: COLORS.KB_YELLOW, color: COLORS.TEXT }}
         >
           이 동네로 정하기 →
@@ -676,7 +682,7 @@ export function RegionCard({
           e.stopPropagation();
           onExperience();
         }}
-        className="mt-2 w-full flex items-center justify-center gap-1 text-xs font-medium py-2 rounded-xl border"
+        className={`mt-2 w-full flex items-center justify-center gap-1 border ${BTN.card}`}
         style={{
           borderColor: COLORS.BORDER,
           color: COLORS.SUB,
@@ -691,7 +697,7 @@ export function RegionCard({
         target="_blank"
         rel="noopener noreferrer"
         onClick={(e) => e.stopPropagation()}
-        className="mt-3 flex items-center justify-center gap-1 text-xs font-medium py-2 rounded-xl border"
+        className={`mt-3 flex items-center justify-center gap-1 border ${BTN.card}`}
         style={{ borderColor: color + "55", color }}
       >
         실매물은 KB부동산에서 이어보세요 →
