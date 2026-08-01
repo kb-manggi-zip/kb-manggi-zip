@@ -1,4 +1,4 @@
-# KB 만기상담소 — 백엔드
+# KB만기.zip — 백엔드
 
 전월세 만기 D-90, **세 갈래(갱신·이사·매매)** 를 계산·비교하는 에이전트 백엔드.
 프론트(`../frontend`)의 `src/api/types.ts` 가 API 계약서이고, `src/engine/compare.ts` 가

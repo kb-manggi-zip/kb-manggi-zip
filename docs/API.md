@@ -1,4 +1,4 @@
-# KB 만기상담소 — 백엔드 API 명세
+# KB만기.zip — 백엔드 API 명세
 
 FastAPI. 기본 `http://localhost:8000`. 모든 요청/응답 `application/json` (UTF-8, 한글 리터럴 유지).
 

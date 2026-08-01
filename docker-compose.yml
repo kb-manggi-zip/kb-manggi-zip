@@ -1,4 +1,4 @@
-# KB 만기상담소 — 백엔드 + Postgres
+# KB만기.zip — 백엔드 + Postgres
 # 사용: docker compose up --build   → http://localhost:8000/health
 #
 # 로컬(도커 없이) 데모는 backend/README.md의 venv 방법을 쓰세요.

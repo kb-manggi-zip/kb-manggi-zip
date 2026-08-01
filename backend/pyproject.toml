@@ -1,7 +1,7 @@
 [project]
 name = "kb-manki-backend"
 version = "0.1.0"
-description = "KB 만기상담소 백엔드 — 세 갈래(갱신·이사·매매) 비교 에이전트"
+description = "KB만기.zip 백엔드 — 세 갈래(갱신·이사·매매) 비교 에이전트"
 requires-python = ">=3.11"
 
 [tool.pytest.ini_options]

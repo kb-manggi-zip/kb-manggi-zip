@@ -77,7 +77,7 @@ export default function CompareTable() {
       });
       const a = document.createElement("a");
       a.href = dataUrl;
-      a.download = "kb_만기상담소_비교표.png";
+      a.download = "kb만기zip_비교표.png";
       a.click();
       showToast("이미지로 저장했어요 📸");
     } catch {
@@ -259,7 +259,7 @@ const ShareCard = React.forwardRef<
           KB
         </div>
         <span style={{ fontWeight: 700, color: COLORS.KB_GRAY }}>
-          KB 만기상담소
+          KB만기.zip
         </span>
         <span style={{ marginLeft: "auto", fontSize: 12, color: COLORS.SUB }}>
           {ddayText(dday)}
@@ -331,7 +331,7 @@ const ShareCard = React.forwardRef<
         marginTop: 16,
       }}
     >
-      KB 만기상담소 · 참고 추정치
+      KB만기.zip · 참고 추정치
     </p>
   </div>
 ));

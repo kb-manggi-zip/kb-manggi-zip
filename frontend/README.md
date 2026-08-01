@@ -1,4 +1,4 @@
-# KB 만기상담소 — 프론트엔드
+# KB만기.zip — 프론트엔드
 
 전월세 만기 D-90, **세 갈래(갱신·이사·매매)** 비교 화면. React 18 + Vite 6 + TypeScript + Tailwind v4.
 모바일(max-width 390) 단일 흐름. Figma Make에서 생성.
