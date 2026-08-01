@@ -172,7 +172,7 @@ export default function CompareTable() {
       {/* 카드 스와이프 영역 */}
       <div
         ref={scrollRef}
-        className="flex gap-4 px-5 pb-4 overflow-x-auto snap-x snap-mandatory"
+        className="flex items-start gap-4 px-5 pb-4 overflow-x-auto snap-x snap-mandatory"
         style={{ scrollbarWidth: "none" }}
         onScroll={(e) => {
           const el = e.currentTarget;

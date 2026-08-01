@@ -314,7 +314,7 @@ function PersonaCardView({
       <p className="text-[11px] text-muted-foreground">{persona.budgetBand}</p>
 
       {/* 추천 기준 보기 — 세그먼트 가중치·근거는 접어둔다('당신은'이 아니라 '이 세그먼트는') */}
-      <Accordion title="추천 기준">
+      <Accordion title="추천 기준" compact>
         <p className="text-[11px] pb-1">
           이 세그먼트는 동네를 볼 때 아래 순서로 봐요. 자유입력을 반영하면 여기
           가중치가 함께 조정돼요.
@@ -642,7 +642,7 @@ export function RegionCard({
         )}
         {cardReasons.length > 0 ? (
           <div className="pt-1">
-            <Accordion title="왜 추천?">
+            <Accordion title="동네 추천 이유 보기" compact>
               {cardReasons.map((r, i) => (
                 <p key={i} className="text-xs py-0.5">
                   ·{" "}

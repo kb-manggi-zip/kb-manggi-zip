@@ -231,7 +231,7 @@ export function Toast({ message, visible }: { message: string; visible: boolean 
 }
 
 // ─── Accordion ───────────────────────────────────────────────────────────────
-export function Accordion({ title, children }: { title: string; children: React.ReactNode }) {
+export function Accordion({ title, children, compact = false }: { title: string; children: React.ReactNode; compact?: boolean }) {
   const [open, setOpen] = useState(false);
   return (
     <div className="border border-border rounded-2xl">
@@ -239,13 +239,13 @@ export function Accordion({ title, children }: { title: string; children: React.
           대신 버튼/내용 각각에 상황별로 라운딩을 준다. */}
       <button
         onClick={() => setOpen(o => !o)}
-        className={`w-full flex items-center justify-between px-4 py-3 text-sm font-medium text-foreground bg-card ${open ? 'rounded-t-2xl' : 'rounded-2xl'}`}
+        className={`w-full flex items-center justify-between px-4 text-foreground bg-card ${compact ? 'py-2 text-xs font-medium' : 'py-3 text-sm font-medium'} ${open ? 'rounded-t-2xl' : 'rounded-2xl'}`}
       >
         {title}
         <span className="transition-transform duration-200" style={{ transform: open ? 'rotate(180deg)' : 'rotate(0deg)' }}>▾</span>
       </button>
       {open && (
-        <div className="px-4 pt-2 pb-4 bg-muted/50 text-sm text-muted-foreground space-y-1 rounded-b-2xl">
+        <div className={`px-4 pt-2 pb-4 bg-muted/50 text-muted-foreground space-y-1 rounded-b-2xl ${compact ? 'text-xs' : 'text-sm'}`}>
           {children}
         </div>
       )}
