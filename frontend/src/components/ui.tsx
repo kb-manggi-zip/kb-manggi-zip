@@ -184,11 +184,17 @@ export function BasisChip({ label, tip }: { label: string; tip: string }) {
       </button>
       {open && (
         <div
-          className="absolute bottom-full mb-2 left-1/2 -translate-x-1/2 z-50 w-max max-w-[75vw] whitespace-nowrap bg-foreground text-background text-xs rounded-xl p-2.5 shadow-lg leading-relaxed"
+          // 버튼 중앙 기준 left-1/2 정렬은 버튼이 390px 모바일 프레임 왼쪽 가장자리에 붙어있을 때
+          // 툴팁 절반이 프레임 밖(왼쪽)으로 나가 부모의 overflow-hidden에 잘렸음(2026-08-02) —
+          // 버튼 왼쪽 끝에 맞춰서 오른쪽으로만 펼치게 변경. 한 줄(whitespace-nowrap)로 보여주고
+          // max-w는 안 둠 — basis 문구들은 다 짧아서(20자 내외) 왼쪽 시작 기준으로 한 줄이면
+          // 프레임 폭 안에 들어옴. 원래 있던 max-w-[75vw]가 브라우저 전체 뷰포트 기준이라
+          // 데스크톱에서 툴팁 폭이 튀던 게 진짜 원인이었음.
+          className="absolute bottom-full mb-2 left-0 z-50 w-max whitespace-nowrap bg-foreground text-background text-xs rounded-xl p-2.5 shadow-lg leading-relaxed"
           onClick={() => setOpen(false)}
         >
           {tip}
-          <div className="absolute -bottom-1 left-1/2 -translate-x-1/2 w-2 h-2 bg-foreground rotate-45" />
+          <div className="absolute -bottom-1 left-4 w-2 h-2 bg-foreground rotate-45" />
         </div>
       )}
     </div>

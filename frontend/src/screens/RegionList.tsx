@@ -570,10 +570,10 @@ export function RegionCard({
           </div>
           {region.surplus > 0 && (
             <span
-              className={`${TYPE.body} font-semibold px-2.5 py-1 rounded-full`}
+              className={`${TYPE.body} font-semibold px-2.5 py-1 rounded-full whitespace-nowrap shrink-0`}
               style={{ background: color + "1f", color }}
             >
-              +{formatAmount(region.surplus)} 여유
+              +{formatAmount(region.surplus)} 예산 여유
             </span>
           )}
         </div>

@@ -33,7 +33,7 @@ def test_region_with_real_tags_differs_from_generic_fallback():
     without_tags = narrator.run("이사", "seongbuk-m")
     assert _captions(with_tags) != _captions(without_tags)
     assert any("상권 실측" in s.basis for s in with_tags.scenes)
-    assert all(s.basis == "동네 하루 예시" for s in without_tags.scenes)
+    assert all(s.basis == "" for s in without_tags.scenes)  # 근거 없음 → 칩 자체를 숨기는 빈 문자열
 
 
 def test_wolse_vs_jeonse_distinct():
@@ -48,7 +48,7 @@ def test_unknown_region_gets_generic_three_scenes():
     빠졌지만, region_id 자체가 없는 경우(동 선택 전)만 base로 폴백하고 나머진 제네릭 3씬."""
     known = narrator.run("이사", "does-not-exist")
     assert len(known.scenes) == 3
-    assert all(s.basis == "동네 하루 예시" for s in known.scenes)
+    assert all(s.basis == "" for s in known.scenes)  # 근거 없음 → 칩 자체를 숨기는 빈 문자열
 
 
 def test_no_region_id_falls_back_to_base():

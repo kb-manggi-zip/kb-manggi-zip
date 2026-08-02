@@ -90,6 +90,11 @@ export default function ReservationSheet() {
             <span className="text-lg">{icon}</span>
             <span className="font-semibold" style={{ color }}>{selectedBranch} · KB 금융 패키지</span>
           </div>
+          {/* 상담 넘길 때 뭐가 같이 전달되는지 고지 없던 문제(2026-08-02) — 계산결과·자격/한도까지
+              넘어간다는 걸 예약 전에 미리 알려준다. */}
+          <p className="text-xs mt-2 pt-2 border-t border-border/60" style={{ color: COLORS.SUB }}>
+            지금까지 계산한 결과와 자격·한도 정보도 상담사에게 함께 전달돼요
+          </p>
         </div>
 
         {/* 고객이 남긴 사정 — 계산에 못 담은 갱신·주거 사정(원문 그대로 상담사 전달) */}
