@@ -19,7 +19,7 @@ import yaml
 from ..core.config import BACKEND_ROOT
 from ..core.llm import generate
 from ..schemas import Branch, Scene, SimulateResponse
-from ..tools import trades_store, transit
+from ..tools import molit, trades_store, transit
 
 _SCENES_YAML = Path(__file__).parent / "scenes.yaml"
 _PROFILES_YAML = Path(__file__).parent / "spending_profiles.yaml"
@@ -32,15 +32,125 @@ def _registry() -> dict:
         return yaml.safe_load(f)
 
 
-def _select(branch: str, region_id: str) -> list[dict]:
+# ── 하루시뮬 동적 씬 (docs/하루시뮬_이미지생성_계획.md 확정 구조) ──────────────
+# 고정 3씬: 초역세권 있으면 통근+상권태그2, 없으면 상권태그3. 태그 우선순위는 소비신호로.
+_TAG_ALIASES = {"카페거리": "음식점·카페 밀집", "한강공원": "공원 인접"}  # 소수 수기 태그 정규화
+_TAG_FALLBACK_ORDER = ["음식점·카페 밀집", "공원 인접", "마트·편의점 밀집", "여가시설 밀집", "학원가"]
+_SIGNAL_TAG_MATCH = [  # 문서 §씬 배치 매칭표 그대로 (배달은 매칭 없음 → 폴백)
+    (("카페", "식비"), "음식점·카페 밀집"),
+    (("여가",), "여가시설 밀집"),
+    (("쇼핑",), "마트·편의점 밀집"),
+]
+_TAG_SCENE_META = {
+    "음식점·카페 밀집": {"emoji": "☕", "caption1": "음식점·카페 골목이 가까운 동네"},
+    "공원 인접": {"emoji": "🌳", "caption1": "공원이 가까운 동네"},
+    "마트·편의점 밀집": {"emoji": "🛒", "caption1": "마트·편의점이 가까운 생활권"},
+    "여가시설 밀집": {"emoji": "🎳", "caption1": "여가시설이 가까운 동네"},
+    "학원가": {"emoji": "📚", "caption1": "학원가가 가까운 동네"},
+}
+_TIMES_WITH_COMMUTE = ["🌅 07:40", "☀️ 12:30", "🌇 18:30"]
+_TIMES_NO_COMMUTE = ["🌅 09:00", "☀️ 12:30", "🌇 18:30"]
+
+
+def _lead_signal_tag(lead_signal: str | None) -> str | None:
+    """'카페 소비 많이 하는 편' 같은 라벨 → 우선 태그. 매칭 규칙 없으면(배달 등) None(폴백행)."""
+    if not lead_signal:
+        return None
+    for keywords, tag in _SIGNAL_TAG_MATCH:
+        if any(k in lead_signal for k in keywords):
+            return tag
+    return None
+
+
+def _pick_content_tags(raw_tags: list[str], lead_signal: str | None, count: int) -> list[str]:
+    """그 동이 실제로 가진 상권 태그 중 count개 — 소비신호 매칭 태그 우선, 나머진 고정 폴백 순서."""
+    tags = {_TAG_ALIASES.get(t, t) for t in raw_tags}
+    matched = _lead_signal_tag(lead_signal)
+    ordered: list[str] = []
+    if matched and matched in tags:
+        ordered.append(matched)
+    for tag in _TAG_FALLBACK_ORDER:
+        if tag in tags and tag not in ordered:
+            ordered.append(tag)
+    return ordered[:count]
+
+
+def _commute_caption(region_id: str, household: str | None) -> tuple[str, str]:
+    """역세권 통근 씬 캡션 — 실측 통근분 있으면 그대로 인용(없으면 '도보권'까지만, 숫자 지어내지 않음)."""
+    wp = profile_for(household).get("workplace")
+    if wp:
+        tr = trades_store.read_region_transit(region_id, wp["name"])
+        if tr and tr.get("minutes"):
+            return "지하철역 도보권", f"{wp['name']} 통근 실측 약 {tr['minutes']}분"
+    return "지하철역 도보권", "출근길도 가볍게"
+
+
+def _dynamic_scenes(region_id: str, household: str | None, lead_signal: str | None) -> list[dict] | None:
+    """region_enrich.yaml 태그 기반 고정 3씬 조립. 태그 정보가 아예 없으면 None(→ base 폴백)."""
+    enrich = molit.load_enrich().get(region_id)
+    if not enrich:
+        return None
+    raw_tags = enrich.get("tags") or []
+    if not raw_tags:
+        return None
+    normalized = {_TAG_ALIASES.get(t, t) for t in raw_tags}
+    has_transit = "초역세권" in normalized or "역세권" in normalized
+
+    scenes: list[dict] = []
+    if has_transit:
+        cap1, cap2 = _commute_caption(region_id, household)
+        scenes.append(
+            {
+                "time": _TIMES_WITH_COMMUTE[0],
+                "emoji": "🚇",
+                "visual": "",
+                "caption1": cap1,
+                "caption2": cap2,
+                "basis": "역세권(카카오맵 최근접역 기준)",
+            }
+        )
+        content = _pick_content_tags(raw_tags, lead_signal, 2)
+        times = _TIMES_WITH_COMMUTE[1:]
+    else:
+        content = _pick_content_tags(raw_tags, lead_signal, 3)
+        times = _TIMES_NO_COMMUTE
+
+    if not content and not scenes:
+        return None  # 통근도 상권 태그도 없음 — 정직하게 base로 폴백
+
+    for time, tag in zip(times, content):
+        meta = _TAG_SCENE_META[tag]
+        scenes.append(
+            {
+                "time": time,
+                "emoji": meta["emoji"],
+                "visual": "",
+                "caption1": meta["caption1"],
+                "caption2": "",
+                "basis": f"{tag} (상권 실측·소상공인시장진흥공단)",
+            }
+        )
+    return scenes or None
+
+
+def _select(branch: str, region_id: str, household: str | None, lead_signal: str | None) -> list[dict]:
     reg = _registry()
     override = (reg.get("regions") or {}).get(region_id, {}).get(branch)
-    return override or reg["base"][branch]
+    if override:
+        return override  # 기존 수기 커스텀 씬(월세 3개 동)은 그대로 우선
+    dynamic = _dynamic_scenes(region_id, household, lead_signal) if region_id else None
+    return dynamic or reg["base"][branch]
 
 
-def run(branch: Branch, region_id: str = "") -> SimulateResponse:
+def run(
+    branch: Branch,
+    region_id: str = "",
+    *,
+    household: str | None = None,
+    lead_signal: str | None = None,
+) -> SimulateResponse:
     reg = _registry()
-    scenes = [Scene(**s) for s in _select(branch, region_id)]
+    scenes = [Scene(**s) for s in _select(branch, region_id, household, lead_signal)]
     monthly_cost = reg["monthly_cost"][branch]
     return SimulateResponse(scenes=scenes, monthlyCost=monthly_cost)
 

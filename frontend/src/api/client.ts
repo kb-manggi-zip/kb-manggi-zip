@@ -168,7 +168,9 @@ export const api = {
     return localOrRemote(() => REGIONS_MONTHLY, `/api/regions?branch=이사-월세${q}`);
   },
 
-  async simulate(branch: Branch, _regionId: string): Promise<SimulateResponse> {
+  // household/leadSignal: 원격(백엔드)이 동네 태그+소비신호로 고정 3씬(통근+상권태그)을 동적 조립하는 데 씀
+  // (docs/하루시뮬_이미지생성_계획.md). 로컬 폴백은 기존 정적 씬 그대로(둘 다 무시).
+  async simulate(branch: Branch, _regionId: string, household?: string, leadSignal?: string): Promise<SimulateResponse> {
     return localOrRemote(
       () => ({
         // 지역별 씬(regionId) 우선 → 없으면 branch 기본. '월세로'('-m')와 '전세로'가 다른 하루.
@@ -178,7 +180,7 @@ export const api = {
         monthlyCost: branch === '매매' ? 1_400_000 : 900_000,
       }),
       '/api/simulate',
-      { method: 'POST', body: JSON.stringify({ branch, regionId: _regionId }) }
+      { method: 'POST', body: JSON.stringify({ branch, regionId: _regionId, household, leadSignal }) }
     );
   },
 

@@ -312,6 +312,8 @@ class CompareRequest(BaseModel):
 class SimulateRequest(BaseModel):
     branch: Branch
     regionId: str
+    household: Optional[str] = None  # 통근 대표 직장 결정용(narrator.profile_for)
+    leadSignal: Optional[str] = None  # 소비신호 라벨(예: "카페 소비 많이 하는 편") — 씬 태그 우선순위
 
 
 class ClarifyRequest(BaseModel):

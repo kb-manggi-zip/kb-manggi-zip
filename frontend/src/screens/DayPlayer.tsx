@@ -2,8 +2,10 @@ import React, { useState, useEffect } from 'react';
 import { useApp } from '../store';
 import { COLORS, BRANCH_COLORS, BRANCH_ICONS } from '../theme';
 import { MobileShell, BasisChip } from '../components/ui';
+import { KakaoMap } from '../components/KakaoMap';
 import { api, briefings } from '../api/client';
 import { formatAmount, ddayText } from '../utils/format';
+import { deriveLeadSignal } from '../utils/leadSignal';
 import type { Scene } from '../api/types';
 
 // 시간대 그라디언트 — 스톡사진 대신 시간의 '색'으로 하루를 표현(아침 웜/낮 스카이/저녁 앰버/밤 네이비).
@@ -15,6 +17,10 @@ function timeGradient(time: string): string {
   return 'linear-gradient(160deg, #3A3F6B 0%, #23264A 55%, #14162E 100%)';                          // 밤
 }
 
+// 요약 화면 배경 — 마지막 씬(예: 저녁 18:30)의 시간대색을 그대로 이어받으면 "아직 그 장면"처럼 보여
+// 혼동을 줌. 하루를 다 보여준 뒤의 별도 마무리 화면임을 표시하는 중립 다크 톤 고정.
+const SUMMARY_GRADIENT = 'linear-gradient(160deg, #3A3F6B 0%, #23264A 55%, #14162E 100%)';
+
 export default function DayPlayer() {
   const { state, dispatch } = useApp();
   const { selectedBranch, selectedRegionId, selectedRegion, finance, comparison } = state;
@@ -24,6 +30,9 @@ export default function DayPlayer() {
   const [current, setCurrent] = useState(0);
   const [autoPlay, setAutoPlay] = useState(true);
   const [showIntro, setShowIntro] = useState(true);
+  // 고정 3씬은 다 온전히 보여주고, 지도·요약(마무리 화면)은 그 뒤에 별도로 — 마지막 씬 캡션이
+  // 요약 블록에 가려서 안 보이던 문제 수정(2026-08-02).
+  const [showSummary, setShowSummary] = useState(false);
 
   // 찾은 동네 이름(한글) — 선택 Region 우선, 없으면 id prefix 폴백
   const regionName = selectedRegion?.name
@@ -31,14 +40,21 @@ export default function DayPlayer() {
 
   useEffect(() => {
     if (!selectedBranch || !selectedRegionId) return;
-    api.simulate(selectedBranch, selectedRegionId).then(r => {
-      setScenes(r.scenes);
-      setMonthlyCost(r.monthlyCost);
+    const branchBudget = comparison?.branches.find(b => b.branch === selectedBranch)?.depositOrPrice;
+    // 하루시뮬 고정 3씬(통근+상권태그 우선순위)은 소비신호로 정해짐 — RegionList의 leadSignal과 같은 파생.
+    // 실패해도 백엔드가 신호 없이(폴백 순서로) 정상 조립하므로 시뮬 자체는 막지 않는다.
+    const leadSignalPromise = state.contract && finance
+      ? api.persona(state.contract, finance, branchBudget).then(p => deriveLeadSignal(p.consumptionSignals)).catch(() => undefined)
+      : Promise.resolve(undefined);
+    leadSignalPromise.then(leadSignal => {
+      api.simulate(selectedBranch, selectedRegionId, finance?.household, leadSignal).then(r => {
+        setScenes(r.scenes);
+        setMonthlyCost(r.monthlyCost);
+      });
     });
     // '이 동네에서의 하루' 개인화 발품 내레이션(소비 프로필 그라운딩)
     // budget = 고른 갈래 예산 → 발품 실거래를 예산 이하에서 선정(G2)
     // wfh = 통근 비중을 낮추기로 확정(재택 등)한 사용자 → 발품에서 통근 격하(G3)
-    const branchBudget = comparison?.branches.find(b => b.branch === selectedBranch)?.depositOrPrice;
     const wfh = (state.contract?.noteAdjust?.commute ?? 1) < 0.95;
     api.dayLifestyle(selectedRegion, selectedBranch, finance, branchBudget, wfh).then(setLifestyle);
     // 1초 전환 카드
@@ -47,20 +63,21 @@ export default function DayPlayer() {
   }, [selectedBranch, selectedRegionId]);
 
   useEffect(() => {
-    if (!autoPlay || scenes.length === 0) return;
+    if (!autoPlay || showSummary || scenes.length === 0) return;
     const t = setTimeout(() => {
       if (current < scenes.length - 1) setCurrent(c => c + 1);
-      else setAutoPlay(false);
+      else { setShowSummary(true); setAutoPlay(false); }
     }, 4000);
     return () => clearTimeout(t);
-  }, [current, autoPlay, scenes]);
+  }, [current, autoPlay, showSummary, scenes]);
 
   if (!selectedBranch) return null;
 
   const color = BRANCH_COLORS[selectedBranch];
   const icon = BRANCH_ICONS[selectedBranch];
   const scene = scenes[current];
-  const isLast = current === scenes.length - 1;
+  // 진행 도트: 고정 3씬 + 요약을 4번째 스텝으로 시각화(요약도 별도 "화면"임을 보여줌).
+  const activeIndex = showSummary ? scenes.length : current;
   // §4.3: 마지막 씬 월 부담 = 비교표(compare)의 선택 갈래 값(일관). 씬 fixture(monthlyCost)와의 불일치 해소.
   const selectedBurden = comparison?.branches.find(b => b.branch === selectedBranch)?.monthlyBurden;
 
@@ -90,10 +107,14 @@ export default function DayPlayer() {
   function handleTap(e: React.MouseEvent<HTMLDivElement>) {
     const x = e.clientX;
     const mid = window.innerWidth / 2;
+    setAutoPlay(false);
     if (x > mid) {
-      if (current < scenes.length - 1) { setCurrent(c => c + 1); setAutoPlay(false); }
+      if (showSummary) return; // 요약 화면에선 우측 탭 없음(CTA 버튼으로 진행)
+      if (current < scenes.length - 1) setCurrent(c => c + 1);
+      else setShowSummary(true);
     } else {
-      if (current > 0) { setCurrent(c => c - 1); setAutoPlay(false); }
+      if (showSummary) setShowSummary(false);
+      else if (current > 0) setCurrent(c => c - 1);
     }
   }
 
@@ -103,8 +124,8 @@ export default function DayPlayer() {
       style={{ width: '100%', maxWidth: 390, height: '100dvh', margin: '0 auto', background: '#111' }}
       onClick={handleTap}
     >
-      {/* 배경 — 시간대 그라디언트(스톡사진 제거) + 하단 어둡게(자막 가독) */}
-      <div className="absolute inset-0 transition-all duration-700" style={{ background: timeGradient(scene.time) }}>
+      {/* 배경 — 시간대 그라디언트(스톡사진 제거) + 하단 어둡게(자막 가독). 요약 화면은 중립 톤 고정. */}
+      <div className="absolute inset-0 transition-all duration-700" style={{ background: showSummary ? SUMMARY_GRADIENT : timeGradient(scene.time) }}>
         <div className="absolute inset-0 bg-gradient-to-b from-black/15 via-transparent to-black/75" />
       </div>
 
@@ -112,11 +133,11 @@ export default function DayPlayer() {
       <div className="absolute top-0 left-0 right-0 z-20 p-5 space-y-3">
         {/* 프로그레스 도트 */}
         <div className="flex gap-1">
-          {scenes.map((_, i) => (
+          {[...scenes, null].map((_, i) => (
             <div
               key={i}
               className="flex-1 h-0.5 rounded-full transition-all duration-300"
-              style={{ background: i <= current ? '#fff' : 'rgba(255,255,255,0.3)' }}
+              style={{ background: i <= activeIndex ? '#fff' : 'rgba(255,255,255,0.3)' }}
             />
           ))}
         </div>
@@ -146,17 +167,19 @@ export default function DayPlayer() {
         </div>
       </div>
 
-      {/* 시간 스티커 */}
-      <div
-        className="absolute top-28 left-5 z-20 px-3 py-1.5 rounded-xl text-sm font-bold text-white"
-        style={{ background: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(4px)' }}
-      >
-        {scene.time}
-      </div>
+      {/* 시간 스티커 — 요약 화면은 특정 시각이 아니므로 숨김 */}
+      {!showSummary && (
+        <div
+          className="absolute top-28 left-5 z-20 px-3 py-1.5 rounded-xl text-sm font-bold text-white"
+          style={{ background: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(4px)' }}
+        >
+          {scene.time}
+        </div>
+      )}
 
       {/* 하단 자막 */}
       <div className="absolute bottom-0 left-0 right-0 z-20 p-6 space-y-2">
-        {!isLast ? (
+        {!showSummary ? (
           <>
             <p className="text-white text-2xl font-bold leading-tight drop-shadow">{scene.caption1}</p>
             <p className="text-white/80 text-sm">{scene.caption2}</p>
@@ -170,14 +193,13 @@ export default function DayPlayer() {
           </>
         ) : (
           <div className="space-y-3" onClick={e => e.stopPropagation()}>
-            {/* 그 동네 좌표 — 은은한 지도 느낌(실제 lat/lng). ※ 카카오 정적 지도 연동 지점(VITE_KAKAO_KEY) */}
+            {/* 그 동네 좌표 — 실제 카카오맵(단일 핀). 키 없거나 로드 실패 시 KakaoMap이 조용히 placeholder로 대체 */}
             {selectedRegion?.lat ? (
-              <div className="rounded-2xl overflow-hidden relative" style={{ height: 84, background: 'rgba(255,255,255,0.08)', backgroundImage: 'linear-gradient(rgba(255,255,255,0.06) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.06) 1px, transparent 1px)', backgroundSize: '18px 18px', backdropFilter: 'blur(6px)' }}>
-                <div className="absolute inset-0 flex items-center justify-center gap-2">
-                  <span className="text-lg">📍</span>
-                  <p className="text-white text-sm font-bold">{regionName}</p>
-                </div>
-              </div>
+              <KakaoMap
+                pins={[{ id: selectedRegionId ?? regionName, name: regionName, lat: selectedRegion.lat, lng: selectedRegion.lng }]}
+                height={84}
+                className="rounded-2xl overflow-hidden"
+              />
             ) : null}
             {lifestyle && (
               <div className="bg-black/60 rounded-2xl p-4" style={{ backdropFilter: 'blur(8px)' }}>
