@@ -26,6 +26,8 @@ dist/
 !backend/data/mydata.demo.db
 backend/cache/*
 !backend/cache/.gitkeep
+backend/data/scene_images/*
+!backend/data/scene_images/.gitkeep
 
 # ── 스크래치 ──
 *.log
