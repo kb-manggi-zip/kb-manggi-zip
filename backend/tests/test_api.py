@@ -70,7 +70,7 @@ def test_products_and_simulate(client):
 
     r = client.post("/api/simulate", json={"branch": "매매", "regionId": "mapo"})
     assert r.status_code == 200
-    assert len(r.json()["scenes"]) == 5
+    assert len(r.json()["scenes"]) == 3  # region_id 있으면 고정 3씬 동적 조립(2026-08-02)
 
 
 def test_briefing_fallback(client):
