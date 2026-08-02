@@ -195,17 +195,46 @@ def score_region(region: dict, ctx: dict) -> dict:
             parts_txt.append(f"여가시설 {lei}곳")
         near_note = " — 자주 쓰는 곳이 가까운 동네" if values_food else ""
         reasons.append(f"{', '.join(parts_txt)}{gu_tag}{near_note}")
-    if budget > 0 and region.get("surplus", 0) > 0:
-        reasons.append("예산 여유 있음")
+    surplus = region.get("surplus", 0)
+    if budget > 0 and surplus > 0:
+        # 상수 "예산 여유 있음" 대신 실제 여유액으로 동네마다 차별화.
+        amt = f"{surplus / 100_000_000:.1f}억" if surplus >= 100_000_000 else f"{round(surplus / 10_000):,}만"
+        reasons.append(f"예산 여유 약 {amt}")
     return {"total": total, "reasons": reasons, "breakdown": {k: round(axes[k], 3) for k in axes}, "weights": w}
 
 
+# 상대적 강점 축 → 앞줄 문구(후보 풀 평균 대비). preference는 대개 동일(선호구)이라 제외.
+_LEAD_PHRASE = {
+    "commute": "후보 중 통근이 짧은 편이에요",
+    "consumption": "후보 중 생활 상권이 촘촘한 편이에요",
+    # budget 축 = 여유액이 아니라 적합도(10% 헤드룸 최적 종형) → '알맞은'으로 표기(여유액 오해 방지).
+    "budget": "후보 중 예산에 알맞은 편이에요",
+}
+_LEAD_MIN = 0.02  # 이 정도는 앞서야 '강점'으로 표기(근소한 차는 노이즈라 생략).
+
+
 def rank(regions: list[dict], ctx: dict, top: int = 3) -> list[dict]:
-    """후보를 개인화 스코어로 재정렬 → 상위 top. 각 region에 score·scoreReasons 부착."""
+    """후보를 개인화 스코어로 재정렬 → 상위 top. 각 region에 score·scoreReasons 부착.
+
+    같은 페르소나에서 동네마다 이유가 똑같이 읽히던 문제 → 각 동네의 **후보 풀 평균 대비
+    상대적 강점 축**을 첫 줄로 붙여 '왜 이 동네가 이 순위인지'를 차별화한다(표시용, 점수 무관)."""
     scored = []
     for r in regions:
         s = score_region(r, ctx)
-        r = {**r, "score": s["total"], "scoreReasons": s["reasons"]}
+        r = {**r, "score": s["total"], "scoreReasons": s["reasons"], "_breakdown": s["breakdown"]}
         scored.append(r)
+
+    # 후보 풀 축별 평균 → 각 동네의 최대 우위 축을 앞줄로.
+    axes_keys = list(_LEAD_PHRASE.keys())
+    if len(scored) > 1:
+        mean = {k: sum(r["_breakdown"].get(k, 0.0) for r in scored) / len(scored) for k in axes_keys}
+        for r in scored:
+            edges = [(k, r["_breakdown"].get(k, 0.0) - mean[k]) for k in axes_keys]
+            best_k, best_edge = max(edges, key=lambda kv: kv[1])
+            if best_edge >= _LEAD_MIN:
+                r["scoreReasons"] = [_LEAD_PHRASE[best_k], *r["scoreReasons"]]
+
+    for r in scored:
+        r.pop("_breakdown", None)
     scored.sort(key=lambda r: r["score"], reverse=True)
     return scored[:top]
