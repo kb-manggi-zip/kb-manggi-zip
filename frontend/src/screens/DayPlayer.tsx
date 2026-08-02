@@ -189,8 +189,9 @@ export default function DayPlayer() {
             <p className="text-white/80 text-sm">{scene.caption2}</p>
             {scene.basis && (
               <div onClick={e => e.stopPropagation()}>
-                {/* 장면 카드는 연출 예시 — 실측 수치는 하단 발품 내레이션·fact 칩이 담당(L1) */}
-                <BasisChip label="장면" tip={scene.basis} />
+                {/* 씬 카드는 연출 예시 — 실측 수치는 하단 발품 내레이션·fact 칩이 담당(L1).
+                    라벨은 다른 화면(RenewalChecklist 등)과 통일해 '근거'로(2026-08-02, 예전엔 '장면'). */}
+                <BasisChip label="근거" tip={scene.basis} />
               </div>
             )}
             <p className="text-white/40 text-xs pt-1">좌측 탭: 이전 · 우측 탭: 다음</p>

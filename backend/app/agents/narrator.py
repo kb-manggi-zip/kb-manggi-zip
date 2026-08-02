@@ -155,7 +155,8 @@ def _dynamic_scenes(region_id: str, household: str | None, lead_signal: str | No
     """region_enrich.yaml 태그 기반 고정 3씬 조립 — 항상 정확히 3씬을 반환한다(2026-08-02: 예전엔
     역세권인데 매칭 태그가 없으면 통근 1씬만, 태그가 아예 없으면 None(→구식 5씬 스톡사진 base)으로
     빠지는 버그가 있었음). 실제 데이터가 부족한 동네는 고정 폴백 태그로 채우되 _pick_content_tags의
-    is_real 플래그로 basis를 '동네 하루 예시'로 정직하게 구분한다."""
+    is_real 플래그로 그 씬은 basis를 빈 문자열로 둔다(프론트가 '값 없으면 칩 자체를 숨김' 컨벤션을
+    그대로 타서 근거 없는 걸 '근거'라고 표시하지 않게, 2026-08-02)."""
     raw_tags = _enrich_for(region_id).get("tags") or []
     normalized = {_TAG_ALIASES.get(t, t) for t in raw_tags}
     has_transit = "초역세권" in normalized or "역세권" in normalized
@@ -181,7 +182,7 @@ def _dynamic_scenes(region_id: str, household: str | None, lead_signal: str | No
 
     for time, (tag, is_real) in zip(times, content):
         meta = _TAG_SCENE_META[tag]
-        basis = f"{tag} (상권 실측·소상공인시장진흥공단)" if is_real else "동네 하루 예시"
+        basis = f"{tag} (상권 실측·소상공인시장진흥공단)" if is_real else ""
         scenes.append(
             {
                 "time": time,
