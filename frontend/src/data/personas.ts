@@ -22,10 +22,14 @@ function futureDateDays(days: number): string {
 export const PERSONAS: Persona[] = [
   {
     // 깨비 — 촬영용 데모 시나리오(김수진 스펙 확정, 2026-08-02): 28세·1인가구·재택근무,
-    //   성북구 전세 2.8억, 만기 D-90, 집주인 5% 인상 요구. "재택근무예요"를 승인하면
-    //   통근 비중↓·상권 비중↑로 동네 순위가 실제로 바뀌는 조합(검증됨: top1 동선동4가).
+    //   전세 2.8억, 만기 D-90, 집주인 5% 인상 요구. "재택근무예요"를 승인하면
+    //   통근 비중↓·상권 비중↑로 동네 순위가 실제로 바뀌는 조합.
+    // preferredArea는 원안 성북구 → 마포구로 변경(2026-08-02): 성북구 쪽 후보 동(동선동1가)이
+    // 실거래 26건뿐이라 촬영 화면이 빈약함. 소득/자산도 UI 버킷 경계값(4천/3천)이라 실제로 선택
+    // 불가능한 숫자였어서 대표값(4~5천=4,500만/3~5천=4,000만)으로 조정. 나머지 스펙은 원안 그대로.
+    // 마포구·이사 갈래 기준 실제 추천 2위 = 노고산동(태그 3개 다 있음+전세 실거래 78건) — 데모 지역으로 사용.
     id: 'P1',
-    label: '깨비 · 전세 사회초년생 · 성북',
+    label: '깨비 · 전세 사회초년생 · 마포',
     contract: {
       type: '전세',
       deposit: 280_000_000,
@@ -33,13 +37,13 @@ export const PERSONAS: Persona[] = [
       expiryDate: futureDateDays(90),
       renewalUsed: '미사용',
       housingType: '아파트',
-      preferredArea: '성북구',
+      preferredArea: '마포구',
       renewalAskPct: 5,
       note: '재택근무예요',
     },
     finance: {
-      annualIncome: 40_000_000,
-      ownCapital: 30_000_000,
+      annualIncome: 45_000_000,
+      ownCapital: 40_000_000,
       household: '1인',
       firstHome: '모름',
       under35: true,
