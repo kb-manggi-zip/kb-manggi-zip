@@ -4,6 +4,7 @@ import { REGIONS_BUY, REGIONS_MOVE, REGIONS_MONTHLY } from '../data/regions';
 import { SCENES_MOVE, SCENES_BUY, SCENES_STAY, SCENES_BY_REGION, SAVED_MONEY_CARDS } from '../data/scenes';
 import { PRODUCTS_RENEWAL, PRODUCTS_MOVE, PRODUCTS_MOVE_MONTHLY, PRODUCTS_BUY } from '../data/products';
 import { PERSONAS } from '../data/personas';
+import { MYDATA } from '../data/mydata';
 import { briefings } from '../data/briefings';
 import { RULES } from '../engine/rules';
 import { RENEWAL_CASES, resolveRenewal } from '../engine/renewalCases';
@@ -16,7 +17,7 @@ import type {
   ReservationRequest, Branch, HousingType,
   BriefingRequest, BriefingResponse,
   DraftNoticeRequest, DraftNoticeResponse,
-  AnalyzeResponse, ClarifyResult, PersonaProfile, DecisionReport,
+  AnalyzeResponse, ClarifyResult, PersonaProfile, DecisionReport, SpendAnalysis,
 } from './types';
 
 // Static exports for screens (screens must not import engine/ or data/ directly)
@@ -57,6 +58,35 @@ export function personaIdFor(contract: ContractInfo | null, finance: FinanceInfo
   if (finance?.household === '신혼') return 'P2';
   if (contract?.type === '월세') return 'P3';
   return 'P1';
+}
+
+// 로컬(오프라인) 여력 판정 — 백엔드 report._feasibility_sentence/_react_log 이식(문구·판정 동일).
+// 지출(변동 여력)은 compare 견적을 바꾸지 않는다 — 부담 vs 여력 비교(맥락·판정)에만 쓴다.
+function localSpend(
+  contract: ContractInfo, finance: FinanceInfo, branch: Branch, cmp: CompareResponse,
+): { spend?: SpendAnalysis; feasibility: string } {
+  const agg = MYDATA[personaIdFor(contract, finance)];
+  if (!agg) return { feasibility: '지출로 본 실현 가능성은 마이데이터 동의 후 실제 내역으로 분석됩니다.' };
+  const man = (won: number) => `${Math.round(won / 10_000).toLocaleString()}만원`;
+  const burden = cmp.branches.find(b => b.branch === branch)?.monthlyBurden ?? 0;
+  const variable = agg.variableMonthly;
+  const over = burden > variable;
+  const gap = burden - variable;
+  const verdict = over ? `초과 ${man(gap)}` : '여력 안';
+  const reactLog = [
+    { thought: '이 가구의 고정지출 항목은 무엇인가?', action: '월세·보험·구독·대출 이자 등 매달 고정으로 나가는 지출을 분류', observation: `고정지출 월 ${man(agg.fixedMonthly)} (월평균 총지출 ${man(agg.monthlyTotal)} 중)` },
+    { thought: '변동 여력은 얼마인가?', action: '월평균 총지출 − 고정지출', observation: `변동 여력 월 ${man(variable)}` },
+    { thought: `선택한 '${branch}'의 월 부담이 변동 여력 안에 드는가?`, action: `월 부담 ${man(burden)} vs 변동 여력 ${man(variable)} 비교`, observation: over ? `여력 초과 (초과 ${man(gap)})` : `여력 안 (여유 ${man(-gap)})` },
+  ];
+  let feasibility: string;
+  if (!over) {
+    feasibility = `선택하신 '${branch}'의 월 부담 ${man(burden)}은 현재 변동지출 여력 ${man(variable)} 안에 있어요.`;
+  } else {
+    const adj = agg.topCategories.filter(t => !['주거', '보험'].includes(t.category)).slice(0, 2);
+    const hint = adj.map(t => `${t.category} ${man(t.monthly)}`).join(', ') || '변동지출';
+    feasibility = `선택하신 '${branch}'의 월 부담 ${man(burden)}이 현재 변동지출 여력 ${man(variable)}을 넘어요(초과 ${man(gap)}). 조정 가능 지출: ${hint}.`;
+  }
+  return { spend: { ...agg, reactLog, verdict }, feasibility };
 }
 
 export const api = {
@@ -126,13 +156,17 @@ export const api = {
         // 갱신: 새 발품 대신 '현재 동네 유지' 연속성 요약(백엔드 report.py와 동일 취지, B7)
         const moveCost = cmp.branches.find(b => b.branch === '이사')?.oneTimeCost ?? 0;
         const stayBrief = `${contract.preferredArea || '지금 사는 동네'}에서의 익숙한 동선을 그대로 이어가요. 새로 적응할 동네도, 발품도 필요 없어요. 이사였다면 들었을 일회성 비용 약 ${formatAmount(moveCost)}을(를) 아끼는 셈이에요.`;
+        // ⑤ 여력 판정 — 백엔드 report._feasibility_sentence/_react_log 이식(합성 마이데이터 집계).
+        // 로컬 단독 시연에서도 §⑤가 뜨게 한다. 지출은 견적에 유입하지 않는다(맥락·판정만).
+        const { spend, feasibility } = localSpend(contract, finance, branch, cmp);
         return {
           persona: localPersona(contract, finance),
           clarify: localClarify(contract, finance),
           comparison: cmp,
           selectedBranch: branch,
           dayBrief: branch === '갱신' ? stayBrief : '',
-          feasibility: '지출로 본 실현 가능성은 백엔드 연결(합성 마이데이터) 시 제공됩니다.',
+          spend,
+          feasibility,
           dday: cmp.dday,
           noticeDeadline: cmp.noticeDeadline,
         };
