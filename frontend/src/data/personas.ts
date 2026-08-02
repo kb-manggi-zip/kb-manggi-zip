@@ -13,20 +13,29 @@ function futureDate(months: number): string {
   return d.toISOString().split('T')[0];
 }
 
+function futureDateDays(days: number): string {
+  const d = new Date();
+  d.setDate(d.getDate() + days);
+  return d.toISOString().split('T')[0];
+}
+
 export const PERSONAS: Persona[] = [
   {
-    // S1(재택 1인): 성북구·이사 예산 5억대에서 재택 확정이 동네 순위를 실제로 뒤집는 조합(검증됨).
-    //   재택 확정 시 top1: 동선동1가 → 동선동4가 (통근 비중↓·상권 비중↑). preferredArea가 성북 필터.
+    // 깨비 — 촬영용 데모 시나리오(김수진 스펙 확정, 2026-08-02): 28세·1인가구·재택근무,
+    //   성북구 전세 2.8억, 만기 D-90, 집주인 5% 인상 요구. "재택근무예요"를 승인하면
+    //   통근 비중↓·상권 비중↑로 동네 순위가 실제로 바뀌는 조합(검증됨: top1 동선동4가).
     id: 'P1',
-    label: '전세 사회초년생 · 성북',
+    label: '깨비 · 전세 사회초년생 · 성북',
     contract: {
       type: '전세',
       deposit: 280_000_000,
       monthlyRent: 0,
-      expiryDate: futureDate(4),
+      expiryDate: futureDateDays(90),
       renewalUsed: '미사용',
       housingType: '아파트',
       preferredArea: '성북구',
+      renewalAskPct: 5,
+      note: '재택근무예요',
     },
     finance: {
       annualIncome: 40_000_000,
