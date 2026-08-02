@@ -14,12 +14,18 @@
 import logging
 import re
 from collections.abc import Iterator
+from pathlib import Path
 from typing import Callable
 
+from .cache import _key, cached
 from .config import settings
 from .verify import contains_solicitation, numbers_grounded
 
 log = logging.getLogger("kb.llm")
+
+# 촬영용: 같은 (system, user) 프롬프트는 파일 캐시로 즉시 재생 — 사전에 한 번 워밍업해두면
+# 촬영 중엔 실제 LLM 응답을 로딩 지연 없이 그대로 다시 보여줄 수 있다(core/cache.py와 동일 방식).
+_LLM_CACHE_TTL_HOURS = 168
 
 # 모든 LLM 노드 공통 시스템 규칙 (헌법 0-1.5 / 기획서 Trust Layer)
 SYSTEM_RULES = (
@@ -98,6 +104,7 @@ def generate(
     return fallback()
 
 
+@cached(ttl_hours=_LLM_CACHE_TTL_HOURS, subdir="llm")
 def _call_claude(system: str, user: str) -> str:
     """실제 Claude 호출. settings.llm_active 일 때만 도달."""
     from anthropic import Anthropic  # 지연 import (키 없을 때 의존성 회피)
@@ -123,11 +130,47 @@ def stream(*, system: str, user: str, fallback: Callable[[], str]) -> Iterator[s
     if not settings.llm_active:
         yield from _chunk_text(fallback())
         return
+
+    cached_text = _read_stream_cache(system, user)
+    if cached_text is not None:
+        yield from _chunk_text(cached_text)
+        return
+
     try:
-        yield from _stream_claude(system, user)
+        chunks: list[str] = []
+        for token in _stream_claude(system, user):
+            chunks.append(token)
+            yield token
+        _write_stream_cache(system, user, "".join(chunks))
     except Exception as e:  # 실패는 조용히 삼키지 않되, 폴백으로 계속
         log.warning("LLM 스트림 실패 → 폴백: %s", e)
         yield from _chunk_text(fallback())
+
+
+def _stream_cache_path(system: str, user: str) -> Path:
+    cache_dir = Path(settings.cache_dir) / "llm"
+    cache_dir.mkdir(parents=True, exist_ok=True)
+    key = _key("stream", (system, user), {})
+    return cache_dir / f"stream_{key}.txt"
+
+
+def _read_stream_cache(system: str, user: str) -> str | None:
+    """촬영용 웜업 캐시 조회 — 있으면 실제 Claude가 만들었던 문장을 그대로, 지연 없이 재생."""
+    import time
+
+    path = _stream_cache_path(system, user)
+    if not path.exists():
+        return None
+    age_h = (time.time() - path.stat().st_mtime) / 3600
+    if age_h >= _LLM_CACHE_TTL_HOURS:
+        return None
+    return path.read_text(encoding="utf-8")
+
+
+def _write_stream_cache(system: str, user: str, text: str) -> None:
+    if not text:
+        return
+    _stream_cache_path(system, user).write_text(text, encoding="utf-8")
 
 
 def _chunk_text(text: str) -> Iterator[str]:
