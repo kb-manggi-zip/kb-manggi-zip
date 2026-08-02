@@ -250,14 +250,14 @@ def regions(
 
 
 @observe(name="simulate")
-def _run_simulate(branch: str, region_id: str) -> SimulateResponse:
-    return narrator.run(branch, region_id)
+def _run_simulate(branch: str, region_id: str, household: str | None, lead_signal: str | None) -> SimulateResponse:
+    return narrator.run(branch, region_id, household=household, lead_signal=lead_signal)
 
 
 @router.post("/simulate", response_model=SimulateResponse)
 def simulate(req: SimulateRequest, session_id: str | None = Depends(get_session_id)) -> SimulateResponse:
     with session_scope(session_id):
-        return _run_simulate(req.branch, req.regionId)
+        return _run_simulate(req.branch, req.regionId, req.household, req.leadSignal)
 
 
 @observe(name="products")

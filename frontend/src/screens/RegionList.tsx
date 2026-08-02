@@ -13,6 +13,7 @@ import { KakaoMap } from "../components/KakaoMap";
 import { api, personaIdFor } from "../api/client";
 import { formatAmount } from "../utils/format";
 import { kbLandUrl } from "../utils/external";
+import { deriveLeadSignal } from "../utils/leadSignal";
 import type { Region, PersonaProfile, ClarifyResult } from "../api/types";
 
 export default function RegionList() {
@@ -90,19 +91,8 @@ export default function RegionList() {
   const hasPersonalSignal =
     applyNote && Object.keys(state.contract?.noteAdjust ?? {}).length > 0;
 
-  // L3 미니 리포트 리드 신호 — 확정 신호만(실측>진술>세그먼트), 출처 규칙 유지. 보류 신호는 persona에 없음.
-  // 같은 출처 안에서도 "많이 하는" 신호를 우선한다 — "적게 하는" 신호는 summaryLine에서 어차피 팩트를
-  // 안 붙이므로(밀집도가 추천 근거가 안 됨), 배열 순서상 앞에 있단 이유로 "적게" 신호가 먼저 뽑혀
-  // "많이" 신호(실제로 보여줄 수 있는)를 가려버리던 문제 수정(2026-07-31).
-  const leadSignal = (() => {
-    const sig = persona?.consumptionSignals ?? [];
-    const pickFrom = (source: string) => {
-      const inSource = sig.filter((s) => s.source === source);
-      return inSource.find((s) => s.label.includes("많이 하는")) ?? inSource[0];
-    };
-    const pick = pickFrom("실측") ?? pickFrom("진술") ?? pickFrom("세그먼트");
-    return pick?.label;
-  })();
+  // L3 미니 리포트 리드 신호 — 하루시뮬(DayPlayer)과 공용 파생 로직(utils/leadSignal.ts).
+  const leadSignal = deriveLeadSignal(persona?.consumptionSignals);
 
   // J4: 여러 후보가 공유하는 '구 기준' 동일 이유(구 폴백 유래)는 카드마다 반복하지 않고 상단 공통 안내로 접는다.
   const commonReasons = useMemo(() => {
