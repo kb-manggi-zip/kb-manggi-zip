@@ -171,7 +171,7 @@ export const api = {
   // household/leadSignal: 원격(백엔드)이 동네 태그+소비신호로 고정 3씬(통근+상권태그)을 동적 조립하는 데 씀
   // (docs/하루시뮬_이미지생성_계획.md). 로컬 폴백은 기존 정적 씬 그대로(둘 다 무시).
   async simulate(branch: Branch, _regionId: string, household?: string, leadSignal?: string): Promise<SimulateResponse> {
-    return localOrRemote(
+    const res = await localOrRemote(
       () => ({
         // 지역별 씬(regionId) 우선 → 없으면 branch 기본. '월세로'('-m')와 '전세로'가 다른 하루.
         scenes:
@@ -182,6 +182,12 @@ export const api = {
       '/api/simulate',
       { method: 'POST', body: JSON.stringify({ branch, regionId: _regionId, household, leadSignal }) }
     );
+    // 백엔드가 생성 이미지를 상대경로('/static/...')로 주는 경우, 별도 호스트(API_URL)면 절대주소로 보정.
+    // Unsplash 절대 URL(외부 curated 씬)은 이미 http(s)로 시작해 그대로 통과.
+    if (API_URL) {
+      res.scenes = res.scenes.map(s => (s.visual?.startsWith('/') ? { ...s, visual: `${API_URL}${s.visual}` } : s));
+    }
+    return res;
   },
 
   // '이 동네에서의 하루' 개인화 발품 내레이션 (agent 모드: 백엔드 LLM+소비프로필 / 로컬: 템플릿)

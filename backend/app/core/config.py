@@ -27,6 +27,9 @@ class Settings(BaseSettings):
     kakao_api_key: str = ""
     sbiz_api_key: str = ""  # 소상공인 상권정보 (Decoding 키) — refresh_regions.py에서만 사용
     odsay_api_key: str = ""  # ODsay 대중교통 길찾기 (통근시간) — 없으면 직선거리 예상치 폴백
+    # 하루시뮬 씬 이미지 생성(scripts/generate_scene_images.py 전용, gpt-image-1).
+    # 없으면 스크립트는 dry-run만 허용(실비용 호출 차단)
+    openai_api_key: str = ""
 
     # LangGraph 트레이싱 (Phase B3). 키 없으면 트레이싱 없이 그래프만 정상 동작.
     langfuse_public_key: str = ""

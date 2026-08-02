@@ -90,7 +90,7 @@ export interface Region {
 export interface Scene {
   time: string;
   emoji: string;
-  visual: string; // unsplash URL
+  visual: string; // unsplash URL(커스텀 씬) 또는 동네별 생성 이미지 경로(/static/scene_images/...). 없으면 빈 문자열 — 프론트가 시간대 그라디언트로 폴백
   caption1: string;
   caption2: string;
   basis?: string;

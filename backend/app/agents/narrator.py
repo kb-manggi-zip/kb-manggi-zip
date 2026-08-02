@@ -51,6 +51,28 @@ _TAG_SCENE_META = {
 _TIMES_WITH_COMMUTE = ["🌅 07:40", "☀️ 12:30", "🌇 18:30"]
 _TIMES_NO_COMMUTE = ["🌅 09:00", "☀️ 12:30", "🌇 18:30"]
 
+# 씬 이미지(docs/하루시뮬_이미지생성_계획.md) — 태그→파일 slug. scripts/generate_scene_images.py가
+# 이 매핑을 그대로 가져다 써서 파일명 규칙이 어긋나지 않게 한다(단일 소스).
+_TAG_SLUG = {
+    "음식점·카페 밀집": "cafe",
+    "공원 인접": "park",
+    "마트·편의점 밀집": "mart",
+    "여가시설 밀집": "leisure",
+    "학원가": "academy",
+}
+_COMMUTE_SLUG = "commute"
+SCENE_IMAGE_DIR = BACKEND_ROOT / "data" / "scene_images"
+
+
+def _scene_image_url(region_id: str, slug: str) -> str:
+    """생성된 이미지가 실제로 있을 때만 URL 반환 — 없으면 ''(프론트가 시간대 그라디언트로 폴백, 에러 아님)."""
+    path = SCENE_IMAGE_DIR / f"{region_id}_{slug}.png"
+    if not path.exists():
+        return ""
+    from urllib.parse import quote
+
+    return f"/static/scene_images/{quote(path.name)}"
+
 
 def _lead_signal_tag(lead_signal: str | None) -> str | None:
     """'카페 소비 많이 하는 편' 같은 라벨 → 우선 태그. 매칭 규칙 없으면(배달 등) None(폴백행)."""
@@ -103,7 +125,7 @@ def _dynamic_scenes(region_id: str, household: str | None, lead_signal: str | No
             {
                 "time": _TIMES_WITH_COMMUTE[0],
                 "emoji": "🚇",
-                "visual": "",
+                "visual": _scene_image_url(region_id, _COMMUTE_SLUG),
                 "caption1": cap1,
                 "caption2": cap2,
                 "basis": "역세권(카카오맵 최근접역 기준)",
@@ -124,7 +146,7 @@ def _dynamic_scenes(region_id: str, household: str | None, lead_signal: str | No
             {
                 "time": time,
                 "emoji": meta["emoji"],
-                "visual": "",
+                "visual": _scene_image_url(region_id, _TAG_SLUG[tag]),
                 "caption1": meta["caption1"],
                 "caption2": "",
                 "basis": f"{tag} (상권 실측·소상공인시장진흥공단)",
