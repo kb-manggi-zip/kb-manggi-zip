@@ -24,12 +24,16 @@ def test_monthly_cost_unchanged():
     assert narrator.run("갱신", "").monthlyCost == 900_000
 
 
-def test_region_override_differs_from_base():
-    """월세 후보('-m')는 지역 override → base 이사와 다른 하루."""
-    base_move = narrator.run("이사", "seongbuk")  # override 없음 → base
-    monthly = narrator.run("이사", "mapo-m")  # 망원동 override
-    assert _captions(base_move) != _captions(monthly)
-    assert any("망원" in c for c in _captions(monthly))
+def test_region_with_real_tags_differs_from_generic_fallback():
+    """실제 상권 태그가 있는 동(mapo-m=망원동, region_enrich.yaml에 id로 매칭됨)은 태그 데이터가
+    아예 없는 동(seongbuk-m)과 다른 하루가 나온다(2026-08-02: 수기 오버라이드였던 예전 테스트를
+    실측 태그 기반 동적 조립 검증으로 교체 — regions.yaml의 지역별 오버라이드는 고정 3씬 설계와
+    맞지 않는 구식 5씬 스톡사진이라 제거됨)."""
+    with_tags = narrator.run("이사", "mapo-m")
+    without_tags = narrator.run("이사", "seongbuk-m")
+    assert _captions(with_tags) != _captions(without_tags)
+    assert any("상권 실측" in s.basis for s in with_tags.scenes)
+    assert all(s.basis == "동네 하루 예시" for s in without_tags.scenes)
 
 
 def test_wolse_vs_jeonse_distinct():
@@ -39,10 +43,18 @@ def test_wolse_vs_jeonse_distinct():
     assert _captions(wolse) != _captions(jeonse)
 
 
-def test_unknown_region_falls_back_to_base():
+def test_unknown_region_gets_generic_three_scenes():
+    """모르는 region_id도 3씬은 보장한다(2026-08-02 재설계) — 예전엔 태그 없으면 구식 5씬 base로
+    빠졌지만, region_id 자체가 없는 경우(동 선택 전)만 base로 폴백하고 나머진 제네릭 3씬."""
     known = narrator.run("이사", "does-not-exist")
+    assert len(known.scenes) == 3
+    assert all(s.basis == "동네 하루 예시" for s in known.scenes)
+
+
+def test_no_region_id_falls_back_to_base():
+    """region_id 자체가 없을 때만(동 선택 전) 구식 5씬 base로 폴백한다."""
     base = narrator.run("이사", "")
-    assert _captions(known) == _captions(base)
+    assert len(base.scenes) == 5
 
 
 # ── 개인화 라이프스타일 내레이션 ('온라인 발품') ──────────────────────────

@@ -11,6 +11,7 @@
    - 소비 프로필은 PoC 가정 → 실서비스는 KB 카드데이터로 파일만 교체(같은 shape).
 """
 
+import hashlib
 from functools import lru_cache
 from pathlib import Path
 
@@ -51,6 +52,48 @@ _TAG_SCENE_META = {
 _TIMES_WITH_COMMUTE = ["🌅 07:40", "☀️ 12:30", "🌇 18:30"]
 _TIMES_NO_COMMUTE = ["🌅 09:00", "☀️ 12:30", "🌇 18:30"]
 
+# 씬 이미지(docs/하루시뮬_이미지생성_계획.md) — 태그→파일 slug. scripts/generate_scene_images.py가
+# 이 매핑을 그대로 가져다 써서 파일명 규칙이 어긋나지 않게 한다(단일 소스).
+_TAG_SLUG = {
+    "음식점·카페 밀집": "cafe",
+    "공원 인접": "park",
+    "마트·편의점 밀집": "mart",
+    "여가시설 밀집": "leisure",
+    "학원가": "academy",
+}
+_COMMUTE_SLUG = "commute"
+SCENE_IMAGE_DIR = BACKEND_ROOT / "data" / "scene_images"
+
+# 카테고리×시간대별 이미지 풀 크기 — 동마다 따로 생성하는 대신, 카테고리당 여러 장(변형)을 만들어두고
+# 동 이름 해시로 그 중 하나를 고정 배정한다(82개 동 다 따로 만들 필요 없음 + 그래도 획일적이지 않게).
+# scripts/generate_scene_images.py가 이 값을 그대로 가져다 써서 풀 크기가 어긋나지 않게 한다(단일 소스).
+# 지금은 결제 없이 수동으로 카테고리×시간대당 1장씩만 만들 계획이라 1(=모든 동이 같은 사진 공유).
+_POOL_SIZE = 1
+
+
+def _time_bucket(time: str) -> str:
+    """'🌅 07:40' 같은 표시 문자열 → 'morning'|'day'|'evening'. 프론트 timeGradient() 시간 경계와 동일."""
+    hour = int(time.split(" ")[-1].split(":")[0])
+    if hour < 10:
+        return "morning"
+    if hour < 16:
+        return "day"
+    return "evening"
+
+
+def _scene_image_url(region_id: str, slug: str, time: str) -> str:
+    """카테고리×시간대 풀에서 그 동에 고정 배정된 한 장을 반환 — 없으면 ''(프론트가 시간대 그라디언트로 폴백,
+    에러 아님). 배정을 동 이름으로 고정하는 이유: 같은 동은 재방문해도 같은 이미지가 보여야 자연스럽다
+    (매번 랜덤이면 새로고침마다 사진이 바뀌어 어색함)."""
+    bucket = _time_bucket(time)
+    idx = int(hashlib.md5(f"{region_id}:{slug}".encode()).hexdigest(), 16) % _POOL_SIZE
+    path = SCENE_IMAGE_DIR / f"{slug}_{bucket}_{idx}.png"
+    if not path.exists():
+        return ""
+    from urllib.parse import quote
+
+    return f"/static/scene_images/{quote(path.name)}"
+
 
 def _lead_signal_tag(lead_signal: str | None) -> str | None:
     """'카페 소비 많이 하는 편' 같은 라벨 → 우선 태그. 매칭 규칙 없으면(배달 등) None(폴백행)."""
@@ -62,17 +105,40 @@ def _lead_signal_tag(lead_signal: str | None) -> str | None:
     return None
 
 
-def _pick_content_tags(raw_tags: list[str], lead_signal: str | None, count: int) -> list[str]:
-    """그 동이 실제로 가진 상권 태그 중 count개 — 소비신호 매칭 태그 우선, 나머진 고정 폴백 순서."""
+def _pick_content_tags(raw_tags: list[str], lead_signal: str | None, count: int) -> list[tuple[str, bool]]:
+    """그 동이 실제로 가진 상권 태그 중 count개(소비신호 매칭 우선, 나머진 고정 폴백 순서) + 그 태그가
+    이 동네 실제 태그인지(True) 부족분을 채운 폴백인지(False). 하루시뮬은 항상 정확히 3씬을 보여줘야
+    하므로(2026-08-02) 실제 태그가 count개에 못 미치면 고정 폴백 순서에서 나머지를 채우되, basis
+    캡션에서 실측과 예시를 구분할 수 있게 is_real 플래그를 함께 반환한다."""
     tags = {_TAG_ALIASES.get(t, t) for t in raw_tags}
     matched = _lead_signal_tag(lead_signal)
-    ordered: list[str] = []
+    ordered: list[tuple[str, bool]] = []
     if matched and matched in tags:
-        ordered.append(matched)
+        ordered.append((matched, True))
     for tag in _TAG_FALLBACK_ORDER:
-        if tag in tags and tag not in ordered:
-            ordered.append(tag)
+        if tag in tags and tag not in (t for t, _ in ordered):
+            ordered.append((tag, True))
+    for tag in _TAG_FALLBACK_ORDER:
+        if len(ordered) >= count:
+            break
+        if tag not in (t for t, _ in ordered):
+            ordered.append((tag, False))
     return ordered[:count]
+
+
+def _enrich_for(region_id: str) -> dict:
+    """region_enrich.yaml에서 region_id에 맞는 항목 조회. 이 파일은 동 이름을 키로 쓰지만(예:
+    '합정동'), tools/molit.py::aggregate_to_regions가 일부 동에 짧은 id(예: 'mapo')를 부여해
+    Region.id로 노출하는 경우가 있다(동 안의 `id:` 필드) — 그때는 키가 아니라 그 id 필드로
+    찾아야 한다(2026-08-02 버그: 이걸 안 해서 mapo/mapo-m 등 7개 지역이 태그 매칭에 항상
+    실패하고 있었음). 동 이름 그대로 region_id로 쓰는 나머지 동은 키로 바로 찾힌다."""
+    data = molit.load_enrich()
+    if region_id in data:
+        return data[region_id]
+    for entry in data.values():
+        if entry.get("id") == region_id:
+            return entry
+    return {}
 
 
 def _commute_caption(region_id: str, household: str | None) -> tuple[str, str]:
@@ -85,14 +151,12 @@ def _commute_caption(region_id: str, household: str | None) -> tuple[str, str]:
     return "지하철역 도보권", "출근길도 가볍게"
 
 
-def _dynamic_scenes(region_id: str, household: str | None, lead_signal: str | None) -> list[dict] | None:
-    """region_enrich.yaml 태그 기반 고정 3씬 조립. 태그 정보가 아예 없으면 None(→ base 폴백)."""
-    enrich = molit.load_enrich().get(region_id)
-    if not enrich:
-        return None
-    raw_tags = enrich.get("tags") or []
-    if not raw_tags:
-        return None
+def _dynamic_scenes(region_id: str, household: str | None, lead_signal: str | None) -> list[dict]:
+    """region_enrich.yaml 태그 기반 고정 3씬 조립 — 항상 정확히 3씬을 반환한다(2026-08-02: 예전엔
+    역세권인데 매칭 태그가 없으면 통근 1씬만, 태그가 아예 없으면 None(→구식 5씬 스톡사진 base)으로
+    빠지는 버그가 있었음). 실제 데이터가 부족한 동네는 고정 폴백 태그로 채우되 _pick_content_tags의
+    is_real 플래그로 basis를 '동네 하루 예시'로 정직하게 구분한다."""
+    raw_tags = _enrich_for(region_id).get("tags") or []
     normalized = {_TAG_ALIASES.get(t, t) for t in raw_tags}
     has_transit = "초역세권" in normalized or "역세권" in normalized
 
@@ -103,7 +167,7 @@ def _dynamic_scenes(region_id: str, household: str | None, lead_signal: str | No
             {
                 "time": _TIMES_WITH_COMMUTE[0],
                 "emoji": "🚇",
-                "visual": "",
+                "visual": _scene_image_url(region_id, _COMMUTE_SLUG, _TIMES_WITH_COMMUTE[0]),
                 "caption1": cap1,
                 "caption2": cap2,
                 "basis": "역세권(카카오맵 최근접역 기준)",
@@ -115,31 +179,27 @@ def _dynamic_scenes(region_id: str, household: str | None, lead_signal: str | No
         content = _pick_content_tags(raw_tags, lead_signal, 3)
         times = _TIMES_NO_COMMUTE
 
-    if not content and not scenes:
-        return None  # 통근도 상권 태그도 없음 — 정직하게 base로 폴백
-
-    for time, tag in zip(times, content):
+    for time, (tag, is_real) in zip(times, content):
         meta = _TAG_SCENE_META[tag]
+        basis = f"{tag} (상권 실측·소상공인시장진흥공단)" if is_real else "동네 하루 예시"
         scenes.append(
             {
                 "time": time,
                 "emoji": meta["emoji"],
-                "visual": "",
+                "visual": _scene_image_url(region_id, _TAG_SLUG[tag], time),
                 "caption1": meta["caption1"],
                 "caption2": "",
-                "basis": f"{tag} (상권 실측·소상공인시장진흥공단)",
+                "basis": basis,
             }
         )
-    return scenes or None
+    return scenes
 
 
 def _select(branch: str, region_id: str, household: str | None, lead_signal: str | None) -> list[dict]:
     reg = _registry()
-    override = (reg.get("regions") or {}).get(region_id, {}).get(branch)
-    if override:
-        return override  # 기존 수기 커스텀 씬(월세 3개 동)은 그대로 우선
-    dynamic = _dynamic_scenes(region_id, household, lead_signal) if region_id else None
-    return dynamic or reg["base"][branch]
+    if region_id:
+        return _dynamic_scenes(region_id, household, lead_signal)
+    return reg["base"][branch]  # region_id 자체가 없는 호출(동 선택 전)만 구식 base로 폴백
 
 
 def run(

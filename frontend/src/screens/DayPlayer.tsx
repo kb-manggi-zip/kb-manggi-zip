@@ -8,7 +8,8 @@ import { formatAmount, ddayText } from '../utils/format';
 import { deriveLeadSignal } from '../utils/leadSignal';
 import type { Scene } from '../api/types';
 
-// 시간대 그라디언트 — 스톡사진 대신 시간의 '색'으로 하루를 표현(아침 웜/낮 스카이/저녁 앰버/밤 네이비).
+// 시간대 그라디언트 — 씬 이미지가 없거나 로딩 전 기본값(아침 웜/낮 스카이/저녁 앰버/밤 네이비).
+// scene.visual이 있으면(동네별 생성 이미지 or 커스텀 씬의 Unsplash) 그 위에 이미지를 얹는다.
 function timeGradient(time: string): string {
   const h = parseInt((time.match(/(\d{1,2}):/) || [])[1] || '12', 10);
   if (h >= 5 && h < 10) return 'linear-gradient(160deg, #FFD9A0 0%, #FFB86C 55%, #E8925A 100%)';   // 아침
@@ -124,8 +125,11 @@ export default function DayPlayer() {
       style={{ width: '100%', maxWidth: 390, height: '100dvh', margin: '0 auto', background: '#111' }}
       onClick={handleTap}
     >
-      {/* 배경 — 시간대 그라디언트(스톡사진 제거) + 하단 어둡게(자막 가독). 요약 화면은 중립 톤 고정. */}
+      {/* 배경 — 그라디언트 기본 + 있으면 씬 이미지를 그 위에(로딩 전/실패 시 그라디언트만 보임). 요약 화면은 중립 톤 고정. */}
       <div className="absolute inset-0 transition-all duration-700" style={{ background: showSummary ? SUMMARY_GRADIENT : timeGradient(scene.time) }}>
+        {!showSummary && scene.visual && (
+          <img key={scene.visual} src={scene.visual} alt="" className="absolute inset-0 w-full h-full object-cover" />
+        )}
         <div className="absolute inset-0 bg-gradient-to-b from-black/15 via-transparent to-black/75" />
       </div>
 

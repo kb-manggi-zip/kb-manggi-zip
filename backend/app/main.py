@@ -7,8 +7,9 @@ import logging
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
 
-from .core.config import settings
+from .core.config import BACKEND_ROOT, settings
 from .core.db import init_db
 from .core.rules import get_rules
 from .routers.api import router as api_router
@@ -26,6 +27,11 @@ app.add_middleware(
 )
 
 app.include_router(api_router)
+
+# 하루시뮬 씬 이미지(scripts/generate_scene_images.py가 채움) — 없으면 빈 디렉터리, 404만 남(에러 아님).
+_SCENE_IMAGE_DIR = BACKEND_ROOT / "data" / "scene_images"
+_SCENE_IMAGE_DIR.mkdir(parents=True, exist_ok=True)
+app.mount("/static/scene_images", StaticFiles(directory=str(_SCENE_IMAGE_DIR)), name="scene_images")
 
 
 @app.on_event("startup")
