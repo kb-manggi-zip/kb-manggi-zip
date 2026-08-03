@@ -6,13 +6,15 @@
 
 KB국민은행 제8회 Future Finance AI Challenge
 
+**🔗 배포 링크: [kb-manggi-zip.vercel.app](https://kb-manggi-zip.vercel.app/)**
+
 ---
 
 ## 무엇이 문제인가
 
-전세 만기 3주 전. 집주인은 5% 올려달라고 합니다. 올려주고 눌러앉는 게
-나을까, 그 돈이면 대출을 조금 더 받아 아예 사는 게 나을까, 더 싼 동네로
-옮기는 게 나을까.
+전세 만기 3주 전. 집주인은 5% 올려달라고 합니다. 올려주고 갱신하는 게
+나을까, 그 돈이면 대출을 조금 더 받아 아예 매매하는 게 나을까, 더 싼 동네로
+이사하는 게 나을까.
 
 이 결정 앞에서 임차인은 세 가지를 알 수 없습니다.
 
@@ -75,7 +77,7 @@ AI의 해석은 **정해진 4개 축의 배수로만** 출력되고, 어떤 제�
 
 정리하면 — **이해와 설명은 AI가, 계산은 규칙이, 결정은 사람이.**
 
-### 페르소나는 세 가지를 겹쳐 만듭니다 — 본인 말이 제일 셉니다
+### 페르소나는 세 가지를 겹쳐 만듭니다 — 본인 진술이 최우선입니다
 
 | 근거 | 예 | 어디서 |
 |---|---|---|
@@ -83,7 +85,7 @@ AI의 해석은 **정해진 4개 축의 배수로만** 출력되고, 어떤 제�
 | 실제 소비 기록 | "카페 지출이 또래보다 뚜렷이 높음" | 최근 거래 내역 (시연: 합성 / 실서비스: 마이데이터) |
 | 또래 평균 | "이 연령대는 배달·구독↑" | 카드소비 통계(지역 집계) |
 
-**본인이 말한 게 제일 세고, 그다음이 실제 소비 기록, 마지막이 또래 평균**입니다.
+**본인 진술이 최우선이고, 그다음이 실제 소비 기록, 마지막이 또래 평균**입니다.
 또래 평균을 개인의 사실처럼 쓰지 않고 화면에 출처를 구분해 보여줍니다.
 동네 가중치도 임의로 정한 게 아니라 **주거실태조사 이사 사유 응답률**에서
 가져왔습니다(어떤 조사 항목이 어떤 축이 됐는지는 [docs/개인화_설계.md](docs/개인화_설계.md)에 표로).
@@ -96,6 +98,10 @@ AI의 해석은 **정해진 4개 축의 배수로만** 출력되고, 어떤 제�
 **이미 계산된 여신 리드**로 창구에 도착하고, 타행 전세대출 고객의 만기는 대환
 접점이 됩니다. 계산·체감·실행이 한 그룹 안에서 완결되는 구조는 KB만 만들 수 있습니다.
 
+## 아키텍처
+
+![서비스 아키텍처 — React/TS(Vercel) ↔ FastAPI/LangGraph(Render, SQLite), 국토부·소상공인·ODsay 등 데이터 수집 파이프라인](docs/images/서비스아키텍쳐.png)
+
 ## 실행
 
 ```bash
@@ -104,6 +110,18 @@ cd backend && python3 -m venv .venv && source .venv/bin/activate && pip install 
 python scripts/refresh/seed_demo.py && uvicorn app.main:app --reload   # :8000
 cd ../frontend && npm i && npm run dev                                  # :5173
 ```
+
+- **프론트↔백엔드 전환**: `frontend/.env`의 `VITE_API_URL` 유무로 갈립니다. 값이 있으면 그 백엔드에 fetch하고(위 명령처럼 로컬 `:8000`을 띄웠다면 자동 연동), 없으면 `engine/`·`data/`를 프론트가 직접 계산하는 오프라인 폴백으로 동작합니다(백엔드 없이도 데모 가능, 단 후보 동네가 9개짜리 축소 세트).
+- **배포**: 실제 배포(SQLite 그대로)는 [DEPLOY.md](DEPLOY.md)를 참고하세요.
+
+### 포크 및 자체 배포
+
+1. **Fork → clone**합니다. 위 "실행" 명령으로 로컬에서 먼저 띄워봅니다(키 없이도 폴백으로 전 기능 동작).
+2. **키를 채웁니다**(선택, 없어도 데모는 완주됨):
+   - `backend/.env.example`을 `backend/.env`로 복사한 뒤 채웁니다 — `ANTHROPIC_API_KEY`+`LLM_ENABLED=true`(AI 라이브), `MOLIT_API_KEY`(국토부 실거래 실시간 갱신 시).
+   - `frontend/.env`에 `VITE_KAKAO_KEY`(지도), 원격 백엔드를 쓰려면 `VITE_API_URL`을 넣습니다.
+3. **직접 배포**하려면 [DEPLOY.md](DEPLOY.md)를 참고하세요 — Vercel(프론트) + Render(백엔드) 조합을 그대로 따라 하면 됩니다.
+4. **바꿔야 할 데이터**: `backend/rules/*.yaml`(법령·공시 수치, 각 `checked_at`)와 `backend/data/`(지역 범위)가 이 프로젝트의 전제(서울 6구·동 82개)입니다. 다른 지역·최신 법령으로 쓰려면 이 두 곳부터 손봐야 합니다.
 
 ## 더 깊이 보기
 
@@ -128,6 +146,18 @@ cd ../frontend && npm i && npm run dev                                  # :5173
 | **개인 소비 내역** | 지출 여력 분석 | ⚙️ **합성 시연 데이터**(실서비스는 마이데이터 동의 후 실 내역) |
 
 > 합성인 것은 **개인 소비 내역(마이데이터 자리)뿐**이며, 화면에도 그렇게 표기합니다. 나머지는 실측·공시 데이터이고, 실서비스 전환은 연동 지점(seam) 교체만 하면 됩니다.
+
+## 화면 미리보기 — 한 사람의 실제 화면
+
+문진 한 줄부터 결정까지.
+
+| ① 홈 | ② 문진(자유입력) | ③ 프로필 확인(AI 해석·HITL) | ④ 3갈래 비교 |
+|---|---|---|---|
+| <img src="docs/images/screenshot_01_home.png" width="180" height="400" alt="홈 — D-day와 세 갈래 요약"> | <img src="docs/images/screenshot_02_intake.png" width="180" height="400" alt='문진 — "재택근무예요" 자유입력 칩'> | <img src="docs/images/screenshot_03_profile.jpg" width="180" height="400" alt="프로필 확인 — AI가 이해한 내용을 본인이 반영/아니요로 확정"> | <img src="docs/images/screenshot_04_compare.png" width="180" height="400" alt="3갈래 비교 — 갱신·이사·매매 월 부담"> |
+
+| ⑤ 동네 후보 | ⑥ 그 동네의 하루 | ⑦ KB 금융 패키지 | ⑧ 만기 결정 리포트 |
+|---|---|---|---|
+| <img src="docs/images/screenshot_05_regionlist.png" width="180" height="400" alt="동네 후보 — 예산 필터·개인화 순위·근거"> | <img src="docs/images/screenshot_06_dayplayer.jpg" width="180" height="400" alt="그 동네의 하루 — 실측 기반 하루 서사"> | <img src="docs/images/screenshot_07_financepackage.jpg" width="180" height="400" alt="KB 금융 패키지 — 자격 기준 대출·보장·추가 상품"> | <img src="docs/images/screenshot_08_report.jpg" width="180" height="400" alt="만기 결정 리포트 — 상황·채점·동네·여력 한 장"> |
 
 ## 한계와 로드맵
 
