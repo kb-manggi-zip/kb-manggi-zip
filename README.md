@@ -8,16 +8,6 @@ KB국민은행 제8회 Future Finance AI Challenge
 
 **🔗 배포 링크: [kb-manggi-zip.vercel.app](https://kb-manggi-zip.vercel.app/)**
 
-**한 사람의 실제 화면 — 문진 한 줄부터 결정까지**
-
-| ① 홈 | ② 문진(자유입력) | ③ 3갈래 비교 |
-|---|---|---|
-| ![홈 — D-day와 세 갈래 요약](docs/images/screenshot_01_home.png) | ![문진 — "재택근무예요" 자유입력 칩](docs/images/screenshot_02_intake.png) | ![3갈래 비교 — 갱신·이사·매매 월 부담](docs/images/screenshot_03_compare.png) |
-
-| ④ 동네 후보 | ⑤ 만기 결정 리포트 |
-|---|---|
-| ![동네 후보 — 예산 필터·개인화 순위·근거](docs/images/screenshot_04_regionlist.png) | ![만기 결정 리포트 — 상황·채점·동네·여력 한 장](docs/images/screenshot_05_report.jpg) |
-
 ---
 
 ## 무엇이 문제인가
@@ -154,6 +144,18 @@ cd ../frontend && npm i && npm run dev                                  # :5173
 | **개인 소비 내역** | 지출 여력 분석 | ⚙️ **합성 시연 데이터**(실서비스는 마이데이터 동의 후 실 내역) |
 
 > 합성인 것은 **개인 소비 내역(마이데이터 자리)뿐**이며, 화면에도 그렇게 표기합니다. 나머지는 실측·공시 데이터이고, 실서비스 전환은 연동 지점(seam) 교체만 하면 됩니다.
+
+## 화면 미리보기 — 한 사람의 실제 화면
+
+문진 한 줄부터 결정까지.
+
+| ① 홈 | ② 문진(자유입력) | ③ 프로필 확인(AI 해석·HITL) | ④ 3갈래 비교 |
+|---|---|---|---|
+| ![홈 — D-day와 세 갈래 요약](docs/images/screenshot_01_home.png) | ![문진 — "재택근무예요" 자유입력 칩](docs/images/screenshot_02_intake.png) | ![프로필 확인 — AI가 이해한 내용을 본인이 반영/아니요로 확정](docs/images/screenshot_03_profile.jpg) | ![3갈래 비교 — 갱신·이사·매매 월 부담](docs/images/screenshot_04_compare.png) |
+
+| ⑤ 동네 후보 | ⑥ 그 동네의 하루 | ⑦ KB 금융 패키지 | ⑧ 만기 결정 리포트 |
+|---|---|---|---|
+| ![동네 후보 — 예산 필터·개인화 순위·근거](docs/images/screenshot_05_regionlist.png) | ![그 동네의 하루 — 실측 기반 하루 서사](docs/images/screenshot_06_dayplayer.jpg) | ![KB 금융 패키지 — 자격 기준 대출·보장·추가 상품](docs/images/screenshot_07_financepackage.jpg) | ![만기 결정 리포트 — 상황·채점·동네·여력 한 장](docs/images/screenshot_08_report.jpg) |
 
 ## 한계와 로드맵
 
