@@ -6,6 +6,8 @@
 
 KB국민은행 제8회 Future Finance AI Challenge
 
+**🔗 시연: [kb-manggi-zip.vercel.app](https://kb-manggi-zip.vercel.app/)**
+
 ---
 
 ## 무엇이 문제인가
@@ -104,6 +106,10 @@ cd backend && python3 -m venv .venv && source .venv/bin/activate && pip install 
 python scripts/refresh/seed_demo.py && uvicorn app.main:app --reload   # :8000
 cd ../frontend && npm i && npm run dev                                  # :5173
 ```
+
+- **프론트↔백엔드 전환**: `frontend/.env`의 `VITE_API_URL` 유무로 갈린다. 값이 있으면 그 백엔드에 fetch(위 명령처럼 로컬 `:8000`을 띄웠다면 자동 연동), 없으면 `engine/`·`data/`를 프론트가 직접 계산하는 오프라인 폴백(백엔드 없이도 데모 가능, 단 후보 동네가 9개짜리 축소 세트).
+- **도커로**: 루트에서 `docker compose up --build` → Postgres 포함 구성으로 `:8000` 기동(`docker-compose.yml`).
+- **배포**: 자세한 단계는 [DEPLOY.md](DEPLOY.md) 참고.
 
 ## 더 깊이 보기
 

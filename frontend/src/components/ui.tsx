@@ -1,4 +1,5 @@
-import React, { useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { COLORS, BRANCH_COLORS, BRANCH_ICONS } from '../theme';
 import type { Branch } from '../api/types';
 import ProfileFab from './ProfileFab';
@@ -174,28 +175,53 @@ export function BranchCard({ branch, children, selected = false, className = '' 
 // ─── Speech Bubble Chip ──────────────────────────────────────────────────────
 export function BasisChip({ label, tip }: { label: string; tip: string }) {
   const [open, setOpen] = useState(false);
+  const [pos, setPos] = useState<{ top: number; left: number } | null>(null);
+  const btnRef = useRef<HTMLButtonElement>(null);
+
+  // 버튼 기준 절대위치(left-0 등)는 조상 중 하나라도 overflow-hidden(MobileShell)이거나
+  // overflow-x-auto(가로 스와이프 카드, 예: CompareTable 갈래 카드)면 그 안에서 잘린다 —
+  // overflow-x:auto는 브라우저가 overflow-y도 auto로 강제해서 세로로 뜨는 툴팁까지 같이 잘림(2026-08-02).
+  // 포탈로 document.body에 그려 어떤 조상의 overflow/스크롤과도 무관하게 뜨도록 함.
+  useEffect(() => {
+    if (!open) return;
+    const close = () => setOpen(false);
+    window.addEventListener('scroll', close, true);
+    window.addEventListener('resize', close);
+    return () => {
+      window.removeEventListener('scroll', close, true);
+      window.removeEventListener('resize', close);
+    };
+  }, [open]);
+
+  function toggle() {
+    if (!open && btnRef.current) {
+      const r = btnRef.current.getBoundingClientRect();
+      const TIP_W = 260;
+      const left = Math.min(Math.max(8, r.left), window.innerWidth - TIP_W - 8);
+      setPos({ top: r.top, left });
+    }
+    setOpen(o => !o);
+  }
+
   return (
     <div className="relative inline-block">
       <button
-        onClick={() => setOpen(o => !o)}
+        ref={btnRef}
+        onClick={toggle}
         className="inline-flex items-center gap-1 text-xs px-2 py-0.5 rounded-full border border-border bg-muted text-muted-foreground"
       >
         💬 {label}
       </button>
-      {open && (
+      {open && pos && createPortal(
         <div
-          // 버튼 중앙 기준 left-1/2 정렬은 버튼이 390px 모바일 프레임 왼쪽 가장자리에 붙어있을 때
-          // 툴팁 절반이 프레임 밖(왼쪽)으로 나가 부모의 overflow-hidden에 잘렸음(2026-08-02) —
-          // 버튼 왼쪽 끝에 맞춰서 오른쪽으로만 펼치게 변경. 한 줄(whitespace-nowrap)로 보여주고
-          // max-w는 안 둠 — basis 문구들은 다 짧아서(20자 내외) 왼쪽 시작 기준으로 한 줄이면
-          // 프레임 폭 안에 들어옴. 원래 있던 max-w-[75vw]가 브라우저 전체 뷰포트 기준이라
-          // 데스크톱에서 툴팁 폭이 튀던 게 진짜 원인이었음.
-          className="absolute bottom-full mb-2 left-0 z-50 w-max whitespace-nowrap bg-foreground text-background text-xs rounded-xl p-2.5 shadow-lg leading-relaxed"
+          className="fixed z-50 w-[260px] whitespace-normal bg-foreground text-background text-xs rounded-xl p-2.5 shadow-lg leading-relaxed"
+          style={{ top: pos.top - 8, left: pos.left, transform: 'translateY(-100%)' }}
           onClick={() => setOpen(false)}
         >
           {tip}
           <div className="absolute -bottom-1 left-4 w-2 h-2 bg-foreground rotate-45" />
-        </div>
+        </div>,
+        document.body
       )}
     </div>
   );
