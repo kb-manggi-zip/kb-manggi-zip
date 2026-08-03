@@ -151,11 +151,11 @@ cd ../frontend && npm i && npm run dev                                  # :5173
 
 | ① 홈 | ② 문진(자유입력) | ③ 프로필 확인(AI 해석·HITL) | ④ 3갈래 비교 |
 |---|---|---|---|
-| ![홈 — D-day와 세 갈래 요약](docs/images/screenshot_01_home.png) | ![문진 — "재택근무예요" 자유입력 칩](docs/images/screenshot_02_intake.png) | ![프로필 확인 — AI가 이해한 내용을 본인이 반영/아니요로 확정](docs/images/screenshot_03_profile.jpg) | ![3갈래 비교 — 갱신·이사·매매 월 부담](docs/images/screenshot_04_compare.png) |
+| <img src="docs/images/screenshot_01_home.png" width="180" height="400" alt="홈 — D-day와 세 갈래 요약"> | <img src="docs/images/screenshot_02_intake.png" width="180" height="400" alt='문진 — "재택근무예요" 자유입력 칩'> | <img src="docs/images/screenshot_03_profile.jpg" width="180" height="400" alt="프로필 확인 — AI가 이해한 내용을 본인이 반영/아니요로 확정"> | <img src="docs/images/screenshot_04_compare.png" width="180" height="400" alt="3갈래 비교 — 갱신·이사·매매 월 부담"> |
 
 | ⑤ 동네 후보 | ⑥ 그 동네의 하루 | ⑦ KB 금융 패키지 | ⑧ 만기 결정 리포트 |
 |---|---|---|---|
-| ![동네 후보 — 예산 필터·개인화 순위·근거](docs/images/screenshot_05_regionlist.png) | ![그 동네의 하루 — 실측 기반 하루 서사](docs/images/screenshot_06_dayplayer.jpg) | ![KB 금융 패키지 — 자격 기준 대출·보장·추가 상품](docs/images/screenshot_07_financepackage.jpg) | ![만기 결정 리포트 — 상황·채점·동네·여력 한 장](docs/images/screenshot_08_report.jpg) |
+| <img src="docs/images/screenshot_05_regionlist.png" width="180" height="400" alt="동네 후보 — 예산 필터·개인화 순위·근거"> | <img src="docs/images/screenshot_06_dayplayer.jpg" width="180" height="400" alt="그 동네의 하루 — 실측 기반 하루 서사"> | <img src="docs/images/screenshot_07_financepackage.jpg" width="180" height="400" alt="KB 금융 패키지 — 자격 기준 대출·보장·추가 상품"> | <img src="docs/images/screenshot_08_report.jpg" width="180" height="400" alt="만기 결정 리포트 — 상황·채점·동네·여력 한 장"> |
 
 ## 한계와 로드맵
 
