@@ -6,7 +6,7 @@
 
 KB국민은행 제8회 Future Finance AI Challenge
 
-**🔗 시연: [kb-manggi-zip.vercel.app](https://kb-manggi-zip.vercel.app/)**
+**🔗 배포 링크: [kb-manggi-zip.vercel.app](https://kb-manggi-zip.vercel.app/)**
 
 <p>
   <img src="docs/images/screenshot_compare.jpg" width="49%" alt="3갈래 비교표 — 갱신·이사·매매 월 부담을 나란히" />
